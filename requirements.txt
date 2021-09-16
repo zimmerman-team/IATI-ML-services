@@ -1,2 +1,9 @@
 apache-airflow
 requests
+torch
+pymongo
+numpy
+scikit-learn
+mlflow
+pytorch-lightning
+hiddenlayer

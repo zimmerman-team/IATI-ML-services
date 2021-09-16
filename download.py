@@ -16,35 +16,124 @@ import datetime
 import time
 import random
 import numpy as np
-from bson.binary import Binary
-import pickle
 from collections import defaultdict, OrderedDict
 import sklearn.model_selection
 import mlflow
+import abc
+import enum
+
+import utils
 
 logging.basicConfig(level=logging.DEBUG)
 
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
-PAGE_SIZE=100
-MAX_PAGES=500
+PAGE_SIZE=200
+MAX_PAGES=200
 MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
-chosen_codelists = ["Currency","BudgetType","BudgetStatus"] # FIXME: duplicated info from rels_to_codelists?
-chosen_rels = ['budget']
-rels_to_codelists = {
-    'budget': {
-        'value_currency': 'Currency',
-        'type': 'BudgetType',
-        'status': 'BudgetStatus'
-    }
-}
 
-rels_datetimes = {
-    'budget': (
-        'period_start_iso_date',
-        'period_end_iso_date'
-    )
-}
+class Rel(object):
+    def __init__(self, name, fields):
+        self.name = name
+        self.fields = fields
+
+    @property
+    def codelists_names(self):
+        ret = []
+        for field in self.fields:
+            if type(field) is CategoryField:
+                ret.append(field.codelist_name)
+        return ret
+
+def extract_codelists(_rels):
+    ret = set()
+    for rel in _rels:
+        ret = ret.union(rel.codelists_names)
+    return ret
+
+class FieldType(enum.Enum): # FIXME: is this really necessary?
+    DATETIME = enum.auto()
+    CATEGORY = enum.auto()
+    NUMERICAL = enum.auto()
+
+class AbstractField(abc.ABC):
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def type_(self):
+        raise Exception("not implemented in subclass")
+
+class DatetimeField(AbstractField):
+    @property
+    def type_(self):
+        return FieldType.DATETIME
+
+    def encode(self, entries, set_size, **kwargs):
+        ret = []
+        for entry in entries:
+            entry = re.match('(.*)Z', entry).groups()[0] # python's datetime does not parse the final 'Z'
+            dt = datetime.datetime.fromisoformat(entry)
+            t = tuple(dt.timetuple())
+            ret.append(t)
+        short_of = set_size - len(entries)
+        if short_of > 0:
+            for i in range(short_of):
+                tmp = [0] * 9  # 9 is the cardinality of the timetuple
+                ret.append(tmp)
+        return ret
+
+class CategoryField(AbstractField):
+    def __init__(self, name, codelist_name):
+        self.name = name
+        self.codelist_name = codelist_name
+
+    @property
+    def type_(self):
+        return FieldType.CATEGORY
+
+    def encode(self, entries, set_size, **kwargs):
+        codelist = kwargs['all_codelists'][self.codelist_name]
+
+        ret = np.zeros((set_size,len(codelist)))
+        for index_code, code in enumerate(entries):
+            if code is None:
+                raise Exception("code is None: this shouldn't happen")
+            else:
+                index_one = codelist.index(code)
+                ret[index_code, index_one] = 1
+        short_of = set_size - len(entries)
+        if short_of > 0:
+            for i in range(short_of):
+                avg = 1.0 / float(len(codelist))
+                ret[set_size - 1 - i, :] = avg
+
+        ret = ret.tolist()
+        return ret
+
+class NumericalField(AbstractField):
+    @property
+    def type_(self):
+        return FieldType.NUMERICAL
+
+    def encode(self, entries, set_size, **kwargs):
+        ret = [float(x) for x in entries]
+        short_of = set_size - len(entries)
+        if short_of > 0:
+            for i in range(short_of):
+                ret.append(0.0)
+        return ret
+
+rels = [
+    Rel("budget", [
+        CategoryField("value_currency",'Currency'),
+        CategoryField("type", 'BudgetType'),
+        CategoryField("status", 'BudgetStatus'),
+        DatetimeField("period_start_iso_date"),
+        DatetimeField("period_end_iso_date"),
+        NumericalField("value")
+    ])
+]
 
 def write_tmp(data):
     filename = tempfile.mktemp()
@@ -60,15 +149,12 @@ def read_tmp(filename):
 
 def send(ti, data):
     tmp_filename = write_tmp(data)
-    logging.info(f"sending data:{data}")
     ti.xcom_push(key='tmp_filename', value=tmp_filename)
 
 def recv(ti,task_id):
     input_filename = ti.xcom_pull(key='tmp_filename', task_ids=task_id)
-    logging.info(f"input_filename:{input_filename}")
     assert input_filename is not None
     data = read_tmp(input_filename)
-    logging.info(f"received data {data}")
     return data
 
 def clear_recv(ti, task_id):
@@ -87,18 +173,16 @@ def download(start, ti):
     send(ti,data)
 
 def parse(page,ti):
-    logging.info(f'task parse started! getting tmp_filename from page {page}..')
-    logging.info('previous task:'+str(ti.previous_ti))
     rels_vals = defaultdict(lambda: defaultdict(lambda:dict()))
     data = recv(ti, f"download_{page}")
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
         for k,v in activity.items():
-            for rel in chosen_rels:
-                m = re.match(f'{rel}_(.*)',k)
+            for rel in rels:
+                m = re.match(f'{rel.name}_(.*)',k)
                 if m is not None:
                     rel_field = m.group(1)
-                    rels_vals[rel][activity_id][rel_field] = v
+                    rels_vals[rel.name][activity_id][rel_field] = v
 
     for rel, sets in rels_vals.items():
         for activity_id, fields in sets.items():
@@ -112,7 +196,6 @@ def persist(page, ti):
     data = recv(ti, f'parse_{page}')
 
     for rel, sets in data.items():
-        logging.info(f"rel:{rel},sets:{sets}")
         for activity_id, set_ in sets.items():
             db[rel].delete_one({'activity_id':activity_id}) # remove pre-existing set for this activity
             db[rel].insert_one({
@@ -124,7 +207,7 @@ def persist(page, ti):
 
 def codelists(ti):
     all_codelists = {}
-    for codelist in chosen_codelists:
+    for codelist in extract_codelists(rels):
         url = DATASTORE_CODELIST_URL.format(codelist)
         params = {'format':'json'}
         response = requests.get(url,params=params)
@@ -135,110 +218,88 @@ def codelists(ti):
         all_codelists[codelist] = l
     send(ti,all_codelists)
 
-def dummify_codes(codes_entries,codelist):
-
-    if not codes_entries:
-        ret = np.zeros((0,len(codelist)))
-    else:
-        logging.info("dummify_codes codelist:"+str(codelist))
-        ret = np.zeros((len(codes_entries),len(codelist)))
-        for index_code, code in enumerate(codes_entries):
-            if code is None:
-                # missing information about active category: just assume a uniform probability distribution
-                #ret[index_code,:] = 1.0/float(len(codelist))
-                raise Exception("code is None: this shouldn't happen")
-            else:
-                index_one = codelist.index(code)
-                ret[index_code, index_one] = 1
-    ret = ret.tolist()
-    return ret
-
-def encode_datetime(entries):
-    ret = []
-    for entry in entries:
-        entry = re.match('(.*)Z', entry).groups()[0] # python's datetime does not parse the final 'Z'
-        dt = datetime.datetime.fromisoformat(entry)
-        t = tuple(dt.timetuple())
-        ret.append(t)
-    return ret
+def get_set_size(set_):
+    size = 0
+    for field_name, values in set_.items():
+        size = max(len(values),size)
+    return size
 
 def encode(ti):
     all_codelists = recv(ti, 'codelists')
-    logging.info('all_codelists:'+str(all_codelists))
     client = pymongo.MongoClient(MONGODB_CONN)
     db = client['learning_sets']
-    for rel in chosen_rels:
-        coll_in = db[rel]
-        coll_out = db[rel + "_encoded"]
+    for rel in rels:
+        coll_in = db[rel.name]
+        coll_out = db[rel.name + "_encoded"]
         for document in coll_in.find():
             document = dict(document) # copy
             set_ = document['set_']
-            for field_name, codelist_name in rels_to_codelists[rel].items():
-                tmp = dummify_codes(set_.get(field_name), all_codelists[codelist_name])
-                logging.info(f'setting {field_name} to {tmp}')
-                set_[field_name] = tmp
-            for field_name in rels_datetimes[rel]:
-                if field_name in set_.keys():
-                    tmp = encode_datetime(set_[field_name])
-                else:
-                    tmp = [0] * 9 # 9 is the cardinality of the timetuple
-                set_[field_name] = tmp
+            set_size = get_set_size(set_)
+            for field in rel.fields:
+                encodable = set_.get(field.name,[])
+                tmp = field.encode(encodable, set_size, all_codelists=all_codelists)
+                set_[field.name] = tmp
+
             del document['_id']
+            lens = list(map(lambda field: len(set_[field.name]), rel.fields))
+            if len(set(lens)) > 1:
+                msg ="lens "+str(lens)+" for fields "+str(list(map(lambda curr:curr.name,rel.fields)))
+                logging.info(msg)
+                logging.info(document)
+                raise Exception(msg)
             coll_out.delete_one({'activity_id':document['activity_id']}) # remove pre-existing set for this activity
             coll_out.insert_one(document)
     clear_recv(ti, 'codelists')
 
-def serialize(npa):
-    return Binary(pickle.dumps(npa, protocol=2))
-
 def arrayfy(ti):
     client = pymongo.MongoClient(MONGODB_CONN)
     db = client['learning_sets']
-    for rel in chosen_rels:
-        coll_in = db[rel+"_encoded"]
-        coll_out = db[rel+"_arrayfied"]
+    for rel in rels:
+        coll_in = db[rel.name+"_encoded"]
+        coll_out = db[rel.name+"_arrayfied"]
         coll_out.delete_many({}) # empty the collection
         for set_index, document in enumerate(coll_in.find()):
             set_npas = []
             set_ = document['set_']
-            for k in sorted(set_.keys()): # we need to always have a same ordering of the fields!
-                logging.info(f"set_[{k}]:"+str(set_[k]))
-                if type(set_[k][0]) is list:
+            keys = sorted(set_.keys())
+            for k in keys: # we need to always have a same ordering of the fields!
+                if len(set_[k]) > 0 and type(set_[k][0]) is list:
                     floats = list(map(lambda v: list(map(lambda x:float(x),v)), set_[k]))
                 else: # not something that is dummified: simple numerical value field
                     floats = list(map(lambda x: [float(x)], set_[k]))
                 field_npa = np.array(floats)
                 set_npas.append(field_npa)
-            for curr in set_npas:
-                logging.info("curr.shape:"+str(curr.shape))
+            if len(set(map(lambda curr: curr.shape[0],set_npas))) > 1:
+                logging.info("keys:" + str(keys))
+                logging.info("set_npas shapes:"+str([curr.shape for curr in set_npas]))
             set_npa = np.hstack(set_npas)
-            set_npa_serialized = serialize(set_npa)
+            set_npa_serialized = utils.serialize(set_npa)
             coll_out.insert_one({'set_index':set_index,'npa':set_npa_serialized})
 
 def to_npa(ti):
     client = pymongo.MongoClient(MONGODB_CONN)
     db = client['learning_sets']
-    for rel in chosen_rels:
-        coll_in = db[rel+"_arrayfied"]
+    for rel in rels:
+        coll_in = db[rel.name+"_arrayfied"]
         coll_out = db['npas']
         rel_npas = []
         for document in coll_in.find():
-            set_npa = pickle.loads(document['npa'])
+            set_npa = utils.deserialize(document['npa'])
             set_index = document['set_index']
             set_index_col = np.ones((set_npa.shape[0], 1))*set_index
             rel_npas.append(np.hstack([set_index_col, set_npa]))
         rel_npa = np.vstack(rel_npas)
-        coll_out.remove({'rel':rel})
+        coll_out.remove({'rel':rel.name})
         coll_out.insert_one({
-            'rel':rel,
-            'npa':serialize(rel_npa)
+            'rel':rel.name,
+            'npa':utils.serialize(rel_npa)
         })
 
 def to_tsets(ti):
     client = pymongo.MongoClient(MONGODB_CONN)
     db = client['learning_sets']
-    for rel in chosen_rels:
-        coll_in = db[rel+'_arrayfied']
+    for rel in rels:
+        coll_in = db[rel.name+'_arrayfied']
         set_indices_results = coll_in.find({},{'set_index':1})
         set_indices = list(set(map( lambda document: document['set_index'],set_indices_results)))
         train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.75)
@@ -246,7 +307,7 @@ def to_tsets(ti):
         train_npas = []
         test_npas = []
         for document in coll_in.find():
-            set_npa = pickle.loads(document['npa'])
+            set_npa = utils.deserialize(document['npa'])
             set_index = document['set_index']
             set_index_col = np.ones((set_npa.shape[0], 1))*set_index
             npa = np.hstack([set_index_col, set_npa])
@@ -258,14 +319,14 @@ def to_tsets(ti):
         train_npa = np.vstack(train_npas)
         test_npa = np.vstack(test_npas)
         coll_out.insert_one({
-            'rel':rel,
-            'train_npa':serialize(train_npa),
-            'test_npa': serialize(test_npa)
+            'rel':rel.name,
+            'train_npa':utils.serialize(train_npa),
+            'test_npa': utils.serialize(test_npa)
         })
 
 default_args = {
-    'retries':120,
-    'retry_delay':datetime.timedelta(minutes=3)
+    'retries':5,
+    'retry_delay':datetime.timedelta(minutes=1)
 }
 
 with DAG(
