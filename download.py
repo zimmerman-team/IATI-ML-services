@@ -20,8 +20,13 @@ from collections import defaultdict, OrderedDict
 import sklearn.model_selection
 import mlflow
 import abc
-import enum
+import os
+import sys
 
+# since airflow's DAG modules are imported elsewhere (likely ~/airflow)
+# we have to explicitly add the path of this module to python's path
+path = os.path.dirname(os.path.abspath(__file__))
+sys.path = [path]+sys.path
 import utils
 
 logging.basicConfig(level=logging.DEBUG)
@@ -29,13 +34,17 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE=200
-MAX_PAGES=200
+MAX_PAGES=1000
 MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
 
 class Rel(object):
     def __init__(self, name, fields):
         self.name = name
         self.fields = fields
+
+    @property
+    def fields_names(self):
+        return [ f.name for f in self.fields ]
 
     @property
     def codelists_names(self):
@@ -51,23 +60,11 @@ def extract_codelists(_rels):
         ret = ret.union(rel.codelists_names)
     return ret
 
-class FieldType(enum.Enum): # FIXME: is this really necessary?
-    DATETIME = enum.auto()
-    CATEGORY = enum.auto()
-    NUMERICAL = enum.auto()
-
 class AbstractField(abc.ABC):
     def __init__(self, name):
         self.name = name
 
-    @property
-    def type_(self):
-        raise Exception("not implemented in subclass")
-
 class DatetimeField(AbstractField):
-    @property
-    def type_(self):
-        return FieldType.DATETIME
 
     def encode(self, entries, set_size, **kwargs):
         ret = []
@@ -87,10 +84,6 @@ class CategoryField(AbstractField):
     def __init__(self, name, codelist_name):
         self.name = name
         self.codelist_name = codelist_name
-
-    @property
-    def type_(self):
-        return FieldType.CATEGORY
 
     def encode(self, entries, set_size, **kwargs):
         codelist = kwargs['all_codelists'][self.codelist_name]
@@ -112,10 +105,6 @@ class CategoryField(AbstractField):
         return ret
 
 class NumericalField(AbstractField):
-    @property
-    def type_(self):
-        return FieldType.NUMERICAL
-
     def encode(self, entries, set_size, **kwargs):
         ret = [float(x) for x in entries]
         short_of = set_size - len(entries)
@@ -261,7 +250,7 @@ def arrayfy(ti):
         for set_index, document in enumerate(coll_in.find()):
             set_npas = []
             set_ = document['set_']
-            keys = sorted(set_.keys())
+            keys = rel.fields_names
             for k in keys: # we need to always have a same ordering of the fields!
                 if len(set_[k]) > 0 and type(set_[k][0]) is list:
                     floats = list(map(lambda v: list(map(lambda x:float(x),v)), set_[k]))
