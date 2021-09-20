@@ -115,10 +115,9 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         diffs = torch.vstack(self.val_diffs)
         mae_per_feature = torch.mean(torch.abs(diffs),dim=0)
         self.val_mae_per_feature.append(mae_per_feature)
-        self.log("mae_per_feature",mae_per_feature)
+        self.log("mae_per_feature_",mae_per_feature)
         # empty the validation diffs, ready for next epoch
         self.val_diffs = []
-        self.val_mae_per_feature.append(mae_per_feature)
 
     def teardown(self, trainer, lm, stage=None):
         print("teardown stage", stage)
@@ -138,6 +137,7 @@ def log_net_visualization(model, features):
     mlflow.log_artifact(filename)
 
 def main():
+    mlflow.set_experiment("autoencoder_baseline")
     mlflow.pytorch.autolog()
     batch_size = 256
     model_params = dict(
