@@ -6,6 +6,7 @@ import hiddenlayer
 import tempfile
 import utils
 import sklearn.preprocessing
+import logging
 
 class AE(pl.LightningModule):
     def __init__(self, **kwargs):
@@ -41,6 +42,7 @@ class AE(pl.LightningModule):
             out_features=kwargs["input_shape"]
         )
         self.activation_function = getattr(torch.nn, kwargs["activation_function"])()
+        self.kwargs = kwargs
 
     def forward(self, features):
         activation = self.encoder_input_layer(features)
@@ -58,23 +60,44 @@ class AE(pl.LightningModule):
         return reconstructed
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(
+            self.parameters(),
+            lr=1e-3,
+            weight_decay=self.kwargs['weight_decay']
+        )
         return optimizer
 
     def training_step (self, batch, batch_idx):
         x_hat = self(batch)
-        diff = torch.abs(batch-x_hat)
+        mae = torch.mean(torch.abs(batch-x_hat))
         #argmaxes = torch.argmax(diff,dim=1)
         #print("location of maximum difference",argmaxes,diff[:,argmaxes])
         loss = torch.nn.functional.mse_loss(x_hat, batch)
+        mse = torch.mean((batch-x_hat)**2)
         self.log("train_loss",loss)
+        self.log("train_mae",mae)
+        self.log("train_mse",mse)
         return loss
 
     def validation_step (self, batch, batch_idx):
         x_hat = self(batch)
         loss = torch.nn.functional.mse_loss(x_hat, batch)
+        mae = torch.mean(torch.abs(batch-x_hat))
+        mse = torch.mean((batch-x_hat)**2)
         self.log("val_loss",loss)
+        self.log("val_mae",mae)
+        self.log("val_mse",mse)
         return loss
+
+class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
+    def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
+        diff  = torch.abs(outputs-batch)
+        sq = diff ** 2
+        m = torch.mean(sq)
+        msg = "m "+str(m)
+        print("print "+msg)
+        logging.info("logginginfo "+msg)
+        self.log("m",m)
 
 def log_net_visualization(model, features):
     hl_graph = hiddenlayer.build_graph(model, features)
@@ -87,10 +110,11 @@ def main():
     mlflow.pytorch.autolog()
     batch_size = 256
     model_params = dict(
-        layers_width=48,
-        bottleneck_width=1,
+        layers_width=64,
+        bottleneck_width=5,
         activation_function="ELU",
-        depth=10
+        depth=5,
+        weight_decay=5e-3
     )
     mlflow.log_param("batch_size",batch_size)
     mlflow.log_params(model_params)
@@ -124,7 +148,10 @@ def main():
         **model_params
     ).to(device)
 
-    trainer = pl.Trainer(limit_train_batches=0.5)
+    trainer = pl.Trainer(
+        limit_train_batches=0.5,
+        callbacks=[ValidationErrorAnalysisCallback()]
+    )
     trainer.fit(model, train_loader, test_loader)
     log_net_visualization(model,torch.zeros(batch_size, input_cardinality))
 
