@@ -15,10 +15,30 @@ def get_codelists():
         ret [curr['name']] = curr['codelist']
     return ret
 
+class RelsCollection(object):
+    rels_dict = {}
+
+    def __init__(self, rels_list):
+        for rel in rels_list:
+            if rel.name in self.rels_dict.keys():
+                raise Exception(f"rel {rel.name} already in this RelsCollection")
+            self.rels_dict[rel.name] = rel
+
+    def __getitem__(self, rel_name):
+        return self.rels_dict[rel_name]
+
 class Rel(object):
     def __init__(self, name, fields):
         self.name = name
         self.fields = fields
+
+    @property
+    def n_fields(self):
+        return len(self.fields)
+
+    @property
+    def n_features(self):
+        return sum([curr.n_features for curr in self.fields])
 
     @property
     def fields_names(self):
@@ -37,9 +57,8 @@ class AbstractField(abc.ABC):
         self.name = name
 
     @property
-    @abstractmethod
     def n_features(self):
-        pass
+        raise Exception("not implemented")
 
 class DatetimeField(AbstractField):
 
@@ -67,7 +86,7 @@ class CategoryField(AbstractField):
         self.codelist_name = codelist_name
 
     def encode(self, entries, set_size, **kwargs):
-        codelist = kwargs['all_codelists'][self.codelist_name]
+        codelist = get_codelists()[self.codelist_name]
 
         ret = np.zeros((set_size,len(codelist)))
         for index_code, code in enumerate(entries):
@@ -87,7 +106,8 @@ class CategoryField(AbstractField):
 
     @property
     def n_features(self):
-        return
+        return len(get_codelists()[self.codelist_name])
+
 class NumericalField(AbstractField):
     def encode(self, entries, set_size, **kwargs):
         ret = [float(x) for x in entries]
@@ -97,7 +117,11 @@ class NumericalField(AbstractField):
                 ret.append(0.0)
         return ret
 
-rels = [
+    @property
+    def n_features(self):
+        return 1 # it's just one
+
+rels = RelsCollection([
     Rel("budget", [
         CategoryField("value_currency",'Currency'),
         CategoryField("type", 'BudgetType'),
@@ -106,4 +130,4 @@ rels = [
         DatetimeField("period_end_iso_date"),
         NumericalField("value")
     ])
-]
+])

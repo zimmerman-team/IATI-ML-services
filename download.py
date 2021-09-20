@@ -1,28 +1,19 @@
 #!/bin/env python3
 import functools
 
-import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 import requests
 import logging
-import time
-import json
-import tempfile
-import os
 import re
-import pymongo
 import datetime
-import time
-import random
 import numpy as np
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 import sklearn.model_selection
-import mlflow
 import os
 import sys
-import functools
+
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of this module to python's path
 path = os.path.dirname(os.path.abspath(__file__))
@@ -37,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE=200
-MAX_PAGES=1000
+MAX_PAGES=2
 
 def extract_codelists(_rels):
     ret = set()
@@ -98,6 +89,7 @@ def codelists(ti):
         l = []
         for curr in data:
             l.append(curr['code'])
+        db['codelists'].delete_many({'name':codelist_name})
         db['codelists'].insert({
             'name':codelist_name,
             'codelist':l

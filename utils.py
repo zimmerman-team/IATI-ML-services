@@ -17,11 +17,11 @@ def serialize(npa):
 def deserialize(buf):
     return pickle.loads(zlib.decompress(buf))
 
-def load_tsets():
+def load_tsets(rel_name):
     client = pymongo.MongoClient(MONGODB_CONN)
     db = client['learning_sets']
     coll = db['npas_tsets']
-    document = coll.find({'rel': 'budget'}).sort('_id', pymongo.DESCENDING).limit(1)[0]
+    document = coll.find({'rel': rel_name}).sort('_id', pymongo.DESCENDING).limit(1)[0]
     train_dataset = deserialize(document['train_npa']).astype(np.float32)
     test_dataset = deserialize(document['test_npa']).astype(np.float32)
     return train_dataset, test_dataset

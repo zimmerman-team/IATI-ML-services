@@ -3,11 +3,12 @@ import numpy as np
 import mlflow
 import pytorch_lightning as pl
 import hiddenlayer
-import tempfile
+
+import diagnostics
 import utils
 import sklearn.preprocessing
-import logging
 import tempfile
+import relspecs
 
 utils.set_np_printoptions()
 
@@ -101,12 +102,17 @@ class AE(pl.LightningModule):
         return loss
 
 class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
+    rel = None
 
     # indexed by batch idx
     val_diffs = []
 
     # indexed by epoch
     val_mae_per_feature = []
+
+    def __init__(self, *args, **kwargs):
+        self.rel = kwargs.pop('rel')
+        super().__init__(*args, **kwargs)
 
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
         self.val_diffs.append(lm.diff_reduced)
@@ -128,6 +134,7 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
             suffix=".bin"
         )
         mlflow.log_artifact(filename)
+        diagnostics.log_split_heatmap_artifact(val_mae_per_feature_npa,self.rel)
 
 def log_net_visualization(model, features):
     hl_graph = hiddenlayer.build_graph(model, features)
@@ -146,12 +153,13 @@ def main():
         activation_function="ELU",
         depth=5,
         weight_decay=5e-3,
-        max_epochs=7
-    )
+        max_epochs=2,
+        rel_name='budget'
+    ) # to yaml file?
     mlflow.log_param("batch_size",batch_size)
     mlflow.log_params(model_params)
-
-    train_dataset,test_dataset = utils.load_tsets()
+    rel = relspecs.rels[model_params['rel_name']]
+    train_dataset,test_dataset = utils.load_tsets(rel.name)
 
     mlflow.log_param("train_datapoints",train_dataset.shape[0])
     mlflow.log_param("test_datapoints",test_dataset.shape[0])
@@ -182,7 +190,7 @@ def main():
 
     trainer = pl.Trainer(
         limit_train_batches=0.5,
-        callbacks=[ValidationErrorAnalysisCallback()],
+        callbacks=[ValidationErrorAnalysisCallback(rel=rel)],
         max_epochs=model_params['max_epochs']
     )
     trainer.fit(model, train_loader, test_loader)
