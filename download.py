@@ -1,9 +1,10 @@
 #!/bin/env python3
+import functools
+
 import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
-import datetime
 import requests
 import logging
 import time
@@ -19,15 +20,17 @@ import numpy as np
 from collections import defaultdict, OrderedDict
 import sklearn.model_selection
 import mlflow
-import abc
 import os
 import sys
-
+import functools
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of this module to python's path
 path = os.path.dirname(os.path.abspath(__file__))
 sys.path = [path]+sys.path
 import utils
+import relspecs
+import persistency
+import large_mp
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -35,120 +38,12 @@ DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE=200
 MAX_PAGES=1000
-MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
-
-class Rel(object):
-    def __init__(self, name, fields):
-        self.name = name
-        self.fields = fields
-
-    @property
-    def fields_names(self):
-        return [ f.name for f in self.fields ]
-
-    @property
-    def codelists_names(self):
-        ret = []
-        for field in self.fields:
-            if type(field) is CategoryField:
-                ret.append(field.codelist_name)
-        return ret
 
 def extract_codelists(_rels):
     ret = set()
     for rel in _rels:
         ret = ret.union(rel.codelists_names)
     return ret
-
-class AbstractField(abc.ABC):
-    def __init__(self, name):
-        self.name = name
-
-class DatetimeField(AbstractField):
-
-    def encode(self, entries, set_size, **kwargs):
-        ret = []
-        for entry in entries:
-            entry = re.match('(.*)Z', entry).groups()[0] # python's datetime does not parse the final 'Z'
-            dt = datetime.datetime.fromisoformat(entry)
-            t = tuple(dt.timetuple())
-            ret.append(t)
-        short_of = set_size - len(entries)
-        if short_of > 0:
-            for i in range(short_of):
-                tmp = [0] * 9  # 9 is the cardinality of the timetuple
-                ret.append(tmp)
-        return ret
-
-class CategoryField(AbstractField):
-    def __init__(self, name, codelist_name):
-        self.name = name
-        self.codelist_name = codelist_name
-
-    def encode(self, entries, set_size, **kwargs):
-        codelist = kwargs['all_codelists'][self.codelist_name]
-
-        ret = np.zeros((set_size,len(codelist)))
-        for index_code, code in enumerate(entries):
-            if code is None:
-                raise Exception("code is None: this shouldn't happen")
-            else:
-                index_one = codelist.index(code)
-                ret[index_code, index_one] = 1
-        short_of = set_size - len(entries)
-        if short_of > 0:
-            for i in range(short_of):
-                avg = 1.0 / float(len(codelist))
-                ret[set_size - 1 - i, :] = avg
-
-        ret = ret.tolist()
-        return ret
-
-class NumericalField(AbstractField):
-    def encode(self, entries, set_size, **kwargs):
-        ret = [float(x) for x in entries]
-        short_of = set_size - len(entries)
-        if short_of > 0:
-            for i in range(short_of):
-                ret.append(0.0)
-        return ret
-
-rels = [
-    Rel("budget", [
-        CategoryField("value_currency",'Currency'),
-        CategoryField("type", 'BudgetType'),
-        CategoryField("status", 'BudgetStatus'),
-        DatetimeField("period_start_iso_date"),
-        DatetimeField("period_end_iso_date"),
-        NumericalField("value")
-    ])
-]
-
-def write_tmp(data):
-    filename = tempfile.mktemp()
-    with open(filename, 'w+') as f:
-        json.dump(data, f)
-        f.flush()
-    return filename
-
-def read_tmp(filename):
-    with open(filename, 'r') as f:
-        data = json.load(f)
-    return data
-
-def send(ti, data):
-    tmp_filename = write_tmp(data)
-    ti.xcom_push(key='tmp_filename', value=tmp_filename)
-
-def recv(ti,task_id):
-    input_filename = ti.xcom_pull(key='tmp_filename', task_ids=task_id)
-    assert input_filename is not None
-    data = read_tmp(input_filename)
-    return data
-
-def clear_recv(ti, task_id):
-    input_filename = ti.xcom_pull(key='tmp_filename', task_ids=task_id)
-    os.unlink(input_filename)
 
 def download(start, ti):
     params = {
@@ -159,15 +54,15 @@ def download(start, ti):
     logging.info(f"requesting {DATASTORE_ACTIVITY_URL} with {params}")
     response = requests.get(DATASTORE_ACTIVITY_URL,params=params)
     data = response.json()
-    send(ti,data)
+    large_mp.send(ti,data)
 
 def parse(page,ti):
     rels_vals = defaultdict(lambda: defaultdict(lambda:dict()))
-    data = recv(ti, f"download_{page}")
+    data = large_mp.recv(ti, f"download_{page}")
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
         for k,v in activity.items():
-            for rel in rels:
+            for rel in relspecs.rels:
                 m = re.match(f'{rel.name}_(.*)',k)
                 if m is not None:
                     rel_field = m.group(1)
@@ -176,13 +71,12 @@ def parse(page,ti):
     for rel, sets in rels_vals.items():
         for activity_id, fields in sets.items():
             assert len(set(map(lambda l: len(l),fields.values()))) == 1, f"all fields need to have same amount of values (rel:{rel}, activity_id:{activity_id}, fields:{fields}"
-    send(ti,rels_vals)
-    clear_recv(ti, f"download_{page}")
+    large_mp.send(ti,rels_vals)
+    large_mp.clear_recv(ti, f"download_{page}")
 
 def persist(page, ti):
-    client = pymongo.MongoClient(MONGODB_CONN)
-    db = client['learning_sets']
-    data = recv(ti, f'parse_{page}')
+    db = persistency.mongo_db()
+    data = large_mp.recv(ti, f'parse_{page}')
 
     for rel, sets in data.items():
         for activity_id, set_ in sets.items():
@@ -192,20 +86,22 @@ def persist(page, ti):
                 'set_':set_
             })
 
-    clear_recv(ti, f'parse_{page}')
+    large_mp.clear_recv(ti, f'parse_{page}')
 
 def codelists(ti):
-    all_codelists = {}
-    for codelist in extract_codelists(rels):
-        url = DATASTORE_CODELIST_URL.format(codelist)
+    db = persistency.mongo_db()
+    for codelist_name in extract_codelists(relspecs.rels):
+        url = DATASTORE_CODELIST_URL.format(codelist_name)
         params = {'format':'json'}
         response = requests.get(url,params=params)
         data = response.json()
         l = []
         for curr in data:
             l.append(curr['code'])
-        all_codelists[codelist] = l
-    send(ti,all_codelists)
+        db['codelists'].insert({
+            'name':codelist_name,
+            'codelist':l
+        })
 
 def get_set_size(set_):
     size = 0
@@ -214,10 +110,8 @@ def get_set_size(set_):
     return size
 
 def encode(ti):
-    all_codelists = recv(ti, 'codelists')
-    client = pymongo.MongoClient(MONGODB_CONN)
-    db = client['learning_sets']
-    for rel in rels:
+    db = persistency.mongo_db()
+    for rel in relspecs.rels:
         coll_in = db[rel.name]
         coll_out = db[rel.name + "_encoded"]
         for document in coll_in.find():
@@ -226,7 +120,7 @@ def encode(ti):
             set_size = get_set_size(set_)
             for field in rel.fields:
                 encodable = set_.get(field.name,[])
-                tmp = field.encode(encodable, set_size, all_codelists=all_codelists)
+                tmp = field.encode(encodable, set_size)
                 set_[field.name] = tmp
 
             del document['_id']
@@ -238,12 +132,11 @@ def encode(ti):
                 raise Exception(msg)
             coll_out.delete_one({'activity_id':document['activity_id']}) # remove pre-existing set for this activity
             coll_out.insert_one(document)
-    clear_recv(ti, 'codelists')
+    large_mp.clear_recv(ti, 'codelists')
 
 def arrayfy(ti):
-    client = pymongo.MongoClient(MONGODB_CONN)
-    db = client['learning_sets']
-    for rel in rels:
+    db = persistency.mongo_db()
+    for rel in relspecs.rels:
         coll_in = db[rel.name+"_encoded"]
         coll_out = db[rel.name+"_arrayfied"]
         coll_out.delete_many({}) # empty the collection
@@ -266,9 +159,8 @@ def arrayfy(ti):
             coll_out.insert_one({'set_index':set_index,'npa':set_npa_serialized})
 
 def to_npa(ti):
-    client = pymongo.MongoClient(MONGODB_CONN)
-    db = client['learning_sets']
-    for rel in rels:
+    db = persistency.mongo_db()
+    for rel in relspecs.rels:
         coll_in = db[rel.name+"_arrayfied"]
         coll_out = db['npas']
         rel_npas = []
@@ -285,9 +177,8 @@ def to_npa(ti):
         })
 
 def to_tsets(ti):
-    client = pymongo.MongoClient(MONGODB_CONN)
-    db = client['learning_sets']
-    for rel in rels:
+    db = persistency.mongo_db()
+    for rel in relspecs.rels:
         coll_in = db[rel.name+'_arrayfied']
         set_indices_results = coll_in.find({},{'set_index':1})
         set_indices = list(set(map( lambda document: document['set_index'],set_indices_results)))
