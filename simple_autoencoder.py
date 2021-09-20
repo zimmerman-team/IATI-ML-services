@@ -7,8 +7,16 @@ import tempfile
 import utils
 import sklearn.preprocessing
 import logging
+import tempfile
+
+utils.set_np_printoptions()
 
 class AE(pl.LightningModule):
+
+    # the _diff_reduced fields contain per-feature mae of the last batch
+    train_diff_reduced = None
+    val_diff_reduced = None
+
     def __init__(self, **kwargs):
         super().__init__()
         self.encoder_input_layer = torch.nn.Linear(
@@ -69,11 +77,12 @@ class AE(pl.LightningModule):
 
     def training_step (self, batch, batch_idx):
         x_hat = self(batch)
-        mae = torch.mean(torch.abs(batch-x_hat))
+        diff = batch-x_hat
+        mae = torch.mean(torch.abs(diff))
         #argmaxes = torch.argmax(diff,dim=1)
         #print("location of maximum difference",argmaxes,diff[:,argmaxes])
         loss = torch.nn.functional.mse_loss(x_hat, batch)
-        mse = torch.mean((batch-x_hat)**2)
+        mse = torch.mean(diff**2)
         self.log("train_loss",loss)
         self.log("train_mae",mae)
         self.log("train_mse",mse)
@@ -81,23 +90,45 @@ class AE(pl.LightningModule):
 
     def validation_step (self, batch, batch_idx):
         x_hat = self(batch)
+        diff = batch-x_hat
         loss = torch.nn.functional.mse_loss(x_hat, batch)
-        mae = torch.mean(torch.abs(batch-x_hat))
-        mse = torch.mean((batch-x_hat)**2)
+        mae = torch.mean(torch.abs(diff))
+        mse = torch.mean((diff)**2)
         self.log("val_loss",loss)
         self.log("val_mae",mae)
         self.log("val_mse",mse)
+        self.diff_reduced = torch.mean(torch.abs(diff),dim=0)
         return loss
 
 class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
+
+    # indexed by batch idx
+    val_diffs = []
+
+    # indexed by epoch
+    val_mae_per_feature = []
+
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
-        diff  = torch.abs(outputs-batch)
-        sq = diff ** 2
-        m = torch.mean(sq)
-        msg = "m "+str(m)
-        print("print "+msg)
-        logging.info("logginginfo "+msg)
-        self.log("m",m)
+        self.val_diffs.append(lm.diff_reduced)
+
+    def on_validation_epoch_end(self, trainer, lm):
+        diffs = torch.vstack(self.val_diffs)
+        mae_per_feature = torch.mean(torch.abs(diffs),dim=0)
+        self.val_mae_per_feature.append(mae_per_feature)
+        self.log("mae_per_feature",mae_per_feature)
+        # empty the validation diffs, ready for next epoch
+        self.val_diffs = []
+        self.val_mae_per_feature.append(mae_per_feature)
+
+    def teardown(self, trainer, lm, stage=None):
+        print("teardown stage", stage)
+        val_mae_per_feature_npa = torch.vstack(self.val_mae_per_feature).numpy()
+        filename = utils.dump_npa(
+            val_mae_per_feature_npa,
+            prefix="val_mae_per_feature",
+            suffix=".bin"
+        )
+        mlflow.log_artifact(filename)
 
 def log_net_visualization(model, features):
     hl_graph = hiddenlayer.build_graph(model, features)
@@ -114,7 +145,8 @@ def main():
         bottleneck_width=5,
         activation_function="ELU",
         depth=5,
-        weight_decay=5e-3
+        weight_decay=5e-3,
+        max_epochs=7
     )
     mlflow.log_param("batch_size",batch_size)
     mlflow.log_params(model_params)
@@ -150,7 +182,8 @@ def main():
 
     trainer = pl.Trainer(
         limit_train_batches=0.5,
-        callbacks=[ValidationErrorAnalysisCallback()]
+        callbacks=[ValidationErrorAnalysisCallback()],
+        max_epochs=model_params['max_epochs']
     )
     trainer.fit(model, train_loader, test_loader)
     log_net_visualization(model,torch.zeros(batch_size, input_cardinality))
