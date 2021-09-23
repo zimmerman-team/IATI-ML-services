@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE=200
-MAX_PAGES=2
+MAX_PAGES=1000
 
 def extract_codelists(_rels):
     ret = set()
@@ -53,11 +53,11 @@ def parse(page,ti):
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
         for k,v in activity.items():
-            for rel in relspecs.rels:
-                m = re.match(f'{rel.name}_(.*)',k)
+            for rel_name in relspecs.rels.names:
+                m = re.match(f'{rel_name}_(.*)',k)
                 if m is not None:
                     rel_field = m.group(1)
-                    rels_vals[rel.name][activity_id][rel_field] = v
+                    rels_vals[rel_name][activity_id][rel_field] = v
 
     for rel, sets in rels_vals.items():
         for activity_id, fields in sets.items():
@@ -106,7 +106,7 @@ def encode(ti):
     for rel in relspecs.rels:
         coll_in = db[rel.name]
         coll_out = db[rel.name + "_encoded"]
-        for document in coll_in.find():
+        for document in coll_in.find(no_cursor_timeout=True):
             document = dict(document) # copy
             set_ = document['set_']
             set_size = get_set_size(set_)
@@ -174,7 +174,7 @@ def to_tsets(ti):
         coll_in = db[rel.name+'_arrayfied']
         set_indices_results = coll_in.find({},{'set_index':1})
         set_indices = list(set(map( lambda document: document['set_index'],set_indices_results)))
-        train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.75)
+        train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.90)
         coll_out = db['npas_tsets']
         train_npas = []
         test_npas = []

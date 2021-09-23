@@ -3,6 +3,8 @@ import numpy as np
 import mlflow
 import pytorch_lightning as pl
 import hiddenlayer
+import gc
+import functools
 
 import diagnostics
 import utils
@@ -14,11 +16,8 @@ utils.set_np_printoptions()
 
 class AE(pl.LightningModule):
 
-    # the _diff_reduced fields contain per-feature mae of the last batch
-    train_diff_reduced = None
-    val_diff_reduced = None
-
     def __init__(self, **kwargs):
+        self.rel = kwargs.pop('rel',None)
         super().__init__()
         self.encoder_input_layer = torch.nn.Linear(
             in_features=kwargs["input_shape"],
@@ -46,11 +45,37 @@ class AE(pl.LightningModule):
             )
             for x in range(kwargs["depth"]-2)
         ]
-        self.decoder_output_layer = torch.nn.Linear(
-            in_features=kwargs["layers_width"],
-            out_features=kwargs["input_shape"]
-        )
         self.activation_function = getattr(torch.nn, kwargs["activation_function"])()
+        if kwargs['divide_output_layer']:
+            # instead of considering the output as a single homogeneous vector
+            # its dimensionality is divided in many output layers, each belonging
+            # to a specific field.
+            # In this way, it's possible, for example, to apply a SoftMax activation
+            # function to a categorical output section
+            self.decoder_output_layers = [ # FIXME: smell
+                dict(
+                    layer=torch.nn.Linear(
+                        in_features=kwargs["layers_width"],
+                        out_features=field.n_features
+                    ),
+                    activation_function=(
+                        field.output_activation_function or torch.nn.Identity()
+                    )
+                )
+                for field
+                in self.rel.fields
+            ]
+        else:
+            self.decoder_output_layers = [
+                dict(
+                    layer=torch.nn.Linear(
+                        in_features=kwargs["layers_width"],
+                        out_features=kwargs["input_shape"]
+                    ),
+                    activation_function=torch.nn.Identity()
+                )
+            ]
+
         self.kwargs = kwargs
 
     def forward(self, features):
@@ -65,7 +90,12 @@ class AE(pl.LightningModule):
         for curr in self.decoder_hidden_layers:
             activation = curr(activation)
             activation = self.activation_function(activation)
-        reconstructed = self.decoder_output_layer(activation)
+        reconstructed = []
+        for curr in self.decoder_output_layers:
+            activation_out = curr["layer"](activation)
+            activation_out = curr['activation_function'](activation_out)
+            reconstructed.append(activation_out)
+        reconstructed = self._glue(reconstructed)
         return reconstructed
 
     def configure_optimizers(self):
@@ -76,65 +106,156 @@ class AE(pl.LightningModule):
         )
         return optimizer
 
-    def training_step (self, batch, batch_idx):
-        x_hat = self(batch)
-        diff = batch-x_hat
-        mae = torch.mean(torch.abs(diff))
-        #argmaxes = torch.argmax(diff,dim=1)
-        #print("location of maximum difference",argmaxes,diff[:,argmaxes])
-        loss = torch.nn.functional.mse_loss(x_hat, batch)
-        mse = torch.mean(diff**2)
-        self.log("train_loss",loss)
-        self.log("train_mae",mae)
-        self.log("train_mse",mse)
+    def _divide(self,tensor): # FIXME: maybe something more OO?
+        if self.kwargs['divide_output_layer']:
+            # actually do the division
+            ret = self.rel.divide(tensor)
+        else:
+            # the "divided" output will just be a list with a single un-divided tensor
+            ret = [tensor]
+        return ret
+
+    def _glue(self, tensor_list):
+        return self.rel.glue(tensor_list)
+
+    def _loss(self,batch,x_hats):
+        losses = []
+        batch_divided = self._divide(batch)
+
+        # FIXME: debug with run_params['divided_output_layer'] = False
+        for curr, curr_x_hat, batch_div, field in zip(self.decoder_output_layers, x_hats, batch_divided, self.rel.fields):
+            loss_fn = field.loss_function \
+                      or torch.nn.functional.mse_loss
+            """
+            print("curr_x_hat",curr_x_hat.shape,curr_x_hat)
+            print("batch_div",batch_div.shape,batch_div)
+            print("loss_fn",loss_fn)
+            """
+            curr_loss = loss_fn(curr_x_hat, batch_div)
+            losses.append(curr_loss)
+        loss = functools.reduce(lambda a, b: a + b, losses)
+        self.losses = [curr.detach().numpy() for curr in losses]
         return loss
 
-    def validation_step (self, batch, batch_idx):
-        x_hat = self(batch)
-        diff = batch-x_hat
-        loss = torch.nn.functional.mse_loss(x_hat, batch)
+    def _divide_or_glue(self, stuff):
+        if type(stuff) is list:
+            # stuff is already divided for various fields
+            divided = stuff
+            glued = self._glue(stuff)
+        else:
+            # stuff is already a glued-up tensor
+            divided = self._divide(stuff)
+            glued = stuff
+        return divided, glued
+
+    def _step(self,batch,batch_idx,which_tset):
+        x_hat_divided, x_hat_glued = self._divide_or_glue(self(batch))
+        diff = batch - x_hat_glued
         mae = torch.mean(torch.abs(diff))
-        mse = torch.mean((diff)**2)
-        self.log("val_loss",loss)
-        self.log("val_mae",mae)
-        self.log("val_mse",mse)
-        self.diff_reduced = torch.mean(torch.abs(diff),dim=0)
+        mse = torch.mean((diff) ** 2)
+        loss = self._loss(batch,x_hat_divided)
+        self.log(f"{which_tset}_loss", loss)
+        self.log(f"{which_tset}_mae", mae)
+        self.log(f"{which_tset}_mse", mse)
+
+        self.diff = diff.detach().numpy()
+        self.x_hat = x_hat_glued.detach().numpy()
+        self.diff_reduced = np.mean(np.abs(self.diff), axis=0)
         return loss
+
+    def training_step (self, batch, batch_idx):
+        return self._step(batch,batch_idx,'train')
+
+    def validation_step (self, batch, batch_idx):
+        return self._step(batch,batch_idx,'val')
 
 class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
     rel = None
-
-    # indexed by batch idx
-    val_diffs = []
-
-    # indexed by epoch
-    val_mae_per_feature = []
+    collected = {}
 
     def __init__(self, *args, **kwargs):
         self.rel = kwargs.pop('rel')
         super().__init__(*args, **kwargs)
+        self._init_collected()
+
+    def _init_collected(self):
+        for collection in (
+                'x_hat',
+                # indexed by batch idx:
+                'diffs',
+                'diffs_reduced',
+                'losses',
+                # indexed by epoch:
+                'output_mean_per_feature',
+                'output_var_per_feature',
+                'mae_per_feature',
+                'mean_losses'
+            ):
+            self.collected[collection] = {}
+            for which_tset in ('val','train'):
+                self.collected[collection][which_tset] = []
+
+    def _collect(self,lm,which_tset):
+        self.collected['diffs_reduced'][which_tset].append(lm.diff_reduced)
+        self.collected['diffs'][which_tset].append(lm.diff)
+        self.collected['x_hat'][which_tset].append(lm.x_hat)
+        self.collected['losses'][which_tset].append(lm.losses)
+
+    def on_train_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
+        self._collect(lm,'train')
 
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
-        self.val_diffs.append(lm.diff_reduced)
+        self._collect(lm,'val')
+
+    def _epoch_end(self, which_tset):
+        diffs_reduced = np.vstack(self.collected['diffs_reduced'][which_tset])
+        x_hats = np.vstack(self.collected['x_hat'][which_tset])
+        stacked_losses = np.vstack(self.collected['losses'][which_tset])
+        mae_per_feature = np.mean(np.abs(diffs_reduced),axis=0)
+        output_var_per_feature = np.var(x_hats,axis=0)
+        output_mean_per_feature = np.mean(x_hats,axis=0)
+        # FIXME: this is a mean over the batch losses which are probably summed together
+        mean_losses = np.mean(stacked_losses,axis=0)
+        self.collected['mae_per_feature'][which_tset].append(mae_per_feature)
+        self.collected['output_var_per_feature'][which_tset].append(output_var_per_feature)
+        self.collected['output_mean_per_feature'][which_tset].append(output_mean_per_feature)
+        self.collected['mean_losses'][which_tset].append(mean_losses)
+        # empty the validation diffs, ready for next epoch
+        self.collected['diffs_reduced'][which_tset] = []
+        self.collected['diffs'][which_tset] = []
+        self.collected['x_hat'][which_tset] = []
+        self.collected['losses'][which_tset] = []
+        gc.collect()
+
+    def on_train_epoch_end(self, trainer, lm):
+        self._epoch_end('train')
 
     def on_validation_epoch_end(self, trainer, lm):
-        diffs = torch.vstack(self.val_diffs)
-        mae_per_feature = torch.mean(torch.abs(diffs),dim=0)
-        self.val_mae_per_feature.append(mae_per_feature)
-        self.log("mae_per_feature_",mae_per_feature)
-        # empty the validation diffs, ready for next epoch
-        self.val_diffs = []
+        self._epoch_end('val')
 
     def teardown(self, trainer, lm, stage=None):
         print("teardown stage", stage)
-        val_mae_per_feature_npa = torch.vstack(self.val_mae_per_feature).numpy()
-        filename = utils.dump_npa(
-            val_mae_per_feature_npa,
-            prefix="val_mae_per_feature",
-            suffix=".bin"
-        )
-        mlflow.log_artifact(filename)
-        diagnostics.log_split_heatmap_artifact(val_mae_per_feature_npa,self.rel)
+        for collected_name, heatmap_type in dict(
+                mae_per_feature='fields',
+                output_var_per_feature='fields',
+                output_mean_per_feature='fields',
+                mean_losses='losses'
+        ).items():
+            for which_tset in self.collected[collected_name]:
+                print(collected_name,which_tset)
+                stacked_npa = np.vstack(self.collected[collected_name][which_tset])
+                utils.log_npa_artifact(
+                    stacked_npa,
+                    prefix=f"{collected_name}_{which_tset}",
+                    suffix=".bin"
+                )
+                diagnostics.log_heatmaps_artifact(
+                    collected_name,
+                    stacked_npa,
+                    which_tset,
+                    rel=self.rel,
+                    type_=heatmap_type
+                )
 
 def log_net_visualization(model, features):
     hl_graph = hiddenlayer.build_graph(model, features)
@@ -146,36 +267,44 @@ def log_net_visualization(model, features):
 def main():
     mlflow.set_experiment("autoencoder_baseline")
     mlflow.pytorch.autolog()
-    batch_size = 256
-    model_params = dict(
+    run_params = dict(
         layers_width=64,
-        bottleneck_width=5,
+        bottleneck_width=32,
         activation_function="ELU",
-        depth=5,
-        weight_decay=5e-3,
-        max_epochs=2,
-        rel_name='budget'
+        depth=2,
+        weight_decay=5e-4,
+        max_epochs=200,
+        rel_name='budget',
+        batch_size=256,
+        divide_output_layer=True
     ) # to yaml file?
-    mlflow.log_param("batch_size",batch_size)
-    mlflow.log_params(model_params)
-    rel = relspecs.rels[model_params['rel_name']]
-    train_dataset,test_dataset = utils.load_tsets(rel.name)
+    mlflow.log_params(run_params)
+    mlflow.log_artifact(__file__)
+    rel = relspecs.rels[run_params['rel_name']]
+
+    # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
+    train_dataset,test_dataset = utils.load_tsets(rel.name,with_set_index=False)
 
     mlflow.log_param("train_datapoints",train_dataset.shape[0])
     mlflow.log_param("test_datapoints",test_dataset.shape[0])
     input_cardinality = train_dataset.shape[1]
 
-    scaler = sklearn.preprocessing.StandardScaler()
-    scaler.fit(train_dataset)
-    train_dataset_scaled = scaler.transform(train_dataset)
-    test_dataset_scaled = scaler.transform(test_dataset)
+    default_scaler = lambda : sklearn.preprocessing.MinMaxScaler(feature_range=(-1.0, 1.0))
+    train_dataset_scaled, test_dataset_scaled, scalers = rel.scale(train_dataset,test_dataset, default_scaler)
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset_scaled, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True
+        train_dataset_scaled,
+        batch_size=run_params['batch_size'],
+        shuffle=True,
+        num_workers=4,
+        pin_memory=False
     )
 
     test_loader = torch.utils.data.DataLoader(
-        test_dataset_scaled, batch_size=batch_size, shuffle=False, num_workers=4
+        test_dataset_scaled,
+        batch_size=run_params['batch_size'],
+        shuffle=False,
+        num_workers=4
     )
 
     #  use gpu if available
@@ -185,16 +314,18 @@ def main():
     # load it to the specified device, either gpu or cpu
     model = AE(
         input_shape=input_cardinality,
-        **model_params
+        rel=rel,
+        **run_params
     ).to(device)
 
     trainer = pl.Trainer(
-        limit_train_batches=0.5,
+        limit_train_batches=1.0,
         callbacks=[ValidationErrorAnalysisCallback(rel=rel)],
-        max_epochs=model_params['max_epochs']
+        max_epochs=run_params['max_epochs']
     )
     trainer.fit(model, train_loader, test_loader)
-    log_net_visualization(model,torch.zeros(batch_size, input_cardinality))
+    print("current mlflow run:",mlflow.active_run().info.run_id)
+    #log_net_visualization(model,torch.zeros(run_params['batch_size'], input_cardinality))
 
 if __name__ == "__main__":
     main()

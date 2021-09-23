@@ -5,14 +5,18 @@ from abc import abstractmethod
 import numpy as np
 import functools
 
+import torch.nn
+
 import persistency
+import utils
+
 
 @functools.cache
 def get_codelists():
     db = persistency.mongo_db()
     ret = {}
     for curr in db['codelists'].find({}):
-        ret [curr['name']] = curr['codelist']
+        ret[curr['name']] = curr['codelist']
     return ret
 
 class RelsCollection(object):
@@ -27,10 +31,56 @@ class RelsCollection(object):
     def __getitem__(self, rel_name):
         return self.rels_dict[rel_name]
 
+    def __iter__(self):
+        return iter(self.rels_dict.values())
+
+    @property
+    def names(self):
+        return self.rels_dict.keys()
+
 class Rel(object):
     def __init__(self, name, fields):
         self.name = name
         self.fields = fields
+
+    def divide(self, tensor, with_set_index=False):
+        ret = []
+        for start, end in self.fields_intervals(with_set_index=with_set_index):
+            ret.append(tensor[:, start:end])
+        return ret
+
+    def glue(self, tensor_list): # FIXME: maybe to some other module?
+        if type(tensor_list) is list:
+            assert len(tensor_list) > 0
+            first = tensor_list[0]
+            if type(first) is torch.Tensor:
+                ret = torch.hstack(tensor_list)
+            elif type(first) is np.ndarray:
+                ret = np.hstack(tensor_list)
+            else:
+                raise Exception("elements in the list must be either numpy arrays or torch tensors")
+        else:
+            # possibly already glued?
+            ret = tensor_list
+        return ret
+
+    def scale(self, train_dataset, test_dataset, default_scaler, with_set_index=False):
+        scalers = []
+        train_sections = self.divide(train_dataset, with_set_index=with_set_index)
+        test_sections = self.divide(test_dataset, with_set_index=with_set_index)
+        train_sections_scaled = []
+        test_sections_scaled = []
+        for field, train_section, test_section in zip(self.fields, train_sections, test_sections):
+            scaler = field.scaler or default_scaler()
+            scaler.fit(train_section)
+            scalers.append(scaler)
+            train_section_scaled = scaler.transform(train_section)
+            test_section_scaled = scaler.transform(test_section)
+            train_sections_scaled.append(train_section_scaled)
+            test_sections_scaled.append(test_section_scaled)
+        train_dataset_scaled = self.glue(train_sections_scaled)
+        test_dataset_scaled = self.glue(test_sections_scaled)
+        return train_dataset_scaled, test_dataset_scaled, scalers
 
     @property
     def n_fields(self):
@@ -43,6 +93,18 @@ class Rel(object):
     @property
     def fields_names(self):
         return [ f.name for f in self.fields ]
+
+    def fields_intervals(self,with_set_index=False):
+        start = 0
+        intervals = []
+        if with_set_index:
+            intervals.append((0,1))
+            start=1
+        for field in self.fields:
+            end = start + field.n_features
+            intervals.append((start,end))
+            start = end
+        return intervals
 
     @property
     def codelists_names(self):
@@ -59,6 +121,24 @@ class AbstractField(abc.ABC):
     @property
     def n_features(self):
         raise Exception("not implemented")
+
+    @property
+    def output_activation_function(self):
+        # default is none specified, hence in this case please use the one specified
+        # in the model configuration
+        return None
+
+    @property
+    def loss_function(self):
+        # default is none specified, hence in this case please use the one specified
+        # in the model configuration
+        return None
+
+    @property
+    def scaler(self):
+        # default is none specified, hence in this case please use the one specified
+        # in the model configuration
+        return None
 
 class DatetimeField(AbstractField):
 
@@ -107,6 +187,18 @@ class CategoryField(AbstractField):
     @property
     def n_features(self):
         return len(get_codelists()[self.codelist_name])
+
+    @property
+    def output_activation_function(self):
+        return torch.nn.Softmax()
+
+    @property
+    def loss_function(self):
+        return utils.OneHotCrossEntropyLoss()
+
+    @property
+    def scaler(self):
+        return utils.IdentityTransformer()
 
 class NumericalField(AbstractField):
     def encode(self, entries, set_size, **kwargs):
