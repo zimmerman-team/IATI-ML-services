@@ -29,6 +29,9 @@ class IdentityTransformer(BaseEstimator, TransformerMixin):
     def transform(self, input_array, y=None):
         return input_array * 1
 
+    def inverse_transform(self, input_array, y=None):
+        return input_array * 1
+
 def serialize(npa):
     return Binary(zlib.compress(pickle.dumps(npa, protocol=2)))
 

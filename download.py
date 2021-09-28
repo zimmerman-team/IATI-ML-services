@@ -124,7 +124,6 @@ def encode(ti):
                 raise Exception(msg)
             coll_out.delete_one({'activity_id':document['activity_id']}) # remove pre-existing set for this activity
             coll_out.insert_one(document)
-    large_mp.clear_recv(ti, 'codelists')
 
 def arrayfy(ti):
     db = persistency.mongo_db()
