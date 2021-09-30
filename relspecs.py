@@ -4,12 +4,13 @@ import re
 from abc import abstractmethod
 import numpy as np
 import functools
-
+import sklearn.preprocessing
 import torch.nn
 
 import persistency
 import utils
-import sklearn.preprocessing
+import config
+import text_model
 
 @functools.cache
 def get_codelists():
@@ -175,7 +176,7 @@ class DatetimeField(AbstractField):
         # using only the first 3 values of the timetuple as they refer to Y/M/D
         x_hat_descaled = self.scaler.inverse_transform(x_hat)[:,:3]
         x_descaled = self.scaler.inverse_transform(x)[:,:3]
-        correct_ones = np.linalg.norm(x_hat_descaled - x_descaled,axis=1) > 0.5
+        correct_ones = np.linalg.norm(x_hat_descaled - x_descaled,axis=1) < 0.5
         correct_ratio = np.mean(correct_ones)
         return correct_ratio
 
@@ -186,11 +187,24 @@ class DatetimeField(AbstractField):
 class CategoryField(AbstractField):
     def __init__(self, name, codelist_name, **kwargs):
         if 'output_activation_function' not in kwargs:
-            kwargs['output_activation_function'] = torch.nn.Softmax()
-        if 'loss_function' not in kwargs:
-            kwargs['loss_function'] = utils.OneHotCrossEntropyLoss()
+            kwargs['output_activation_function'] = torch.nn.Softmax(dim=1)
+
+        prevent_constant_prediction = kwargs.pop('prevent_constant_prediction', None)
+
         super().__init__(name, **kwargs)
         self.codelist_name = codelist_name
+
+        if 'loss_function' not in kwargs:
+            if(prevent_constant_prediction):
+                prevent_constant_prediction_idx = self.codelist.index(prevent_constant_prediction)
+                siz = len(self.codelist)
+                weight = np.ones(siz)/siz
+                weight[prevent_constant_prediction_idx] /= 10
+                print('foo',weight[prevent_constant_prediction_idx])
+            else:
+                weight = None
+            kwargs['loss_function'] = utils.OneHotCrossEntropyLoss(weight=weight)
+
 
     @property
     def codelist(self):
@@ -250,8 +264,35 @@ class NumericalField(AbstractField):
         x_max = x*1.05
 
         n_correct = 0.0
-        for curr_x_hat, curr_x in zip(x_hat,x):
-            n_correct += float(x_hat[0] < curr_x_hat[0] and x_hat[0] > curr_x[0])
+        for curr_x_hat, curr_x_min, curr_x_max in zip(x_hat,x_min,x_max):
+            n_correct += float(curr_x_hat < curr_x_max and curr_x_hat > curr_x_min)
+        return n_correct/float(x.shape[0])
+
+class TextField(AbstractField):
+    def encode(self, entries, set_size, **kwargs):
+        ret = [text_model.instance.encode(x) for x in entries]
+        short_of = set_size - len(entries)
+        if short_of > 0:
+            for i in range(short_of):
+                ret.append(text_model.instance.empty_vector)
+        return ret
+
+    @property
+    def n_features(self):
+        return text_model.instance().n_features
+
+    def guess_correct(self, x_hat, x):
+        # within 10%
+        x_min = x*0.95
+        x_max = x*1.05
+
+        n_correct = 0.0
+        for curr_x_hat, curr_x_min, curr_x_max in zip(x_hat,x_min,x_max):
+            datapoint_correct = True
+            for x_hat_loc,x_min_loc,x_max_loc in zip(curr_x_hat,curr_x_min,curr_x_max):
+                datapoint_correct = datapoint_correct and x_hat_loc < x_max_loc
+                datapoint_correct = datapoint_correct and x_hat_loc > x_min_loc
+            n_correct += float(datapoint_correct)
         return n_correct/float(x.shape[0])
 
 rels = RelsCollection([
@@ -260,12 +301,19 @@ rels = RelsCollection([
             "value_currency",
             'Currency',
             #output_activation_function=torch.nn.Sigmoid(),
-            #loss_function=torch.nn.MSELoss()
+            #loss_function=torch.nn.MSELoss(),
+            prevent_constant_prediction='USD'
         ),
         CategoryField("type", 'BudgetType'),
         CategoryField("status", 'BudgetStatus'),
         DatetimeField("period_start_iso_date"),
         DatetimeField("period_end_iso_date"),
         NumericalField("value")
+    ]),
+    Rel("result",[
+        CategoryField("type", 'ResultType'),
+        TextField("aggregation_status", 'ResultAggregationStatus'),
+        TextField("title_narrative", 'ResultTitleNarrative'),
+        TextField("description_narrative", 'ResultDescriptionNarrative'),
     ])
 ])

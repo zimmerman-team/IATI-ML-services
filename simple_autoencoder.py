@@ -1,3 +1,5 @@
+import logging
+
 import torch
 import numpy as np
 import mlflow
@@ -78,13 +80,16 @@ class AE(pl.LightningModule):
 
         self.kwargs = kwargs
 
-    def forward(self, features):
+    def encoder(self, features):
         activation = self.encoder_input_layer(features)
         activation = self.activation_function(activation)
         for curr in self.encoder_hidden_layers:
             activation = curr(activation)
             activation = self.activation_function(activation)
         code = self.encoder_output_layer(activation)
+        return code
+
+    def decoder(self, code):
         activation = self.decoder_input_layer(code)
         activation = self.activation_function(activation)
         for curr in self.decoder_hidden_layers:
@@ -97,6 +102,11 @@ class AE(pl.LightningModule):
             reconstructed.append(activation_out)
         reconstructed = self._glue(reconstructed)
         return reconstructed
+
+    def forward(self, features):
+        self.code = self.encoder(features)
+        self.reconstructed = self.decoder(self.code)
+        return self.reconstructed
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -118,7 +128,7 @@ class AE(pl.LightningModule):
     def _glue(self, tensor_list):
         return self.rel.glue(tensor_list)
 
-    def _loss(self,batch,x_hats):
+    def _loss(self,batch,x_hats,z):
         losses = []
         guess_correct = []
         batch_divided = self._divide(batch)
@@ -135,7 +145,11 @@ class AE(pl.LightningModule):
             curr_loss = loss_fn(curr_x_hat, batch_div)
             guess_correct.append(field.guess_correct(curr_x_hat.detach().numpy(), batch_div.detach().numpy()))
             losses.append(curr_loss)
+
         loss = functools.reduce(lambda a, b: a + b, losses)
+
+        latent_l1_norm = self.kwargs.pop('latent_l1_norm',0)
+        loss += torch.norm(z,p=1)*latent_l1_norm
         self.losses = [curr.detach().numpy() for curr in losses]
         self.guess_correct = guess_correct
         return loss
@@ -153,16 +167,18 @@ class AE(pl.LightningModule):
 
     def _step(self,batch,batch_idx,which_tset):
         x_hat_divided, x_hat_glued = self._divide_or_glue(self(batch))
+        z = self.encoder(batch)
         diff = batch - x_hat_glued
         mae = torch.mean(torch.abs(diff))
         mse = torch.mean((diff) ** 2)
-        loss = self._loss(batch,x_hat_divided)
+        loss = self._loss(batch,x_hat_divided,z)
         self.log(f"{which_tset}_loss", loss)
         self.log(f"{which_tset}_mae", mae)
         self.log(f"{which_tset}_mse", mse)
 
         self.diff = diff.detach().numpy()
         self.x_hat = x_hat_glued.detach().numpy()
+        self.z = z.detach().numpy()
         self.diff_reduced = np.mean(np.abs(self.diff), axis=0)
         return loss
 
@@ -184,7 +200,9 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
     def _init_collected(self):
         for collection in (
                 'x_hat',
+                'z',
                 'output_last_epoch',
+                'latent_last_epoch',
                 # indexed by batch idx:
                 'diffs',
                 'diffs_reduced',
@@ -205,6 +223,7 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         self.collected['diffs_reduced'][which_tset].append(lm.diff_reduced)
         self.collected['diffs'][which_tset].append(lm.diff)
         self.collected['x_hat'][which_tset].append(lm.x_hat)
+        self.collected['z'][which_tset].append(lm.z)
         self.collected['losses'][which_tset].append(lm.losses)
         self.collected['guess_correct'][which_tset].append(lm.guess_correct)
 
@@ -214,7 +233,7 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
         self._collect(lm,'val')
 
-    def _epoch_end(self, which_tset, is_last_epoch=False):
+    def _epoch_end(self, which_tset, is_last_epoch=False, epoch_nr=None):
         diffs_reduced = np.vstack(self.collected['diffs_reduced'][which_tset])
         x_hats = np.vstack(self.collected['x_hat'][which_tset])
         stacked_losses = np.vstack(self.collected['losses'][which_tset])
@@ -233,20 +252,36 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         # empty the validation diffs, ready for next epoch
         self.collected['diffs_reduced'][which_tset] = []
         self.collected['diffs'][which_tset] = []
+        z = np.vstack(self.collected['z'][which_tset])
+
+        corr, corr_metric,mask = diagnostics.correlation(z)
+        mlflow.log_metric(f"{which_tset}_latent_corr_metric",corr_metric)
+        diagnostics.log_correlation_heatmap_artifact("latent",corr,corr_metric,mask,which_tset,epoch_nr)
         if is_last_epoch:
             ar = np.arange(x_hats.shape[0])
             rc = np.random.choice(ar,size=100)
             output_last_epoch = x_hats[rc,:]
+            latent_last_epoch = z[rc,:]
             self.collected['output_last_epoch'][which_tset] = output_last_epoch
+            self.collected['latent_last_epoch'][which_tset] = latent_last_epoch
         self.collected['x_hat'][which_tset] = []
+        self.collected['z'][which_tset] = []
         self.collected['losses'][which_tset] = []
         gc.collect()
 
     def on_train_epoch_end(self, trainer, lm):
-        self._epoch_end('train', is_last_epoch=lm.current_epoch==trainer.max_epochs-1)
+        self._epoch_end(
+            'train',
+            is_last_epoch=lm.current_epoch==trainer.max_epochs-1,
+            epoch_nr=lm.current_epoch
+        )
 
     def on_validation_epoch_end(self, trainer, lm):
-        self._epoch_end('val', is_last_epoch=lm.current_epoch==trainer.max_epochs-1)
+        self._epoch_end(
+            'val',
+            is_last_epoch=lm.current_epoch==trainer.max_epochs-1,
+            epoch_nr=lm.current_epoch
+        )
 
     def teardown(self, trainer, lm, stage=None):
         print("teardown stage", stage)
@@ -255,12 +290,16 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
                 output_var_per_feature='fields',
                 output_mean_per_feature='fields',
                 mean_losses='losses',
+                mean_guess_correct='losses',
                 output_last_epoch='fields',
-                mean_guess_correct='losses'
+                latent_last_epoch='latent'
         ).items():
             for which_tset in self.collected[collected_name]:
                 curr = self.collected[collected_name][which_tset]
                 print(collected_name,which_tset)
+                if curr is None or len(curr)==0:
+                    logging.warning("f{collected_name} {which_tset} was empty")
+                    continue
                 if type(curr) is list:
                     stacked_npa = np.vstack(curr)
                 elif type(curr) is np.ndarray:
@@ -298,15 +337,16 @@ def main():
     mlflow.set_experiment("autoencoder_baseline")
     mlflow.pytorch.autolog()
     run_params = dict(
-        layers_width=196,
-        bottleneck_width=196,
+        layers_width=256,
+        bottleneck_width=32,
         activation_function="ELU",
         depth=2,
         weight_decay=1e-4,
-        max_epochs=500,
+        max_epochs=1000,
         rel_name='budget',
         batch_size=1024,
-        divide_output_layer=True
+        divide_output_layer=True,
+        latent_l1_norm=1.0
     ) # to yaml file?
     mlflow.log_params(run_params)
     mlflow.log_artifact(__file__)

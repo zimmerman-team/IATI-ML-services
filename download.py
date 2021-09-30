@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE=200
-MAX_PAGES=1000
+MAX_PAGES=3
 
 def extract_codelists(_rels):
     ret = set()
@@ -61,7 +61,8 @@ def parse(page,ti):
 
     for rel, sets in rels_vals.items():
         for activity_id, fields in sets.items():
-            assert len(set(map(lambda l: len(l),fields.values()))) == 1, f"all fields need to have same amount of values (rel:{rel}, activity_id:{activity_id}, fields:{fields}"
+            lens = len(map(lambda l: len(l), fields.values()))
+            assert len(set(lens)) == 1, f"all fields need to have same amount of values (rel:{rel}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
     large_mp.send(ti,rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
 

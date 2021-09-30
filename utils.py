@@ -14,8 +14,13 @@ MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class OneHotCrossEntropyLoss():
-    def __init__(self):
-        self.cross_entropy_fn = torch.nn.CrossEntropyLoss()
+    def __init__(self, weight = None):
+        #print("OneHostCrossEntropyLoss weight:",weight)
+        if weight is not None:
+            self.cross_entropy_fn = torch.nn.CrossEntropyLoss(weight=torch.Tensor(weight))
+        else:
+            self.cross_entropy_fn = torch.nn.CrossEntropyLoss()
+
     def __call__(self, x_hat, batch):
         labels = batch.argmax(1)
         ret = self.cross_entropy_fn(x_hat, labels)
@@ -83,13 +88,18 @@ def load_npa(filename):
         npa = deserialize(buf)
         return npa
 
-def load_npa_artifact(experiment_name, run_id,prefix="",suffix=""):
+def glob_artifacts(run_id,prefix="",suffix=""):
     run = mlflow.get_run(run_id)
     auri = run.info.artifact_uri
     apath = urllib.parse.urlparse(auri).path
     search = os.path.join(apath, prefix+"*"+suffix)
-    filename = glob.glob(search)[0]
-    npa = load_npa(filename)
+    found = glob.glob(search)
+    found = sorted(found)
+    return found
+
+def load_npa_artifact(experiment_name, run_id,prefix="",suffix=""):
+    found = glob_artifacts(run_id, prefix=prefix, suffix=suffix)
+    npa = load_npa(found[0])
     return npa
 
 def is_seq(stuff):
