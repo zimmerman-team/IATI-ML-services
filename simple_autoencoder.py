@@ -346,7 +346,7 @@ def main():
         rel_name='budget',
         batch_size=1024,
         divide_output_layer=True,
-        latent_l1_norm=1.0
+        latent_l1_norm=10.0
     ) # to yaml file?
     mlflow.log_params(run_params)
     mlflow.log_artifact(__file__)

@@ -27,8 +27,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
-PAGE_SIZE=200
-MAX_PAGES=3
+PAGE_SIZE=1000
+MAX_PAGES=200
 
 def extract_codelists(_rels):
     ret = set()
@@ -52,16 +52,22 @@ def parse(page,ti):
     data = large_mp.recv(ti, f"download_{page}")
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
+        #logging.info(f"processing activity {activity_id}")
         for k,v in activity.items():
-            for rel_name in relspecs.rels.names:
-                m = re.match(f'{rel_name}_(.*)',k)
+            #logging.info(f"processing activity item {k}")
+            for rel in relspecs.rels:
+                #logging.info(f"processing rel {rel.name}")
+                m = re.match(f'{rel.name}_(.*)',k)
                 if m is not None:
                     rel_field = m.group(1)
-                    rels_vals[rel_name][activity_id][rel_field] = v
+                    if rel_field in rel.fields_names:
+                        #logging.info(f"considering field {rel_field}")
+                        rels_vals[rel.name][activity_id][rel_field] = v
 
     for rel, sets in rels_vals.items():
         for activity_id, fields in sets.items():
-            lens = len(map(lambda l: len(l), fields.values()))
+            logging.info('fields.keys'+str(fields.keys()))
+            lens = list(map(len, fields.values()))
             assert len(set(lens)) == 1, f"all fields need to have same amount of values (rel:{rel}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
     large_mp.send(ti,rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
@@ -119,7 +125,7 @@ def encode(ti):
             del document['_id']
             lens = list(map(lambda field: len(set_[field.name]), rel.fields))
             if len(set(lens)) > 1:
-                msg ="lens "+str(lens)+" for fields "+str(list(map(lambda curr:curr.name,rel.fields)))
+                msg ="lens "+str(lens)+" for fields "+str(rel.fields_names)
                 logging.info(msg)
                 logging.info(document)
                 raise Exception(msg)
@@ -165,7 +171,9 @@ def to_npa(ti):
         coll_out.remove({'rel':rel.name})
         coll_out.insert_one({
             'rel':rel.name,
-            'npa':utils.serialize(rel_npa)
+            'npa':utils.serialize(rel_npa),
+            'npa_rows': rel_npa.shape[0],
+            'npa_cols': rel_npa.shape[1]
         })
 
 def to_tsets(ti):
@@ -193,7 +201,11 @@ def to_tsets(ti):
         coll_out.insert_one({
             'rel':rel.name,
             'train_npa':utils.serialize(train_npa),
-            'test_npa': utils.serialize(test_npa)
+            'test_npa': utils.serialize(test_npa),
+            'train_npa_rows':train_npa.shape[0],
+            'train_npa_cols':train_npa.shape[1],
+            'test_npa_rows':test_npa.shape[0],
+            'test_npa_cols':test_npa.shape[1]
         })
 
 default_args = {

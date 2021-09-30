@@ -312,8 +312,28 @@ rels = RelsCollection([
     ]),
     Rel("result",[
         CategoryField("type", 'ResultType'),
-        TextField("aggregation_status", 'ResultAggregationStatus'),
-        TextField("title_narrative", 'ResultTitleNarrative'),
-        TextField("description_narrative", 'ResultDescriptionNarrative'),
+        TextField("title_narrative"),
+        TextField("description_narrative"),
+        #aggregation_status
+        CategoryField("indicator_measure","IndicatorMeasure"),
+        #indicator_ascending
+        #indicator_aggregation_status
+        TextField("indicator_title_narrative"),
+        CategoryField("indicator_title_narrative_lang","Language"),
+        TextField("indicator_description_narrative"),
+        CategoryField("indicator_description_narrative_lang","Language"),
+        NumericalField("indicator_baseline_year"),
+        DatetimeField("indicator_baseline_iso_date"),
+        #indicator_baseline_value
+
+        # FIXME TODO WARNING: following fields may be presented multiple times for each
+        # result instance. Hence their cardinality may be k*cardinality(result)
+        # should I consider only the first for each result?
+        # But then they are not grouped for each result but all put in the same list,
+        # so that might be difficult.
+        #DatetimeField("indicator_period_period_start_iso_date"),
+        #DatetimeField("indicator_period_period_end_iso_date"),
+        #NumericalField("indicator_period_target_value"),
+        #NumericalField("indicator_period_actual_value")
     ])
 ])
