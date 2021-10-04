@@ -8,7 +8,7 @@ fi
 
 ls $PREFIX* |
     while read BEFORE; do
-        AFTER=$(echo $BEFORE | sed "s/^\([^0-9]*\)\([0-9]*\)_\(.*\)$/\1\2.png/g"); 
+        AFTER=$(echo $BEFORE | sed "s/^\([^0-9]*\)\([0-9]*\)\(.*\)$/\1\2.png/g"); 
         mv $BEFORE $AFTER; 
     done
 

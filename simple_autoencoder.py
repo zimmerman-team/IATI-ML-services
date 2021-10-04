@@ -148,8 +148,8 @@ class AE(pl.LightningModule):
 
         loss = functools.reduce(lambda a, b: a + b, losses)
 
-        latent_l1_norm = self.kwargs.pop('latent_l1_norm',0)
-        loss += torch.norm(z,p=1)*latent_l1_norm
+        self.latent_l1_norm = self.kwargs.pop('latent_l1_norm',0)
+        loss += torch.norm(z,p=1)*self.latent_l1_norm
         self.losses = [curr.detach().numpy() for curr in losses]
         self.guess_correct = guess_correct
         return loss
@@ -208,13 +208,15 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
                 'diffs_reduced',
                 'losses',
                 'guess_correct',
+                'latent_l1_norm',
                 # indexed by epoch:
                 'output_mean_per_feature',
                 'output_var_per_feature',
                 'mae_per_feature',
                 'mean_losses',
                 'mean_guess_correct'
-            ):
+                'mean_latent_l1_norm'
+        ):
             self.collected[collection] = {}
             for which_tset in ('val','train'):
                 self.collected[collection][which_tset] = []
@@ -226,6 +228,7 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         self.collected['z'][which_tset].append(lm.z)
         self.collected['losses'][which_tset].append(lm.losses)
         self.collected['guess_correct'][which_tset].append(lm.guess_correct)
+        self.collected['latent_l1_norm'][which_tset].append(lm.latent_l1_norm)
 
     def on_train_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
         self._collect(lm,'train')
@@ -238,17 +241,20 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         x_hats = np.vstack(self.collected['x_hat'][which_tset])
         stacked_losses = np.vstack(self.collected['losses'][which_tset])
         stacked_guess_correct = np.vstack(self.collected['guess_correct'][which_tset])
+        stacked_latent_l1_norm = np.vstack(self.collected['latent_l1_norm'][which_tset])
         mae_per_feature = np.mean(np.abs(diffs_reduced),axis=0)
         output_var_per_feature = np.var(x_hats,axis=0)
         output_mean_per_feature = np.mean(x_hats,axis=0)
         # FIXME: this is a mean over the batch losses which are probably summed together
         mean_losses = np.mean(stacked_losses,axis=0)
         mean_guess_correct = np.mean(stacked_guess_correct,axis=0)
+        mean_latent_l1_norm = np.mean(latent_l1_norm,axis=0)
         self.collected['mae_per_feature'][which_tset].append(mae_per_feature)
         self.collected['output_var_per_feature'][which_tset].append(output_var_per_feature)
         self.collected['output_mean_per_feature'][which_tset].append(output_mean_per_feature)
         self.collected['mean_losses'][which_tset].append(mean_losses)
         self.collected['mean_guess_correct'][which_tset].append(mean_guess_correct)
+        self.collected['mean_latent_l1_norm'][which_tset].append(mean_latent_l1_norm)
         # empty the validation diffs, ready for next epoch
         self.collected['diffs_reduced'][which_tset] = []
         self.collected['diffs'][which_tset] = []
@@ -292,7 +298,8 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
                 mean_losses='losses',
                 mean_guess_correct='losses',
                 output_last_epoch='fields',
-                latent_last_epoch='latent'
+                latent_last_epoch='latent',
+                mean_latent_l1_norm='losses'
         ).items():
             for which_tset in self.collected[collected_name]:
                 curr = self.collected[collected_name][which_tset]
