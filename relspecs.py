@@ -20,24 +20,14 @@ def get_codelists():
         ret[curr['name']] = curr['codelist']
     return ret
 
-class RelsCollection(object):
-    rels_dict = {}
+class RelsCollection(utils.Collection):
 
     def __init__(self, rels_list):
         for rel in rels_list:
-            if rel.name in self.rels_dict.keys():
+            if rel.name in self.names:
                 raise Exception(f"rel {rel.name} already in this RelsCollection")
-            self.rels_dict[rel.name] = rel
-
-    def __getitem__(self, rel_name):
-        return self.rels_dict[rel_name]
-
-    def __iter__(self):
-        return iter(self.rels_dict.values())
-
-    @property
-    def names(self):
-        return self.rels_dict.keys()
+            self[rel.name] = rel
+        super().__init__()
 
 class Rel(object):
     def __init__(self, name, fields):
@@ -176,6 +166,8 @@ class DatetimeField(AbstractField):
         # using only the first 3 values of the timetuple as they refer to Y/M/D
         x_hat_descaled = self.scaler.inverse_transform(x_hat)[:,:3]
         x_descaled = self.scaler.inverse_transform(x)[:,:3]
+
+        #FIXME: justify why norm < 0.5
         correct_ones = np.linalg.norm(x_hat_descaled - x_descaled,axis=1) < 0.5
         correct_ratio = np.mean(correct_ones)
         return correct_ratio
@@ -313,17 +305,17 @@ rels = RelsCollection([
     Rel("result",[
         CategoryField("type", 'ResultType'),
         TextField("title_narrative"),
-        TextField("description_narrative"),
+        #TextField("description_narrative"),
         #aggregation_status
-        CategoryField("indicator_measure","IndicatorMeasure"),
+        #CategoryField("indicator_measure","IndicatorMeasure"),
         #indicator_ascending
         #indicator_aggregation_status
-        TextField("indicator_title_narrative"),
-        CategoryField("indicator_title_narrative_lang","Language"),
-        TextField("indicator_description_narrative"),
-        CategoryField("indicator_description_narrative_lang","Language"),
-        NumericalField("indicator_baseline_year"),
-        DatetimeField("indicator_baseline_iso_date"),
+        #TextField("indicator_title_narrative"),
+        #CategoryField("indicator_title_narrative_lang","Language"),
+        #TextField("indicator_description_narrative"),
+        #CategoryField("indicator_description_narrative_lang","Language"),
+        #NumericalField("indicator_baseline_year"),
+        #DatetimeField("indicator_baseline_iso_date"),
         #indicator_baseline_value
 
         # FIXME TODO WARNING: following fields may be presented multiple times for each

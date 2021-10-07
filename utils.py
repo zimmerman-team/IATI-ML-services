@@ -9,9 +9,26 @@ import urllib
 import os
 import glob
 import torch
+import enum
 
 MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
 from sklearn.base import BaseEstimator, TransformerMixin
+
+class Collection(dict):
+    def __iter__(self):
+        return iter(self.values())
+
+    @property
+    def names(self):
+        return self.keys()
+
+    def __getattr__(self,name):
+        assert name in self.names,f"{name} not in collection's names"
+        return self[name]
+
+class Tsets(enum.Enum):
+    VAL = 'val' # validation set
+    TRAIN = 'train' # training set
 
 class OneHotCrossEntropyLoss():
     def __init__(self, weight = None):

@@ -9,10 +9,12 @@ import gc
 import functools
 
 import diagnostics
+import measurements
 import utils
 import sklearn.preprocessing
 import tempfile
 import relspecs
+import measurements as ms
 
 utils.set_np_printoptions()
 
@@ -188,9 +190,35 @@ class AE(pl.LightningModule):
     def validation_step (self, batch, batch_idx):
         return self._step(batch,batch_idx,'val')
 
-class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
+"""
+def make_measurements():
+    ret = ms.MeasurementsCollection([
+        ms.DatapointMeasurement("x_hat"),
+        ms.DatapointMeasurement("z",diagnostics.correlation),
+
+        ms.LastEpochMeasurement("output_last_epoch"),
+        ms.LastEpochMeasurement("latent_last_epoch"),
+
+        ms.BatchMeasurement('diff'),
+        ms.BatchMeasurement('diff_reduced'),
+        ms.BatchMeasurement('losses'),
+        ms.BatchMeasurement('guess_correct'),
+        ms.BatchMeasurement('latent_l1_norm'),
+
+        ms.EpochMeasurement("output_mean_per_feature"),
+        ms.EpochMeasurement("output_var_per_feature",ms.var),
+        ms.EpochMeasurement("mae_per_feature",ms.mae),
+        ms.EpochMeasurement("mean_losses"),
+        ms.EpochMeasurement("mean_guess_correct"),
+        ms.EpochMeasurement("mean_latent_l1_norm")
+    ])
+    return ret
+"""
+
+class MeasurementsCallback(pl.callbacks.Callback):
     rel = None
     collected = {}
+    # FIXME: this is for the refactoring: measurements = make_measurements()
 
     def __init__(self, *args, **kwargs):
         self.rel = kwargs.pop('rel')
@@ -204,8 +232,8 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
                 'output_last_epoch',
                 'latent_last_epoch',
                 # indexed by batch idx:
-                'diffs',
-                'diffs_reduced',
+                'diff',
+                'diff_reduced',
                 'losses',
                 'guess_correct',
                 'latent_l1_norm',
@@ -214,16 +242,16 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
                 'output_var_per_feature',
                 'mae_per_feature',
                 'mean_losses',
-                'mean_guess_correct'
+                'mean_guess_correct',
                 'mean_latent_l1_norm'
         ):
             self.collected[collection] = {}
-            for which_tset in ('val','train'):
+            for which_tset in ('val', 'train'):
                 self.collected[collection][which_tset] = []
 
     def _collect(self,lm,which_tset):
-        self.collected['diffs_reduced'][which_tset].append(lm.diff_reduced)
-        self.collected['diffs'][which_tset].append(lm.diff)
+        self.collected['diff_reduced'][which_tset].append(lm.diff_reduced)
+        self.collected['diff'][which_tset].append(lm.diff)
         self.collected['x_hat'][which_tset].append(lm.x_hat)
         self.collected['z'][which_tset].append(lm.z)
         self.collected['losses'][which_tset].append(lm.losses)
@@ -231,24 +259,28 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         self.collected['latent_l1_norm'][which_tset].append(lm.latent_l1_norm)
 
     def on_train_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
-        self._collect(lm,'train')
+        # FIXME: this is for the refactoring: self.measurements.collect(lm,utils.Tsets.TRAIN)
+        self._collect(lm, 'train')
 
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
-        self._collect(lm,'val')
+        # FIXME: this is for the refactoring: self.measurements.collect(lm,utils.Tsets.VAL)
+        self._collect(lm, 'val')
 
-    def _epoch_end(self, which_tset, is_last_epoch=False, epoch_nr=None):
-        diffs_reduced = np.vstack(self.collected['diffs_reduced'][which_tset])
+    def _epoch_end(self, which_tset, trainer, lm):
+        is_last_epoch = lm.current_epoch == trainer.max_epochs - 1
+        epoch_nr = lm.current_epoch
+        diff_reduced = np.vstack(self.collected['diff_reduced'][which_tset])
         x_hats = np.vstack(self.collected['x_hat'][which_tset])
         stacked_losses = np.vstack(self.collected['losses'][which_tset])
         stacked_guess_correct = np.vstack(self.collected['guess_correct'][which_tset])
         stacked_latent_l1_norm = np.vstack(self.collected['latent_l1_norm'][which_tset])
-        mae_per_feature = np.mean(np.abs(diffs_reduced),axis=0)
+        mae_per_feature = np.mean(np.abs(diff_reduced),axis=0)
         output_var_per_feature = np.var(x_hats,axis=0)
         output_mean_per_feature = np.mean(x_hats,axis=0)
         # FIXME: this is a mean over the batch losses which are probably summed together
         mean_losses = np.mean(stacked_losses,axis=0)
         mean_guess_correct = np.mean(stacked_guess_correct,axis=0)
-        mean_latent_l1_norm = np.mean(latent_l1_norm,axis=0)
+        mean_latent_l1_norm = np.mean(stacked_latent_l1_norm,axis=0)
         self.collected['mae_per_feature'][which_tset].append(mae_per_feature)
         self.collected['output_var_per_feature'][which_tset].append(output_var_per_feature)
         self.collected['output_mean_per_feature'][which_tset].append(output_mean_per_feature)
@@ -256,8 +288,8 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         self.collected['mean_guess_correct'][which_tset].append(mean_guess_correct)
         self.collected['mean_latent_l1_norm'][which_tset].append(mean_latent_l1_norm)
         # empty the validation diffs, ready for next epoch
-        self.collected['diffs_reduced'][which_tset] = []
-        self.collected['diffs'][which_tset] = []
+        self.collected['diff_reduced'][which_tset] = []
+        self.collected['diff'][which_tset] = []
         z = np.vstack(self.collected['z'][which_tset])
 
         corr, corr_metric,mask = diagnostics.correlation(z)
@@ -273,21 +305,14 @@ class ValidationErrorAnalysisCallback(pl.callbacks.Callback):
         self.collected['x_hat'][which_tset] = []
         self.collected['z'][which_tset] = []
         self.collected['losses'][which_tset] = []
+        self.collected['guess_correct'][which_tset] = []
         gc.collect()
 
     def on_train_epoch_end(self, trainer, lm):
-        self._epoch_end(
-            'train',
-            is_last_epoch=lm.current_epoch==trainer.max_epochs-1,
-            epoch_nr=lm.current_epoch
-        )
+        self._epoch_end( 'train', trainer, lm )
 
     def on_validation_epoch_end(self, trainer, lm):
-        self._epoch_end(
-            'val',
-            is_last_epoch=lm.current_epoch==trainer.max_epochs-1,
-            epoch_nr=lm.current_epoch
-        )
+        self._epoch_end( 'val', trainer, lm )
 
     def teardown(self, trainer, lm, stage=None):
         print("teardown stage", stage)
@@ -345,11 +370,11 @@ def main():
     mlflow.pytorch.autolog()
     run_params = dict(
         layers_width=256,
-        bottleneck_width=32,
+        bottleneck_width=256,
         activation_function="ELU",
         depth=2,
         weight_decay=1e-4,
-        max_epochs=1000,
+        max_epochs=10,
         rel_name='budget',
         batch_size=1024,
         divide_output_layer=True,
@@ -396,7 +421,7 @@ def main():
 
     trainer = pl.Trainer(
         limit_train_batches=1.0,
-        callbacks=[ValidationErrorAnalysisCallback(rel=rel)],
+        callbacks=[MeasurementsCallback(rel=rel)],
         max_epochs=run_params['max_epochs']
     )
     trainer.fit(model, train_loader, test_loader)
