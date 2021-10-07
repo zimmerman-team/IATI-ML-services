@@ -9,3 +9,8 @@ pytorch-lightning
 hiddenlayer
 pandas
 pyyaml
+matplotlib
+ipython
+seaborn
+gensim
+nltk

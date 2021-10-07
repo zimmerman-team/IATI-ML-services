@@ -1,9 +1,9 @@
 layers_width: 256
-bottleneck_width: 256
+bottleneck_width: 32
 activation_function: "ELU"
 depth: 2
 weight_decay: 1.0e-4
-max_epochs: 10
+max_epochs: 1000
 rel_name: 'budget'
 batch_size: 1024
 divide_output_layer: True

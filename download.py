@@ -200,8 +200,10 @@ def to_tsets(ti):
 
         train_npa = np.vstack(train_npas)
         test_npa = np.vstack(test_npas)
+        now = datetime.today().replace(microsecond=0)
         coll_out.insert_one({
             'rel':rel.name,
+            'creation_date':now,
             'train_npa':utils.serialize(train_npa),
             'test_npa': utils.serialize(test_npa),
             'train_npa_rows':train_npa.shape[0],

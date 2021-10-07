@@ -16,6 +16,7 @@ import sklearn.preprocessing
 import tempfile
 import relspecs
 import measurements as ms
+import persistency
 
 utils.set_np_printoptions()
 
@@ -371,21 +372,21 @@ def main():
     mlflow.pytorch.autolog()
     config_name = sys.argv[1]
     run_config = utils.load_run_config(config_name)
+    mlflow.start_run(run_name=run_config['config_name'])
     mlflow.log_params(run_config)
     mlflow.log_artifact(__file__)
+    mlflow.log_artifact(run_config['config_filename'])
     rel = relspecs.rels[run_config['rel_name']]
 
     # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
-    train_dataset,test_dataset = utils.load_tsets(rel.name,with_set_index=False)
+    tsets = persistency.load_tsets(rel,with_set_index=False)
 
-    mlflow.log_param("train_datapoints",train_dataset.shape[0])
-    mlflow.log_param("test_datapoints",test_dataset.shape[0])
-    input_cardinality = train_dataset.shape[1]
-
-    train_dataset_scaled, test_dataset_scaled = rel.make_and_fit_scalers(train_dataset,test_dataset)
+    for curr in tsets.tsets_names:
+        mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
+    input_cardinality = tsets.train.shape[1]
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset_scaled,
+        tsets.train_scaled,
         batch_size=run_config['batch_size'],
         shuffle=True,
         num_workers=4,
@@ -393,7 +394,7 @@ def main():
     )
 
     test_loader = torch.utils.data.DataLoader(
-        test_dataset_scaled,
+        tsets.test_scaled,
         batch_size=run_config['batch_size'],
         shuffle=False,
         num_workers=4

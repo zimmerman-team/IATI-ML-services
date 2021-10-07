@@ -59,21 +59,6 @@ class Rel(object):
     def scalers(self):
         return [ curr.scaler for curr in self.fields]
 
-    def make_and_fit_scalers(self, train_dataset, test_dataset, with_set_index=False):
-        train_sections = self.divide(train_dataset, with_set_index=with_set_index)
-        test_sections = self.divide(test_dataset, with_set_index=with_set_index)
-        train_sections_scaled = []
-        test_sections_scaled = []
-        for field, train_section, test_section in zip(self.fields, train_sections, test_sections):
-            field.make_and_fit_scaler(train_section)
-            train_section_scaled = field.scaler.transform(train_section)
-            test_section_scaled = field.scaler.transform(test_section)
-            train_sections_scaled.append(train_section_scaled)
-            test_sections_scaled.append(test_section_scaled)
-        train_dataset_scaled = self.glue(train_sections_scaled)
-        test_dataset_scaled = self.glue(test_sections_scaled)
-        return train_dataset_scaled, test_dataset_scaled
-
     @property
     def n_fields(self):
         return len(self.fields)

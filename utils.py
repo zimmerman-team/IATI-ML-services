@@ -11,8 +11,7 @@ import glob
 import torch
 import enum
 import yaml
-
-MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
+import collections
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class Collection(dict):
@@ -60,18 +59,6 @@ def serialize(npa):
 
 def deserialize(buf):
     return pickle.loads(zlib.decompress(buf))
-
-def load_tsets(rel_name, with_set_index=False):
-    client = pymongo.MongoClient(MONGODB_CONN)
-    db = client['learning_sets']
-    coll = db['npas_tsets']
-    document = coll.find({'rel': rel_name}).sort('_id', pymongo.DESCENDING).limit(1)[0]
-    train_dataset = deserialize(document['train_npa']).astype(np.float32)
-    test_dataset = deserialize(document['test_npa']).astype(np.float32)
-    if with_set_index is False:
-        train_dataset = train_dataset[:,1:]
-        test_dataset = test_dataset[:,1:]
-    return train_dataset, test_dataset
 
 def set_np_printoptions():
     np.set_printoptions(
@@ -147,4 +134,12 @@ def load_run_config(config_name):
         'config/')
     filename = os.path.join(directory,config_name+".yaml")
     with open(filename, 'r') as f:
-        return yaml.load(f)
+        ret = yaml.load(f)
+    ret['config_name'] = config_name
+    ret['config_filename'] = filename
+    return ret
+
+def dict_to_obj(typename, d):
+    T = collections.namedtuple(typename,d.keys())
+    obj = T(d)
+    return obj
