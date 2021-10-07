@@ -2,12 +2,15 @@ import functools
 from gensim.models.doc2vec import Doc2Vec
 import numpy as np
 import nltk
+import os
 
 MODEL_FILENAME = "doc2vec_model_dbow.bin"
 
 class ModelWrapper():
     def __init__(self):
-        self.model = Doc2Vec.load(MODEL_FILENAME)
+        directory = os.path.abspath(__file__)
+        full_path = os.path.join([directory,MODEL_FILENAME])
+        self.model = Doc2Vec.load(full_path)
     def encode(self, text):
         tokens = nltk.word_tokenize(text)
         tokens = [curr.lower() for curr in tokens]

@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 import hiddenlayer
 import gc
 import functools
+import sys
 
 import diagnostics
 import measurements
@@ -135,7 +136,7 @@ class AE(pl.LightningModule):
         guess_correct = []
         batch_divided = self._divide(batch)
 
-        # FIXME: debug with run_params['divided_output_layer'] = False
+        # FIXME: debug with run_config['divided_output_layer'] = False
         for curr, curr_x_hat, batch_div, field in zip(self.decoder_output_layers, x_hats, batch_divided, self.rel.fields):
             loss_fn = field.loss_function \
                       or torch.nn.functional.mse_loss
@@ -368,21 +369,11 @@ def log_net_visualization(model, features):
 def main():
     mlflow.set_experiment("autoencoder_baseline")
     mlflow.pytorch.autolog()
-    run_params = dict(
-        layers_width=256,
-        bottleneck_width=256,
-        activation_function="ELU",
-        depth=2,
-        weight_decay=1e-4,
-        max_epochs=10,
-        rel_name='budget',
-        batch_size=1024,
-        divide_output_layer=True,
-        latent_l1_norm=10.0
-    ) # to yaml file?
-    mlflow.log_params(run_params)
+    config_name = sys.argv[1]
+    run_config = utils.load_run_config(config_name)
+    mlflow.log_params(run_config)
     mlflow.log_artifact(__file__)
-    rel = relspecs.rels[run_params['rel_name']]
+    rel = relspecs.rels[run_config['rel_name']]
 
     # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
     train_dataset,test_dataset = utils.load_tsets(rel.name,with_set_index=False)
@@ -395,7 +386,7 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset_scaled,
-        batch_size=run_params['batch_size'],
+        batch_size=run_config['batch_size'],
         shuffle=True,
         num_workers=4,
         pin_memory=False
@@ -403,7 +394,7 @@ def main():
 
     test_loader = torch.utils.data.DataLoader(
         test_dataset_scaled,
-        batch_size=run_params['batch_size'],
+        batch_size=run_config['batch_size'],
         shuffle=False,
         num_workers=4
     )
@@ -416,17 +407,17 @@ def main():
     model = AE(
         input_shape=input_cardinality,
         rel=rel,
-        **run_params
+        **run_config
     ).to(device)
 
     trainer = pl.Trainer(
         limit_train_batches=1.0,
         callbacks=[MeasurementsCallback(rel=rel)],
-        max_epochs=run_params['max_epochs']
+        max_epochs=run_config['max_epochs']
     )
     trainer.fit(model, train_loader, test_loader)
     print("current mlflow run:",mlflow.active_run().info.run_id)
-    #log_net_visualization(model,torch.zeros(run_params['batch_size'], input_cardinality))
+    #log_net_visualization(model,torch.zeros(run_config['batch_size'], input_cardinality))
 
 if __name__ == "__main__":
     main()

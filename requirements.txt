@@ -8,3 +8,4 @@ mlflow
 pytorch-lightning
 hiddenlayer
 pandas
+pyyaml

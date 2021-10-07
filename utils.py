@@ -10,6 +10,7 @@ import os
 import glob
 import torch
 import enum
+import yaml
 
 MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -139,3 +140,11 @@ def str_shapes(stuff):
         return "["+" ".join([str_shapes(curr) for curr in stuff])+"]"
     else:
         return str(stuff.shape)
+
+def load_run_config(config_name):
+    directory = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'config/')
+    filename = os.path.join(directory,config_name+".yaml")
+    with open(filename, 'r') as f:
+        return yaml.load(f)
