@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
-PAGE_SIZE=1000
+PAGE_SIZE=10
 MAX_PAGES=3
 
 def extract_codelists(_rels):
@@ -110,107 +110,103 @@ def get_set_size(set_):
         size = max(len(values),size)
     return size
 
-def encode(ti):
+def encode(rel,ti):
     db = persistency.mongo_db()
-    for rel in relspecs.rels:
-        coll_in = db[rel.name]
-        coll_out = db[rel.name + "_encoded"]
-        for document in coll_in.find(no_cursor_timeout=True):
-            document = dict(document) # copy
-            set_ = document['set_']
-            set_size = get_set_size(set_)
-            for field in rel.fields:
-                encodable = set_.get(field.name,[])
-                tmp = field.encode(encodable, set_size)
-                set_[field.name] = tmp
+    coll_in = db[rel.name]
+    coll_out = db[rel.name + "_encoded"]
+    for document in coll_in.find(no_cursor_timeout=True):
+        document = dict(document) # copy
+        set_ = document['set_']
+        set_size = get_set_size(set_)
+        for field in rel.fields:
+            encodable = set_.get(field.name,[])
+            tmp = field.encode(encodable, set_size)
+            set_[field.name] = tmp
 
-            del document['_id']
-            lens = list(map(lambda field: len(set_[field.name]), rel.fields))
-            if len(set(lens)) > 1:
-                msg ="lens "+str(lens)+" for fields "+str(rel.fields_names)
-                logging.info(msg)
-                logging.info(document)
-                raise Exception(msg)
-            coll_out.delete_one({'activity_id':document['activity_id']}) # remove pre-existing set for this activity
-            coll_out.insert_one(document)
+        del document['_id']
+        lens = list(map(lambda field: len(set_[field.name]), rel.fields))
+        if len(set(lens)) > 1:
+            msg ="lens "+str(lens)+" for fields "+str(rel.fields_names)
+            logging.info(msg)
+            logging.info(document)
+            raise Exception(msg)
+        coll_out.delete_one({'activity_id':document['activity_id']}) # remove pre-existing set for this activity
+        coll_out.insert_one(document)
 
-def arrayfy(ti):
+def arrayfy(rel,ti):
     db = persistency.mongo_db()
-    for rel in relspecs.rels:
-        coll_in = db[rel.name+"_encoded"]
-        coll_out = db[rel.name+"_arrayfied"]
-        coll_out.delete_many({}) # empty the collection
-        for set_index, document in enumerate(coll_in.find()):
-            set_npas = []
-            set_ = document['set_']
-            keys = rel.fields_names
-            for k in keys: # we need to always have a same ordering of the fields!
-                if len(set_[k]) > 0 and type(set_[k][0]) is list:
-                    floats = list(map(lambda v: list(map(lambda x:float(x),v)), set_[k]))
-                else: # not something that is dummified: simple numerical value field
-                    floats = list(map(lambda x: [float(x)], set_[k]))
-                field_npa = np.array(floats)
-                set_npas.append(field_npa)
-            if len(set(map(lambda curr: curr.shape[0],set_npas))) > 1:
-                logging.info("keys:" + str(keys))
-                logging.info("set_npas shapes:"+str([curr.shape for curr in set_npas]))
-            set_npa = np.hstack(set_npas)
-            set_npa_serialized = utils.serialize(set_npa)
-            coll_out.insert_one({'set_index':set_index,'npa':set_npa_serialized})
+    coll_in = db[rel.name+"_encoded"]
+    coll_out = db[rel.name+"_arrayfied"]
+    coll_out.delete_many({}) # empty the collection
+    for set_index, document in enumerate(coll_in.find()):
+        set_npas = []
+        set_ = document['set_']
+        keys = rel.fields_names
+        for k in keys: # we need to always have a same ordering of the fields!
+            if len(set_[k]) > 0 and type(set_[k][0]) is list:
+                floats = list(map(lambda v: list(map(lambda x:float(x),v)), set_[k]))
+            else: # not something that is dummified: simple numerical value field
+                floats = list(map(lambda x: [float(x)], set_[k]))
+            field_npa = np.array(floats)
+            set_npas.append(field_npa)
+        if len(set(map(lambda curr: curr.shape[0],set_npas))) > 1:
+            logging.info("keys:" + str(keys))
+            logging.info("set_npas shapes:"+str([curr.shape for curr in set_npas]))
+        set_npa = np.hstack(set_npas)
+        set_npa_serialized = utils.serialize(set_npa)
+        coll_out.insert_one({'set_index':set_index,'npa':set_npa_serialized})
 
-def to_npa(ti):
+def to_npa(rel,ti):
     db = persistency.mongo_db()
-    for rel in relspecs.rels:
-        coll_in = db[rel.name+"_arrayfied"]
-        coll_out = db['npas']
-        rel_npas = []
-        for document in coll_in.find():
-            set_npa = utils.deserialize(document['npa'])
-            set_index = document['set_index']
-            set_index_col = np.ones((set_npa.shape[0], 1))*set_index
-            rel_npas.append(np.hstack([set_index_col, set_npa]))
-        rel_npa = np.vstack(rel_npas)
-        coll_out.remove({'rel':rel.name})
-        coll_out.insert_one({
-            'rel':rel.name,
-            'npa':utils.serialize(rel_npa),
-            'npa_rows': rel_npa.shape[0],
-            'npa_cols': rel_npa.shape[1]
-        })
+    coll_in = db[rel.name+"_arrayfied"]
+    coll_out = db['npas']
+    rel_npas = []
+    for document in coll_in.find():
+        set_npa = utils.deserialize(document['npa'])
+        set_index = document['set_index']
+        set_index_col = np.ones((set_npa.shape[0], 1))*set_index
+        rel_npas.append(np.hstack([set_index_col, set_npa]))
+    rel_npa = np.vstack(rel_npas)
+    coll_out.remove({'rel':rel.name})
+    coll_out.insert_one({
+        'rel':rel.name,
+        'npa':utils.serialize(rel_npa),
+        'npa_rows': rel_npa.shape[0],
+        'npa_cols': rel_npa.shape[1]
+    })
 
-def to_tsets(ti):
+def to_tsets(rel,ti):
     db = persistency.mongo_db()
-    for rel in relspecs.rels:
-        coll_in = db[rel.name+'_arrayfied']
-        set_indices_results = coll_in.find({},{'set_index':1})
-        set_indices = list(set(map( lambda document: document['set_index'],set_indices_results)))
-        train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.90)
-        coll_out = db['npas_tsets']
-        train_npas = []
-        test_npas = []
-        for document in coll_in.find():
-            set_npa = utils.deserialize(document['npa'])
-            set_index = document['set_index']
-            set_index_col = np.ones((set_npa.shape[0], 1))*set_index
-            npa = np.hstack([set_index_col, set_npa])
-            if set_index in train_indices:
-                train_npas.append(npa)
-            elif set_index in test_indices:
-                test_npas.append(npa)
+    coll_in = db[rel.name+'_arrayfied']
+    set_indices_results = coll_in.find({},{'set_index':1})
+    set_indices = list(set(map( lambda document: document['set_index'],set_indices_results)))
+    train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.90)
+    coll_out = db['npas_tsets']
+    train_npas = []
+    test_npas = []
+    for document in coll_in.find():
+        set_npa = utils.deserialize(document['npa'])
+        set_index = document['set_index']
+        set_index_col = np.ones((set_npa.shape[0], 1))*set_index
+        npa = np.hstack([set_index_col, set_npa])
+        if set_index in train_indices:
+            train_npas.append(npa)
+        elif set_index in test_indices:
+            test_npas.append(npa)
 
-        train_npa = np.vstack(train_npas)
-        test_npa = np.vstack(test_npas)
-        now = datetime.today().replace(microsecond=0)
-        coll_out.insert_one({
-            'rel':rel.name,
-            'creation_date':now,
-            'train_npa':utils.serialize(train_npa),
-            'test_npa': utils.serialize(test_npa),
-            'train_npa_rows':train_npa.shape[0],
-            'train_npa_cols':train_npa.shape[1],
-            'test_npa_rows':test_npa.shape[0],
-            'test_npa_cols':test_npa.shape[1]
-        })
+    train_npa = np.vstack(train_npas)
+    test_npa = np.vstack(test_npas)
+    now = datetime.today().replace(microsecond=0)
+    coll_out.insert_one({
+        'rel':rel.name,
+        'creation_date':now,
+        'train_npa':utils.serialize(train_npa),
+        'test_npa': utils.serialize(test_npa),
+        'train_npa_rows':train_npa.shape[0],
+        'train_npa_cols':train_npa.shape[1],
+        'test_npa_rows':test_npa.shape[0],
+        'test_npa_cols':test_npa.shape[1]
+    })
 
 default_args = {
     'retries':5,
@@ -233,34 +229,7 @@ with DAG(
         op_kwargs={}
     )
 
-    t_encode = PythonOperator(
-        task_id="encode",
-        python_callable=encode,
-        start_date=days_ago(2),
-        op_kwargs={}
-    )
-
-    t_arrayfy = PythonOperator(
-        task_id="arrayfy",
-        python_callable=arrayfy,
-        start_date=days_ago(2),
-        op_kwargs={}
-    )
-
-    t_to_npa= PythonOperator(
-        task_id="to_npa",
-        python_callable=to_npa,
-        start_date=days_ago(2),
-        op_kwargs={}
-    )
-
-    t_to_tsets= PythonOperator(
-        task_id="to_tsets",
-        python_callable=to_tsets,
-        start_date=days_ago(2),
-        op_kwargs={}
-    )
-
+    t_persist = {}
     for page in pages:
         start = page*PAGE_SIZE
         t_download = PythonOperator(
@@ -277,12 +246,44 @@ with DAG(
             op_kwargs={'page':page}
         )
 
-        t_persist = PythonOperator(
+        t_persist[page] = PythonOperator(
             task_id=f"persist_{page}",
             python_callable = persist,
             start_date = days_ago(2),
             op_kwargs={'page':page}
         )
-        t_download >> t_parse >> t_persist >> t_encode
-    t_codelists >> t_encode >> t_arrayfy >> t_to_npa
-    t_arrayfy >> t_to_tsets
+        t_download >> t_parse >> t_persist[page]
+
+    for rel in relspecs.rels:
+        t_to_npa = PythonOperator(
+            task_id=f"to_npa_{rel.name}",
+            python_callable=to_npa,
+            start_date=days_ago(2),
+            op_kwargs={'rel':rel}
+        )
+
+        t_to_tsets = PythonOperator(
+            task_id=f"to_tsets_{rel.name}",
+            python_callable=to_tsets,
+            start_date=days_ago(2),
+            op_kwargs={'rel':rel}
+        )
+        t_encode = PythonOperator(
+            task_id=f"encode_{rel.name}",
+            python_callable=encode,
+            start_date=days_ago(2),
+            op_kwargs={'rel':rel}
+        )
+
+        t_arrayfy = PythonOperator(
+            task_id=f"arrayfy_{rel.name}",
+            python_callable=arrayfy,
+            start_date=days_ago(2),
+            op_kwargs={'rel':rel}
+        )
+
+        for page in pages:
+            t_persist[page] >> t_encode
+        t_codelists >> t_encode >> t_arrayfy
+        t_arrayfy >> t_to_npa
+        t_arrayfy >> t_to_tsets
