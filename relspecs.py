@@ -29,10 +29,20 @@ class RelsCollection(utils.Collection):
             self[rel.name] = rel
         super().__init__()
 
+    @property
+    def downloadable(self):
+        return [
+            rel
+            for rel
+            in self
+            if rel.download is True
+        ]
+
 class Rel(object):
-    def __init__(self, name, fields):
+    def __init__(self, name, fields, download=False):
         self.name = name
         self.fields = fields
+        self.download = download
 
     def divide(self, tensor, with_set_index=False):
         ret = []
@@ -251,7 +261,7 @@ class TextField(AbstractField):
         short_of = set_size - len(entries)
         if short_of > 0:
             for i in range(short_of):
-                ret.append(text_model.instance().empty_vector)
+                ret.append(text_model.instance().empty_vector.tolist())
         return ret
 
     @property
@@ -286,7 +296,7 @@ rels = RelsCollection([
         DatetimeField("period_start_iso_date"),
         DatetimeField("period_end_iso_date"),
         NumericalField("value")
-    ]),
+    ], download=False),
     Rel("result",[
         CategoryField("type", 'ResultType'),
         TextField("title_narrative"),
@@ -312,5 +322,5 @@ rels = RelsCollection([
         #DatetimeField("indicator_period_period_end_iso_date"),
         #NumericalField("indicator_period_target_value"),
         #NumericalField("indicator_period_actual_value")
-    ])
+    ], download=True)
 ])
