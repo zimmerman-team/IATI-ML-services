@@ -247,7 +247,7 @@ class NumericalField(AbstractField):
 
 class TextField(AbstractField):
     def encode(self, entries, set_size, **kwargs):
-        ret = [text_model.instance().encode(x) for x in entries]
+        ret = [text_model.instance().encode(x).tolist() for x in entries]
         short_of = set_size - len(entries)
         if short_of > 0:
             for i in range(short_of):
