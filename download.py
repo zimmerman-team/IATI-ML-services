@@ -23,12 +23,13 @@ import relspecs
 import persistency
 import large_mp
 
+rels = relspecs.rels.downloadable
 logging.basicConfig(level=logging.DEBUG)
 
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
-PAGE_SIZE=10
-MAX_PAGES=3
+PAGE_SIZE=1000
+MAX_PAGES=200
 
 def extract_codelists(_rels):
     ret = set()
@@ -55,7 +56,7 @@ def parse(page,ti):
         #logging.info(f"processing activity {activity_id}")
         for k,v in activity.items():
             #logging.info(f"processing activity item {k}")
-            for rel in relspecs.rels:
+            for rel in rels:
                 #logging.info(f"processing rel {rel.name}")
                 m = re.match(f'{rel.name}_(.*)',k)
                 if m is not None:
@@ -90,7 +91,7 @@ def persist(page, ti):
 
 def codelists(ti):
     db = persistency.mongo_db()
-    for codelist_name in extract_codelists(relspecs.rels):
+    for codelist_name in extract_codelists(rels):
         url = DATASTORE_CODELIST_URL.format(codelist_name)
         params = {'format':'json'}
         response = requests.get(url,params=params)
@@ -168,8 +169,10 @@ def to_npa(rel,ti):
         rel_npas.append(np.hstack([set_index_col, set_npa]))
     rel_npa = np.vstack(rel_npas)
     coll_out.remove({'rel':rel.name})
+
     coll_out.insert_one({
         'rel':rel.name,
+        'creation_date': utils.strnow(),
         'npa':utils.serialize(rel_npa),
         'npa_rows': rel_npa.shape[0],
         'npa_cols': rel_npa.shape[1]
@@ -196,10 +199,9 @@ def to_tsets(rel,ti):
 
     train_npa = np.vstack(train_npas)
     test_npa = np.vstack(test_npas)
-    now = datetime.today().replace(microsecond=0)
     coll_out.insert_one({
         'rel':rel.name,
-        'creation_date':now,
+        'creation_time': utils.strnow(),
         'train_npa':utils.serialize(train_npa),
         'test_npa': utils.serialize(test_npa),
         'train_npa_rows':train_npa.shape[0],
@@ -209,7 +211,7 @@ def to_tsets(rel,ti):
     })
 
 default_args = {
-    'retries':5,
+    'retries':2,
     'retry_delay':datetime.timedelta(minutes=1)
 }
 
@@ -254,7 +256,7 @@ with DAG(
         )
         t_download >> t_parse >> t_persist[page]
 
-    for rel in relspecs.rels:
+    for rel in rels:
         t_to_npa = PythonOperator(
             task_id=f"to_npa_{rel.name}",
             python_callable=to_npa,

@@ -12,6 +12,7 @@ import torch
 import enum
 import yaml
 import collections
+import datetime
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class Collection(dict):
@@ -143,3 +144,7 @@ def dict_to_obj(typename, d):
     T = collections.namedtuple(typename,d.keys())
     obj = T(d)
     return obj
+
+def strnow():
+    now = str(datetime.date.now())
+    return now
