@@ -1,6 +1,6 @@
 import numpy as np
 
-import utils
+from common import utils
 
 class Tsets(utils.Collection):
     tsets_names = ('train', 'test')

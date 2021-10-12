@@ -8,15 +8,12 @@ import hiddenlayer
 import gc
 import functools
 import sys
-
-import diagnostics
-import measurements
-import utils
 import sklearn.preprocessing
 import tempfile
-import relspecs
-import measurements as ms
-import persistency
+
+from models import diagnostics
+from models import measurements as ms
+from common import utils, relspecs, persistency
 
 utils.set_np_printoptions()
 

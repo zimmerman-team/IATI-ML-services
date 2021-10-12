@@ -1,8 +1,8 @@
 import functools
 import numpy as np
 
-import tsets
-import utils
+from common import tsets
+from common import utils
 
 import pymongo
 MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"

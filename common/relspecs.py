@@ -7,10 +7,10 @@ import functools
 import sklearn.preprocessing
 import torch.nn
 
-import persistency
-import utils
+from common  import persistency
+from common import utils
 import config
-import text_model
+from models import text_model
 
 @functools.cache
 def get_codelists():

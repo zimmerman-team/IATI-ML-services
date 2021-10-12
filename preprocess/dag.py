@@ -1,6 +1,5 @@
 #!/bin/env python3
 import functools
-
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
@@ -15,13 +14,13 @@ import os
 import sys
 
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
-# we have to explicitly add the path of this module to python's path
-path = os.path.dirname(os.path.abspath(__file__))
+# we have to explicitly add the path of the parent directory to this module to python's path
+path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
-import utils
-import relspecs
-import persistency
-import large_mp
+from common import utils
+from common import relspecs
+from common import persistency
+from preprocess import large_mp
 
 rels = relspecs.rels.downloadable
 logging.basicConfig(level=logging.DEBUG)
@@ -29,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE=1000
-MAX_PAGES=1000
+MAX_PAGES=1500
 
 def extract_codelists(_rels):
     ret = set()
@@ -219,9 +218,9 @@ default_args = {
 }
 
 with DAG(
-    'download_sets',
+    'download_and_preprocess_sets',
     description='Downloads sets data from IATI.cloud',
-    tags=['download','sets'],
+    tags=['download','preprocess','sets'],
     default_args=default_args
 ) as dag:
 

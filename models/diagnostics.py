@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 import seaborn
 import tempfile
 import mlflow
-import utils
 import pandas as pd
+
+from common import utils
 
 def barplots(npa,rel=None,type_=None): # FIXME duplicated code
     seaborn.set(rc={'figure.figsize': (27, 9)})
