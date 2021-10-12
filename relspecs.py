@@ -38,6 +38,17 @@ class RelsCollection(utils.Collection):
             if rel.download is True
         ]
 
+    @property
+    def downloadable_prefixed_fields_names(self):
+        ret = [
+            curr
+            for rel
+            in self.downloadable
+            for curr
+            in rel.prefixed_fields_names
+        ]
+        return ret
+
 class Rel(object):
     def __init__(self, name, fields, download=False):
         self.name = name
@@ -80,6 +91,14 @@ class Rel(object):
     @property
     def fields_names(self):
         return [ f.name for f in self.fields ]
+
+    @property
+    def prefixed_fields_names(self):
+        return [
+            self.name+"_"+curr
+            for curr
+            in self.fields_names
+        ]
 
     def fields_intervals(self,with_set_index=False):
         start = 0

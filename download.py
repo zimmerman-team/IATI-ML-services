@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL="https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL="https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE=1000
-MAX_PAGES=200
+MAX_PAGES=1000
 
 def extract_codelists(_rels):
     ret = set()
@@ -38,13 +38,16 @@ def extract_codelists(_rels):
     return ret
 
 def download(start, ti):
+    fl = ",".join(["iati_identifier"]+relspecs.rels.downloadable_prefixed_fields_names)
     params = {
         'q': "*:*",
+        'fl': fl,
         'start': start,
         'rows': PAGE_SIZE
     }
     logging.info(f"requesting {DATASTORE_ACTIVITY_URL} with {params}")
     response = requests.get(DATASTORE_ACTIVITY_URL,params=params)
+    logging.info(f"response.url:{response.url}")
     data = response.json()
     large_mp.send(ti,data)
 
