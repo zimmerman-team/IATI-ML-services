@@ -369,53 +369,53 @@ def main():
     mlflow.pytorch.autolog()
     config_name = sys.argv[1]
     run_config = utils.load_run_config(config_name)
-    mlflow.start_run(run_name=run_config['config_name'])
-    mlflow.log_params(run_config)
-    mlflow.log_artifact(__file__)
-    mlflow.log_artifact(run_config['config_filename'])
-    rel = relspecs.rels[run_config['rel_name']]
+    with mlflow.start_run(run_name=run_config['config_name'])
+        mlflow.log_params(run_config)
+        mlflow.log_artifact(__file__)
+        mlflow.log_artifact(run_config['config_filename'])
+        rel = relspecs.rels[run_config['rel_name']]
 
-    # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
-    tsets = persistency.load_tsets(rel,with_set_index=False)
+        # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
+        tsets = persistency.load_tsets(rel,with_set_index=False)
 
-    for curr in tsets.tsets_names:
-        mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
-    input_cardinality = tsets.train.shape[1]
+        for curr in tsets.tsets_names:
+            mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
+        input_cardinality = tsets.train.shape[1]
 
-    train_loader = torch.utils.data.DataLoader(
-        tsets.train_scaled,
-        batch_size=run_config['batch_size'],
-        shuffle=True,
-        num_workers=4,
-        pin_memory=False
-    )
+        train_loader = torch.utils.data.DataLoader(
+            tsets.train_scaled,
+            batch_size=run_config['batch_size'],
+            shuffle=True,
+            num_workers=4,
+            pin_memory=False
+        )
 
-    test_loader = torch.utils.data.DataLoader(
-        tsets.test_scaled,
-        batch_size=run_config['batch_size'],
-        shuffle=False,
-        num_workers=4
-    )
+        test_loader = torch.utils.data.DataLoader(
+            tsets.test_scaled,
+            batch_size=run_config['batch_size'],
+            shuffle=False,
+            num_workers=4
+        )
 
-    #  use gpu if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        #  use gpu if available
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # create a model from `AE` autoencoder class
-    # load it to the specified device, either gpu or cpu
-    model = AE(
-        input_shape=input_cardinality,
-        rel=rel,
-        **run_config
-    ).to(device)
+        # create a model from `AE` autoencoder class
+        # load it to the specified device, either gpu or cpu
+        model = AE(
+            input_shape=input_cardinality,
+            rel=rel,
+            **run_config
+        ).to(device)
 
-    trainer = pl.Trainer(
-        limit_train_batches=1.0,
-        callbacks=[MeasurementsCallback(rel=rel)],
-        max_epochs=run_config['max_epochs']
-    )
-    trainer.fit(model, train_loader, test_loader)
-    print("current mlflow run:",mlflow.active_run().info.run_id)
-    #log_net_visualization(model,torch.zeros(run_config['batch_size'], input_cardinality))
+        trainer = pl.Trainer(
+            limit_train_batches=1.0,
+            callbacks=[MeasurementsCallback(rel=rel)],
+            max_epochs=run_config['max_epochs']
+        )
+        trainer.fit(model, train_loader, test_loader)
+        print("current mlflow run:",mlflow.active_run().info.run_id)
+        #log_net_visualization(model,torch.zeros(run_config['batch_size'], input_cardinality))
 
 if __name__ == "__main__":
     main()
