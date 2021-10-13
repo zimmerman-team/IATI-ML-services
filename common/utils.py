@@ -130,9 +130,10 @@ def str_shapes(stuff):
         return str(stuff.shape)
 
 def load_run_config(config_name):
-    directory = os.path.join(
+    directory = os.path.abspath(os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        'config/')
+        '..',
+        'config/'))
     filename = os.path.join(directory,config_name+".yaml")
     with open(filename, 'r') as f:
         ret = yaml.load(f)
