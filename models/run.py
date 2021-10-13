@@ -2,7 +2,6 @@ import mlflow
 import torch
 import pytorch_lightning as pl
 import numpy as np
-import gc
 import logging
 
 from common import utils, relspecs, persistency
@@ -10,21 +9,35 @@ from models import diagnostics, measurements as ms
 
 def make_measurements():
     ret = ms.MeasurementsCollection([
-        ms.DatapointMeasurement("x_hat"),
-        ms.DatapointMeasurement("z",diagnostics.correlation),
+        ms.DatapointMeasurement("x_hat", dst=dict(
+            output_mean_per_feature=ms.mean,
+            output_var_per_feature=ms.var,
+            output_last_epoch=ms.random_sampling
+        )),
+        ms.DatapointMeasurement("z",diagnostics.correlation, dst=dict(
+            latent_last_epoch=ms.random_sampling
+        )),
 
         ms.LastEpochMeasurement("output_last_epoch"),
         ms.LastEpochMeasurement("latent_last_epoch"),
 
         ms.BatchMeasurement('diff'),
-        ms.BatchMeasurement('diff_reduced'),
-        ms.BatchMeasurement('losses'),
-        ms.BatchMeasurement('guess_correct'),
-        ms.BatchMeasurement('latent_l1_norm'),
+        ms.BatchMeasurement('diff_reduced', dst=dict(
+            mae_per_feature=ms.mae
+        )),
+        ms.BatchMeasurement('losses', dst=dict(
+            mean_losses=ms.mean
+        )),
+        ms.BatchMeasurement('guess_correct', dst=dict(
+            mean_guess_correct=ms.mean
+        )),
+        ms.BatchMeasurement('latent_l1_norm', dst=dict(
+            mean_latent_l1_norm=ms.mean
+        )),
 
         ms.EpochMeasurement("output_mean_per_feature"),
-        ms.EpochMeasurement("output_var_per_feature",ms.var),
-        ms.EpochMeasurement("mae_per_feature",ms.mae),
+        ms.EpochMeasurement("output_var_per_feature"),
+        ms.EpochMeasurement("mae_per_feature"),
         ms.EpochMeasurement("mean_losses"),
         ms.EpochMeasurement("mean_guess_correct"),
         ms.EpochMeasurement("mean_latent_l1_norm")
@@ -39,90 +52,41 @@ class MeasurementsCallback(pl.callbacks.Callback):
     def __init__(self, *args, **kwargs):
         self.rel = kwargs.pop('rel')
         super().__init__(*args, **kwargs)
-        self._init_collected()
-
-    def _init_collected(self):
-        for collection in (
-                'x_hat',
-                'z',
-                'output_last_epoch',
-                'latent_last_epoch',
-                # indexed by batch idx:
-                'diff',
-                'diff_reduced',
-                'losses',
-                'guess_correct',
-                'latent_l1_norm',
-                # indexed by epoch:
-                'output_mean_per_feature',
-                'output_var_per_feature',
-                'mae_per_feature',
-                'mean_losses',
-                'mean_guess_correct',
-                'mean_latent_l1_norm'
-        ):
-            self.collected[collection] = {}
-            for which_tset in ('val', 'train'):
-                self.collected[collection][which_tset] = []
-
-    def _collect(self,lm,which_tset):
-        self.collected['diff_reduced'][which_tset].append(lm.diff_reduced)
-        self.collected['diff'][which_tset].append(lm.diff)
-        self.collected['x_hat'][which_tset].append(lm.x_hat)
-        self.collected['z'][which_tset].append(lm.z)
-        self.collected['losses'][which_tset].append(lm.losses)
-        self.collected['guess_correct'][which_tset].append(lm.guess_correct)
-        self.collected['latent_l1_norm'][which_tset].append(lm.latent_l1_norm)
+        self.measurements = make_measurements()
 
     def on_train_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
-        # FIXME: this is for the refactoring: self.measurements.collect(lm,utils.Tsets.TRAIN)
-        self._collect(lm, 'train')
+        self.measurements.collect(
+            lm,
+            utils.Tsets.TRAIN.value,
+            ms.BatchMeasurement
+        )
 
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
-        # FIXME: this is for the refactoring: self.measurements.collect(lm,utils.Tsets.VAL)
-        self._collect(lm, 'val')
+        self.measurements.collect(
+            lm,
+            utils.Tsets.VAL.value,
+            ms.BatchMeasurement
+        )
 
     def _epoch_end(self, which_tset, trainer, lm):
         is_last_epoch = lm.current_epoch == trainer.max_epochs - 1
         epoch_nr = lm.current_epoch
-        diff_reduced = np.vstack(self.collected['diff_reduced'][which_tset])
-        x_hats = np.vstack(self.collected['x_hat'][which_tset])
-        stacked_losses = np.vstack(self.collected['losses'][which_tset])
-        stacked_guess_correct = np.vstack(self.collected['guess_correct'][which_tset])
-        stacked_latent_l1_norm = np.vstack(self.collected['latent_l1_norm'][which_tset])
-        mae_per_feature = np.mean(np.abs(diff_reduced),axis=0)
-        output_var_per_feature = np.var(x_hats,axis=0)
-        output_mean_per_feature = np.mean(x_hats,axis=0)
-        # FIXME: this is a mean over the batch losses which are probably summed together
-        mean_losses = np.mean(stacked_losses,axis=0)
-        mean_guess_correct = np.mean(stacked_guess_correct,axis=0)
-        mean_latent_l1_norm = np.mean(stacked_latent_l1_norm,axis=0)
-        self.collected['mae_per_feature'][which_tset].append(mae_per_feature)
-        self.collected['output_var_per_feature'][which_tset].append(output_var_per_feature)
-        self.collected['output_mean_per_feature'][which_tset].append(output_mean_per_feature)
-        self.collected['mean_losses'][which_tset].append(mean_losses)
-        self.collected['mean_guess_correct'][which_tset].append(mean_guess_correct)
-        self.collected['mean_latent_l1_norm'][which_tset].append(mean_latent_l1_norm)
-        # empty the validation diffs, ready for next epoch
-        self.collected['diff_reduced'][which_tset] = []
-        self.collected['diff'][which_tset] = []
-        z = np.vstack(self.collected['z'][which_tset])
+        self.measurements.collect(
+            lm,
+            which_tset,
+            ms.EpochMeasurement
+        )
+        z = self.measurements['z'].vstack(which_tset)
 
         corr, corr_metric,mask = diagnostics.correlation(z)
         mlflow.log_metric(f"{which_tset}_latent_corr_metric",corr_metric)
         diagnostics.log_correlation_heatmap_artifact("latent",corr,corr_metric,mask,which_tset,epoch_nr)
         if is_last_epoch:
-            ar = np.arange(x_hats.shape[0])
-            rc = np.random.choice(ar,size=100)
-            output_last_epoch = x_hats[rc,:]
-            latent_last_epoch = z[rc,:]
-            self.collected['output_last_epoch'][which_tset] = output_last_epoch
-            self.collected['latent_last_epoch'][which_tset] = latent_last_epoch
-        self.collected['x_hat'][which_tset] = []
-        self.collected['z'][which_tset] = []
-        self.collected['losses'][which_tset] = []
-        self.collected['guess_correct'][which_tset] = []
-        gc.collect()
+            self.measurements.collect(
+                lm,
+                which_tset,
+                ms.LastEpochMeasurement
+            )
 
     def on_train_epoch_end(self, trainer, lm):
         self._epoch_end( 'train', trainer, lm )
@@ -142,9 +106,9 @@ class MeasurementsCallback(pl.callbacks.Callback):
                 latent_last_epoch='latent',
                 mean_latent_l1_norm='losses'
         ).items():
-            for which_tset in self.collected[collected_name]:
-                curr = self.collected[collected_name][which_tset]
-                print(collected_name,which_tset)
+            for which_tset in utils.Tsets:
+                curr = self.measurements[collected_name].data[which_tset.value]
+                print(collected_name,which_tset.value)
                 if curr is None or len(curr)==0:
                     logging.warning("f{collected_name} {which_tset} was empty")
                     continue
@@ -156,20 +120,20 @@ class MeasurementsCallback(pl.callbacks.Callback):
                     raise Exception("collected type "+str(type(curr))+" not understood")
                 utils.log_npa_artifact(
                     stacked_npa,
-                    prefix=f"{collected_name}_{which_tset}",
+                    prefix=f"{collected_name}_{which_tset.value}",
                     suffix=".bin"
                 )
                 diagnostics.log_heatmaps_artifact(
                     collected_name,
                     stacked_npa,
-                    which_tset,
+                    which_tset.value,
                     rel=self.rel,
                     type_=heatmap_type
                 )
                 diagnostics.log_barplots_artifact(
                     collected_name,
                     stacked_npa[[-1],:], # consider only last epoch
-                    which_tset,
+                    which_tset.value,
                     rel=self.rel,
                     type_=heatmap_type
                 )
@@ -225,4 +189,3 @@ def run(Model,config_name):
         trainer.fit(model, train_loader, test_loader)
         print("current mlflow run:",mlflow.active_run().info.run_id)
         #log_net_visualization(model,torch.zeros(run_config['batch_size'], input_cardinality))
-

@@ -16,6 +16,18 @@ import datetime
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class Collection(dict):
+
+    def __init__(self, *args, **kwargs):
+        if len(args) > 0:
+            l = args[0]
+            assert type(l) is list, \
+                "first argument of the collection has to be a list of elements"
+            for curr in l:
+                if curr.name in self.names:
+                    raise Exception(f"element {curr.name} already in this Collection")
+                self[curr.name] = curr
+        super().__init__(**kwargs)
+
     def __iter__(self):
         return iter(self.values())
 
@@ -147,5 +159,5 @@ def dict_to_obj(typename, d):
     return obj
 
 def strnow():
-    now = str(datetime.date.now())
+    now = str(datetime.datetime.now())
     return now

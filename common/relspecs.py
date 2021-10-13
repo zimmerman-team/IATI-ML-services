@@ -22,12 +22,6 @@ def get_codelists():
 
 class RelsCollection(utils.Collection):
 
-    def __init__(self, rels_list):
-        for rel in rels_list:
-            if rel.name in self.names:
-                raise Exception(f"rel {rel.name} already in this RelsCollection")
-            self[rel.name] = rel
-        super().__init__()
 
     @property
     def downloadable(self):
