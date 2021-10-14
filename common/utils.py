@@ -40,8 +40,8 @@ class Collection(dict):
         return self[name]
 
 class Tsets(enum.Enum):
-    VAL = 'val' # validation set
     TRAIN = 'train' # training set
+    VAL = 'val' # validation set
 
 class OneHotCrossEntropyLoss():
     def __init__(self, weight = None):
@@ -161,3 +161,19 @@ def dict_to_obj(typename, d):
 def strnow():
     now = str(datetime.datetime.now())
     return now
+
+def is_vectoriform(stuff):
+    return type(stuff) in (np.ndarray, list, tuple)
+
+def is_empty(stuff):
+    assert is_vectoriform(stuff), f"is_empty: object of type {type(stuff)} is not vectoriform"
+    if type(stuff) in (list,tuple):
+        return len(stuff) == 0
+    if type(stuff) is np.ndarray:
+        if len(stuff.shape) == 0:
+            return True
+        elif stuff.shape[0] == 0:
+            return True
+        else:
+            return False
+    raise Exception (f"is_empty: unhandled case for type {type(stuff)}")

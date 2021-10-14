@@ -58,35 +58,35 @@ class MeasurementsCallback(pl.callbacks.Callback):
         self.measurements.collect(
             lm,
             utils.Tsets.TRAIN.value,
-            ms.BatchMeasurement
+            (ms.DatapointMeasurement,
+             ms.BatchMeasurement)
         )
 
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
         self.measurements.collect(
             lm,
             utils.Tsets.VAL.value,
-            ms.BatchMeasurement
+            (ms.DatapointMeasurement,
+             ms.BatchMeasurement)
         )
 
     def _epoch_end(self, which_tset, trainer, lm):
         is_last_epoch = lm.current_epoch == trainer.max_epochs - 1
         epoch_nr = lm.current_epoch
+
+        measurements_types = [ms.EpochMeasurement]
+        if is_last_epoch:
+            measurements_types.append(ms.LastEpochMeasurement)
         self.measurements.collect(
             lm,
             which_tset,
-            ms.EpochMeasurement
+            measurements_types
         )
         z = self.measurements['z'].vstack(which_tset)
 
         corr, corr_metric,mask = diagnostics.correlation(z)
         mlflow.log_metric(f"{which_tset}_latent_corr_metric",corr_metric)
         diagnostics.log_correlation_heatmap_artifact("latent",corr,corr_metric,mask,which_tset,epoch_nr)
-        if is_last_epoch:
-            self.measurements.collect(
-                lm,
-                which_tset,
-                ms.LastEpochMeasurement
-            )
 
     def on_train_epoch_end(self, trainer, lm):
         self._epoch_end( 'train', trainer, lm )
@@ -96,7 +96,8 @@ class MeasurementsCallback(pl.callbacks.Callback):
 
     def teardown(self, trainer, lm, stage=None):
         print("teardown stage", stage)
-        for collected_name, heatmap_type in dict(
+        self.measurements.print_debug_info()
+        for collected_name, heatmap_type in dict( # FIXME refactor
                 mae_per_feature='fields',
                 output_var_per_feature='fields',
                 output_mean_per_feature='fields',
@@ -187,5 +188,5 @@ def run(Model,config_name):
             max_epochs=run_config['max_epochs']
         )
         trainer.fit(model, train_loader, test_loader)
-        print("current mlflow run:",mlflow.active_run().info.run_id)
+        print("current mlflow run:",mlflow.active_run().info.run_id, " - all done.")
         #log_net_visualization(model,torch.zeros(run_config['batch_size'], input_cardinality))

@@ -12,24 +12,28 @@ class MeasurementsCollection(utils.Collection):
     def collect(self, lm, which_tset, of_type):
         # measurements that have been utilized in the aggregations
         utilized = set()
-        for curr in self.all_of_type(of_type):
-            src = self.src(curr.name)
-            if len(src) == 0:
-                # look for source in the Lightning Model
-                curr.add_from_lm(lm, which_tset)
-            else:
-                for name, aggregation_fn in src.items():
-                    # aggregate the specified source measurements
-                    tmp = self[name].aggregate(which_tset, aggregation_fn)
-                    utilized.add(self[name])
-                    curr.add(tmp, which_tset)
+        if type(of_type) is not tuple:
+            of_type = (of_type,)
+        for curr_of_type in of_type:
+            for curr in self.all_of_type(curr_of_type):
+                src = self.src(curr.name)
+                if len(src) == 0:
+                    # look for source in the Lightning Model
+                    curr.add_from_lm(lm, which_tset)
+                else:
+                    for name, aggregation_fn in src.items():
+                        # aggregate the specified source measurements
+                        print(f"aggregating {name}->{curr.name} with {aggregation_fn}..")
+                        tmp = self[name].aggregate(which_tset, aggregation_fn)
+                        curr.add(tmp, which_tset)
+                        utilized.add(self[name])
 
         # empty all the measurements that have been utilized in this moment
         # example: at each epoch empty the measurements that were collected
         #          in every batch
         # possible FIXME: an event-based system?
         for curr in utilized:
-            curr.clear()
+            curr.clear(which_tset)
         gc.collect()
 
     def all_of_type(self,of_type):
@@ -46,6 +50,16 @@ class MeasurementsCollection(utils.Collection):
                 if of_type is None or type(curr) is of_type:
                     ret[curr.name] = curr.dst[name]
         return ret
+
+    def print_debug_info(self):
+        print("Measurements counts:")
+        for curr in self:
+            print(f"\t{curr.name}: ",end='')
+            curr.print_counts()
+            if curr.dst:
+                for currdst in curr.dst:
+                    print(f"\t\t-> {currdst}: ",end='')
+                    self[currdst].print_counts()
 
 def mae(data):
     return np.mean(np.abs(data),axis=0)
@@ -75,16 +89,25 @@ class Measurement(object):
         else:
             self.aggregation_fn = aggregation_fn
         self._dst = dst
-        self.clear()
+        for which_tset in utils.Tsets:
+            self.clear(which_tset.value)
 
-    def clear(self):
-        for tset in utils.Tsets:
-            self.data[tset.value] = []
+    def clear(self,which_tset):
+        print(f"clearing {self.name} {which_tset}..")
+        self.data[which_tset] = []
 
     def set(self, which_tset, data):
         self.data[which_tset] = data
 
     def add(self, chunk, which_tset):
+        if type(chunk) is np.ndarray:
+            chunk_size = chunk.shape
+        elif type(chunk) is list:
+            chunk_size = len(chunk)
+        else:
+            chunk_size = f"??{type(chunk)}"
+
+        print(f"{self} {which_tset} added with chunk {chunk_size}")
         self.data[which_tset].append(chunk)
 
     def add_from_lm(self, lm, which_tset):
@@ -106,12 +129,39 @@ class Measurement(object):
     def dst(self):
         return self._dst
 
+    def __str__(self):
+        return f"<Measurement {self.name}>"
+
     def aggregate(self, which_tset, aggregation_fn):
         stacked = self.vstack(which_tset)
-        return aggregation_fn(stacked)
+        print(f"{self} aggregating with {aggregation_fn} on {which_tset} (shape {stacked.shape})..")
+        ret = aggregation_fn(stacked)
+        print(f"done aggregating; the result has shape {ret.shape}.")
+        return ret
 
     def aggregation(self, which_tset):
         return self.aggregate(which_tset, self.aggregation_fn)
+
+    def count(self, which_tset):
+        return len(self.data[which_tset])
+
+    def _recursive_counts_str(self, stuff):
+        if not utils.is_vectoriform(stuff):
+            return "_"
+        elif utils.is_empty(stuff):
+            return "[]"
+        else:
+            c = len(stuff)
+            rec = self._recursive_counts_str(stuff[0])
+            tmp = f"{c}/{rec}"
+            return tmp
+
+    def print_counts(self):
+        for which_tset in utils.Tsets:
+            d = self.data[which_tset.value]
+            tmp = self._recursive_counts_str(d)
+            print(which_tset.value + ":" + tmp+" ", end='')
+        print(".")
 
 class DatapointMeasurement(Measurement):
     """

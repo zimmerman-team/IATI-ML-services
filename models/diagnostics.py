@@ -116,6 +116,7 @@ def correlation_heatmap(corr, corr_metric, mask, epoch_nr):
     return fig
 
 def log_heatmaps_artifact(name, npa, which_tset,rel=None, type_=None):
+    print(f"log_heatmaps_artifact name:{name} npa.shape="+str(npa.shape))
     fig = heatmaps(npa, rel=rel, type_=type_)
     filename = tempfile.mktemp(prefix=f"heatmaps_{name}_{type_}_{which_tset}",suffix=".png")
     fig.savefig(filename)
