@@ -20,20 +20,24 @@ utils.set_np_printoptions()
 
 class ItemAE(pl.LightningModule):
 
+    def depth_range(self):
+        return range(self.kwargs["depth"]-2)
+
     def __init__(self, **kwargs):
         self.rel = kwargs.pop('rel',None)
+        self.kwargs = kwargs
         super().__init__()
         self.encoder_input_layer = torch.nn.Linear(
             in_features=kwargs["input_shape"],
             out_features=kwargs["layers_width"]
         )
-        self.encoder_hidden_layers = [
-            torch.nn.Linear(
-                in_features=kwargs["layers_width"],
-                out_features=kwargs["layers_width"]
-            )
-            for x in range(kwargs["depth"]-2)
-        ]
+
+        for i in self.depth_range():
+            setattr(self, f'encoder_hidden_layer_{i}',
+                torch.nn.Linear(
+                    in_features=kwargs["layers_width"],
+                    out_features=kwargs["layers_width"]
+                ))
         self.encoder_output_layer = torch.nn.Linear(
             in_features=kwargs["layers_width"],
             out_features=kwargs["bottleneck_width"]
@@ -42,14 +46,14 @@ class ItemAE(pl.LightningModule):
             in_features=kwargs["bottleneck_width"],
             out_features=kwargs["layers_width"]
         )
-        self.decoder_hidden_layers = [
-            torch.nn.Linear(
-                in_features=kwargs["layers_width"],
-                out_features=kwargs["layers_width"]
-            )
-            for x in range(kwargs["depth"]-2)
-        ]
-        self.activation_function = getattr(torch.nn, kwargs["activation_function"])()
+
+        for i in self.depth_range():
+            setattr(self, f'decoder_hidden_layer_{i}',
+                    torch.nn.Linear(
+                        in_features=kwargs["layers_width"],
+                        out_features=kwargs["layers_width"]
+                    ))
+        self.activation_function = getattr(torch.nn, kwargs["activation_function"])
         if kwargs['divide_output_layer']:
             # instead of considering the output as a single homogeneous vector
             # its dimensionality is divided in many output layers, each belonging
@@ -80,23 +84,23 @@ class ItemAE(pl.LightningModule):
                 )
             ]
 
-        self.kwargs = kwargs
-
     def encoder(self, features):
         activation = self.encoder_input_layer(features)
-        activation = self.activation_function(activation)
-        for curr in self.encoder_hidden_layers:
+        activation = self.activation_function()(activation)
+        for i in self.depth_range():
+            curr = getattr(self,f'encoder_hidden_layer_{i}')
             activation = curr(activation)
-            activation = self.activation_function(activation)
+            activation = self.activation_function()(activation)
         code = self.encoder_output_layer(activation)
         return code
 
     def decoder(self, code):
         activation = self.decoder_input_layer(code)
-        activation = self.activation_function(activation)
-        for curr in self.decoder_hidden_layers:
+        activation = self.activation_function()(activation)
+        for i in self.depth_range():
+            curr = getattr(self,f'decoder_hidden_layer_{i}')
             activation = curr(activation)
-            activation = self.activation_function(activation)
+            activation = self.activation_function()(activation)
         reconstructed = []
         for curr in self.decoder_output_layers:
             activation_out = curr["layer"](activation)
