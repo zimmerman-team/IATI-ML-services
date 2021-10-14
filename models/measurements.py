@@ -6,7 +6,7 @@ import logging
 
 def log(*args):
     strs = map(str,args)
-    msg = " ".join(strs)
+    msg = "measurements:"+" ".join(strs)
     logging.debug(msg)
 
 class PlotType(enum.Enum):
@@ -18,13 +18,15 @@ class MeasurementsCollection(utils.Collection):
     def collect(self, lm, which_tset, of_type):
         # measurements that have been utilized in the aggregations
         utilized = set()
-        if type(of_type) is not tuple:
+        if type(of_type) not in (tuple,list):
             of_type = (of_type,)
         for curr_of_type in of_type:
+            log(f"collect: now considering type {curr_of_type} among {of_type}")
             for curr in self.all_of_type(curr_of_type):
                 src = self.src(curr.name)
+                log(f"processing {curr} - its src is {src}")
                 if len(src) == 0:
-                    # look for source in the Lightning Model
+                    log(f"look for data origin for {curr.name} in the Lightning Model")
                     curr.add_from_lm(lm, which_tset)
                 else:
                     for name, aggregation_fn in src.items():
@@ -38,6 +40,7 @@ class MeasurementsCollection(utils.Collection):
         # example: at each epoch empty the measurements that were collected
         #          in every batch
         # possible FIXME: an event-based system?
+        log(f"now clearing {utilized}")
         for curr in utilized:
             curr.clear(which_tset)
         gc.collect()
