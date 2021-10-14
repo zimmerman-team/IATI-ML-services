@@ -19,9 +19,6 @@ def make_measurements():
             latent_last_epoch=ms.random_sampling
         )),
 
-        ms.LastEpochMeasurement("output_last_epoch"),
-        ms.LastEpochMeasurement("latent_last_epoch"),
-
         ms.BatchMeasurement('diff'),
         ms.BatchMeasurement('diff_reduced', dst=dict(
             mae_per_feature=ms.mae
@@ -36,12 +33,16 @@ def make_measurements():
             mean_latent_l1_norm=ms.mean
         )),
 
-        ms.EpochMeasurement("output_mean_per_feature"),
-        ms.EpochMeasurement("output_var_per_feature"),
-        ms.EpochMeasurement("mae_per_feature"),
-        ms.EpochMeasurement("mean_losses"),
-        ms.EpochMeasurement("mean_guess_correct"),
-        ms.EpochMeasurement("mean_latent_l1_norm")
+        ms.EpochMeasurement("output_mean_per_feature", plot_type='fields'),
+        ms.EpochMeasurement("output_var_per_feature", plot_type='fields'),
+        ms.EpochMeasurement("mae_per_feature", plot_type='fields'),
+        ms.EpochMeasurement("mean_losses", plot_type='losses'),
+        ms.EpochMeasurement("mean_guess_correct", plot_type='losses'),
+        ms.EpochMeasurement("mean_latent_l1_norm", plot_type='losses'),
+
+        ms.LastEpochMeasurement("output_last_epoch", plot_type='fields'),
+        ms.LastEpochMeasurement("latent_last_epoch", plot_type='latent'),
+
     ])
     return ret
 
@@ -98,46 +99,31 @@ class MeasurementsCallback(pl.callbacks.Callback):
     def teardown(self, trainer, lm, stage=None):
         print("teardown stage", stage)
         self.measurements.print_debug_info()
-        for collected_name, heatmap_type in dict( # FIXME refactor
-                mae_per_feature='fields',
-                output_var_per_feature='fields',
-                output_mean_per_feature='fields',
-                mean_losses='losses',
-                mean_guess_correct='losses',
-                output_last_epoch='fields',
-                latent_last_epoch='latent',
-                mean_latent_l1_norm='losses'
-        ).items():
+        for m in self.measurements.plottable:
             for which_tset in utils.Tsets:
-                curr = self.measurements[collected_name].data[which_tset.value]
-                print(collected_name,which_tset.value)
-                if curr is None or len(curr)==0:
-                    logging.warning(f"{collected_name} {which_tset} was empty")
+                stacked_npa = m.vstack(which_tset.value)
+                print(m.name,which_tset.value)
+                if len(stacked_npa)==0:
+                    logging.warning(f"{m.name} {which_tset} was empty")
                     continue
-                if type(curr) is list:
-                    stacked_npa = np.vstack(curr)
-                elif type(curr) is np.ndarray:
-                    stacked_npa = curr
-                else:
-                    raise Exception(f"collected type {type(curr)} not understood")
                 utils.log_npa_artifact(
                     stacked_npa,
-                    prefix=f"{collected_name}_{which_tset.value}",
+                    prefix=f"{m.name}_{which_tset.value}",
                     suffix=".bin"
                 )
                 diagnostics.log_heatmaps_artifact(
-                    collected_name,
+                    m.name,
                     stacked_npa,
                     which_tset.value,
                     rel=self.rel,
-                    type_=heatmap_type
+                    type_=m.plot_type
                 )
                 diagnostics.log_barplots_artifact(
-                    collected_name,
+                    m.name,
                     stacked_npa[[-1],:], # consider only last epoch
                     which_tset.value,
                     rel=self.rel,
-                    type_=heatmap_type
+                    type_=m.plot_type
                 )
 
 def run(Model,config_name):

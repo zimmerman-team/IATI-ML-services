@@ -70,6 +70,14 @@ class MeasurementsCollection(utils.Collection):
                     print(f"\t\t-> {currdst}: ",end='')
                     self[currdst].print_counts()
 
+    @property
+    def plottable(self):
+        ret = []
+        for curr in self:
+            if curr.plot_type is not None:
+                ret.append(curr)
+        return ret
+
 def mae(data):
     return np.mean(np.abs(data),axis=0)
 
@@ -90,9 +98,12 @@ class Measurement(object):
             self,
             name,
             aggregation_fn=None,
-            dst=None):
+            dst=None,
+            plot_type=None
+    ):
         self.name = name
         self.data = dict()
+        self.plot_type = plot_type
         if aggregation_fn is None:
             self.aggregation_fn = mean
         else:
