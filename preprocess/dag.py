@@ -174,7 +174,7 @@ def to_npa(rel,ti):
 
     coll_out.insert_one({
         'rel':rel.name,
-        'creation_date': utils.strnow(),
+        'creation_date': utils.strnow_iso(),
         'npa':utils.serialize(rel_npa),
         'npa_rows': rel_npa.shape[0],
         'npa_cols': rel_npa.shape[1]
@@ -203,7 +203,7 @@ def to_tsets(rel,ti):
     test_npa = np.vstack(test_npas)
     coll_out.insert_one({
         'rel':rel.name,
-        'creation_time': utils.strnow(),
+        'creation_time': utils.strnow_iso(),
         'train_npa':utils.serialize(train_npa),
         'test_npa': utils.serialize(test_npa),
         'train_npa_rows':train_npa.shape[0],

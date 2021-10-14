@@ -3,6 +3,7 @@ import torch
 import pytorch_lightning as pl
 import numpy as np
 import logging
+import os
 
 from common import utils, relspecs, persistency
 from models import diagnostics, measurements as ms
@@ -111,14 +112,14 @@ class MeasurementsCallback(pl.callbacks.Callback):
                 curr = self.measurements[collected_name].data[which_tset.value]
                 print(collected_name,which_tset.value)
                 if curr is None or len(curr)==0:
-                    logging.warning("f{collected_name} {which_tset} was empty")
+                    logging.warning(f"{collected_name} {which_tset} was empty")
                     continue
                 if type(curr) is list:
                     stacked_npa = np.vstack(curr)
                 elif type(curr) is np.ndarray:
                     stacked_npa = curr
                 else:
-                    raise Exception("collected type "+str(type(curr))+" not understood")
+                    raise Exception(f"collected type {type(curr)} not understood")
                 utils.log_npa_artifact(
                     stacked_npa,
                     prefix=f"{collected_name}_{which_tset.value}",
@@ -140,6 +141,8 @@ class MeasurementsCallback(pl.callbacks.Callback):
                 )
 
 def run(Model,config_name):
+    log_filename = os.path.join("logs",utils.strnow_compact()+'.log')
+    logging.basicConfig(filename=log_filename, filemode='w', level=logging.DEBUG)
     run_config = utils.load_run_config(config_name)
     mlflow.set_experiment(run_config['experiment_name'])
     mlflow.pytorch.autolog()

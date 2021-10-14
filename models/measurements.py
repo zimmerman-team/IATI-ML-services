@@ -2,6 +2,12 @@ from common import utils
 import numpy as np
 import enum
 import gc
+import logging
+
+def log(*args):
+    strs = map(str,args)
+    msg = " ".join(strs)
+    logging.debug(msg)
 
 class PlotType(enum.Enum):
     FIELDS = 'fields'
@@ -23,7 +29,7 @@ class MeasurementsCollection(utils.Collection):
                 else:
                     for name, aggregation_fn in src.items():
                         # aggregate the specified source measurements
-                        print(f"aggregating {name}->{curr.name} with {aggregation_fn}..")
+                        log(f"aggregating {name}->{curr.name} with {aggregation_fn}..")
                         tmp = self[name].aggregate(which_tset, aggregation_fn)
                         curr.add(tmp, which_tset)
                         utilized.add(self[name])
@@ -93,7 +99,7 @@ class Measurement(object):
             self.clear(which_tset.value)
 
     def clear(self,which_tset):
-        print(f"clearing {self.name} {which_tset}..")
+        log(f"clearing {self.name} {which_tset}..")
         self.data[which_tset] = []
 
     def set(self, which_tset, data):
@@ -107,7 +113,7 @@ class Measurement(object):
         else:
             chunk_size = f"??{type(chunk)}"
 
-        print(f"{self} {which_tset} added with chunk {chunk_size}")
+        log(f"{self} {which_tset} added with chunk {chunk_size}")
         self.data[which_tset].append(chunk)
 
     def add_from_lm(self, lm, which_tset):
@@ -130,13 +136,14 @@ class Measurement(object):
         return self._dst
 
     def __str__(self):
+        # FIXME: maybe add the dimension sizes over here?
         return f"<Measurement {self.name}>"
 
     def aggregate(self, which_tset, aggregation_fn):
         stacked = self.vstack(which_tset)
-        print(f"{self} aggregating with {aggregation_fn} on {which_tset} (shape {stacked.shape})..")
+        log(f"{self} aggregating with {aggregation_fn} on {which_tset} (shape {stacked.shape})..")
         ret = aggregation_fn(stacked)
-        print(f"done aggregating; the result has shape {ret.shape}.")
+        log(f"done aggregating; the result has shape {ret.shape}.")
         return ret
 
     def aggregation(self, which_tset):

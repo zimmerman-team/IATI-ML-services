@@ -4,7 +4,7 @@ bottleneck_width: 2
 activation_function: "ELU"
 depth: 2
 weight_decay: 1.0e-4
-max_epochs: 3
+max_epochs: 2
 rel_name: 'budget'
 batch_size: 1024
 divide_output_layer: True

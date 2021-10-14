@@ -142,11 +142,16 @@ def str_shapes(stuff):
         return str(stuff.shape)
 
 def load_run_config(config_name):
-    directory = os.path.abspath(os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        '..',
-        'config/'))
-    filename = os.path.join(directory,config_name+".yaml")
+    if os.path.exists(config_name):
+        # a filename is given
+        filename = config_name
+    else:
+        # config name, then resolved to a filename is given
+        directory = os.path.abspath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            '..',
+            'config/'))
+        filename = os.path.join(directory,config_name+".yaml")
     with open(filename, 'r') as f:
         ret = yaml.load(f)
     ret['config_name'] = config_name
@@ -158,9 +163,12 @@ def dict_to_obj(typename, d):
     obj = T(d)
     return obj
 
-def strnow():
+def strnow_iso():
     now = str(datetime.datetime.now())
     return now
+
+def strnow_compact():
+    return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 def is_vectoriform(stuff):
     return type(stuff) in (np.ndarray, list, tuple)
