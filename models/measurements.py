@@ -3,6 +3,7 @@ import numpy as np
 import enum
 import gc
 import logging
+import mlflow
 
 def log(*args):
     strs = map(str,args)
@@ -99,11 +100,13 @@ class Measurement(object):
             name,
             aggregation_fn=None,
             dst=None,
-            plot_type=None
+            plot_type=None,
+            mlflow_log=False
     ):
         self.name = name
         self.data = dict()
         self.plot_type = plot_type
+        self.mlflow_log = mlflow_log
         if aggregation_fn is None:
             self.aggregation_fn = mean
         else:
@@ -126,7 +129,9 @@ class Measurement(object):
             chunk_size = len(chunk)
         else:
             chunk_size = f"??{type(chunk)}"
-
+        if self.mlflow_log:
+            mean = np.mean(np.array(chunk))
+            mlflow.log_metric(self.name,mean)
         log(f"{self} {which_tset} added with chunk {chunk_size}")
         self.data[which_tset].append(chunk)
 

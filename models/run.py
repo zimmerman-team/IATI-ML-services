@@ -38,7 +38,7 @@ def make_measurements():
         ms.EpochMeasurement("mae_per_feature", plot_type='fields'),
         ms.EpochMeasurement("mean_losses", plot_type='losses'),
         ms.EpochMeasurement("mean_guess_correct", plot_type='losses'),
-        ms.EpochMeasurement("mean_latent_l1_norm", plot_type='losses'),
+        ms.EpochMeasurement("mean_latent_l1_norm", plot_type='losses', mlflow_log=True),
 
         ms.LastEpochMeasurement("output_last_epoch", plot_type='fields'),
         ms.LastEpochMeasurement("latent_last_epoch", plot_type='latent'),
