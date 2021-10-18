@@ -129,14 +129,14 @@ class MeasurementsCallback(pl.callbacks.Callback):
 def run(Model,config_name):
     log_filename = os.path.join("logs",utils.strnow_compact()+'.log')
     logging.basicConfig(filename=log_filename, filemode='w', level=logging.DEBUG)
-    run_config = utils.load_run_config(config_name)
-    mlflow.set_experiment(run_config['experiment_name'])
+    model_config = utils.load_model_config(config_name)
+    mlflow.set_experiment(model_config['experiment_name'])
     mlflow.pytorch.autolog()
-    with mlflow.start_run(run_name=run_config['config_name']):
-        mlflow.log_params(run_config)
+    with mlflow.start_run(run_name=model_config['config_name']):
+        mlflow.log_params(model_config)
         mlflow.log_artifact(__file__)
-        mlflow.log_artifact(run_config['config_filename'])
-        rel = relspecs.rels[run_config['rel_name']]
+        mlflow.log_artifact(model_config['config_filename'])
+        rel = relspecs.rels[model_config['rel_name']]
 
         # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
         tsets = persistency.load_tsets(rel,with_set_index=False)
@@ -147,7 +147,7 @@ def run(Model,config_name):
 
         train_loader = torch.utils.data.DataLoader(
             tsets.train_scaled,
-            batch_size=run_config['batch_size'],
+            batch_size=model_config['batch_size'],
             shuffle=True,
             num_workers=4,
             pin_memory=False
@@ -155,7 +155,7 @@ def run(Model,config_name):
 
         test_loader = torch.utils.data.DataLoader(
             tsets.test_scaled,
-            batch_size=run_config['batch_size'],
+            batch_size=model_config['batch_size'],
             shuffle=False,
             num_workers=4
         )
@@ -168,14 +168,14 @@ def run(Model,config_name):
         model = Model(
             input_shape=input_cardinality,
             rel=rel,
-            **run_config
+            **model_config
         ).to(device)
 
         trainer = pl.Trainer(
             limit_train_batches=1.0,
             callbacks=[MeasurementsCallback(rel=rel)],
-            max_epochs=run_config['max_epochs']
+            max_epochs=model_config['max_epochs']
         )
         trainer.fit(model, train_loader, test_loader)
         print("current mlflow run:",mlflow.active_run().info.run_id, " - all done.")
-        #log_net_visualization(model,torch.zeros(run_config['batch_size'], input_cardinality))
+        #log_net_visualization(model,torch.zeros(model_config['batch_size'], input_cardinality))
