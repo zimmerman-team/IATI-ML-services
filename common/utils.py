@@ -141,7 +141,7 @@ def str_shapes(stuff):
     else:
         return str(stuff.shape)
 
-def load_run_config(config_name):
+def load_model_config(config_name):
     if os.path.exists(config_name):
         # a filename is given
         filename = config_name
@@ -150,7 +150,7 @@ def load_run_config(config_name):
         directory = os.path.abspath(os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             '..',
-            'config/'))
+            'model_config/'))
         filename = os.path.join(directory,config_name+".yaml")
     with open(filename, 'r') as f:
         ret = yaml.load(f)

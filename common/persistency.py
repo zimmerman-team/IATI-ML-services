@@ -1,17 +1,15 @@
 import functools
 import numpy as np
-
-from common import tsets
-from common import utils
-
 import pymongo
 import gridfs
 
-MONGODB_CONN="mongodb://mongouser:XGkS1wDyb4922@localhost:27017/learning_sets"
+from common import config
+from common import tsets
+from common import utils
 
 @functools.cache
 def mongo_db():
-    client = pymongo.MongoClient(MONGODB_CONN)
+    client = pymongo.MongoClient(config.mongo_uri())
     db = client['learning_sets']
     return db
 
@@ -22,7 +20,7 @@ def gridfs_instance():
     return gf
 
 def load_tsets_document(rel):
-    client = pymongo.MongoClient(MONGODB_CONN)
+    client = pymongo.MongoClient(config.mongo_uri())
     db = client['learning_sets']
     coll = db['npas_tsets']
     document = coll.find({'rel': rel.name}).sort('_id', pymongo.DESCENDING).limit(1)[0]
