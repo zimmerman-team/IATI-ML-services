@@ -71,7 +71,7 @@ def serialize(npa):
     return Binary(zlib.compress(pickle.dumps(npa, protocol=2)))
 
 def deserialize(buf):
-    return pickle.loads(zlib.decompress(buf))
+    return pickle.loads(zlib.decompress(buf)).astype(np.float32)
 
 def set_np_printoptions():
     np.set_printoptions(

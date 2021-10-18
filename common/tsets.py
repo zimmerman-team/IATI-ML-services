@@ -1,6 +1,7 @@
 import numpy as np
 
 from common import utils
+from common import persistency
 
 class Tsets(utils.Collection):
     tsets_names = ('train', 'test')
@@ -15,11 +16,11 @@ class Tsets(utils.Collection):
         for curr in self.tsets_names:
 
             # FIXME: maybe make a Tset object so I can get rid of these underscores
-            npa_fieldname = curr+"_npa"
+            gridfs_filename = f"{rel.name}_{curr}"
 
-            buf = kwargs.get(npa_fieldname,None)
+            buf = persistency.load_npa(filename=gridfs_filename)
             if buf is not None:
-                self[curr] = self._deserialize(buf)
+                self[curr] = buf
                 if self.with_set_index is False:
                     self[curr] = self[curr][:,1:]
                 sections = rel.divide(
@@ -32,10 +33,7 @@ class Tsets(utils.Collection):
 
                 self[curr+"_scaled"] = self._scale(sections)
             else:
-                raise Exception(f"Didn't find {npa_fieldname}")
-
-    def _deserialize(self, buf):
-        return utils.deserialize(buf).astype(np.float32)
+                raise Exception(f"Didn't find {gridfs_filename}")
 
     def _make_and_fit_scalers(self,sections):
         for field, section in zip(self.rel.fields, sections):
