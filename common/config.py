@@ -8,6 +8,9 @@ conf_dict = None # will be filled by load()
 def mongo_uri():
     return f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_db}"
 
+def vm_uri():
+    return f"{vm_user}@{vm_host}"
+
 def populate():
     """
     populates the attributes of the config module with the config elements
