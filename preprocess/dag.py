@@ -175,7 +175,7 @@ def to_npa(rel,ti):
     coll_out.insert_one({
         'rel':rel.name,
         'creation_date': utils.strnow_iso(),
-        'npa':utils.serialize(rel_npa),
+        'npa_file_id':persistency.save_npa(f"{rel.name}",rel_npa),
         'npa_rows': rel_npa.shape[0],
         'npa_cols': rel_npa.shape[1]
     })
@@ -204,8 +204,8 @@ def to_tsets(rel,ti):
     coll_out.insert_one({
         'rel':rel.name,
         'creation_time': utils.strnow_iso(),
-        'train_npa':utils.serialize(train_npa),
-        'test_npa': utils.serialize(test_npa),
+        'train_npa_file_id':persistency.save_npa(f"{rel.name}_train",train_npa),
+        'test_npa_file_id': persistency.save_npa(f"{rel.name}_test",test_npa),
         'train_npa_rows':train_npa.shape[0],
         'train_npa_cols':train_npa.shape[1],
         'test_npa_rows':test_npa.shape[0],
