@@ -214,7 +214,8 @@ def to_tsets(rel,ti):
 
 default_args = {
     'retries':2,
-    'retry_delay':datetime.timedelta(minutes=1)
+    'retry_delay':datetime.timedelta(minutes=1),
+    'schedule_interval':None
 }
 
 with DAG(
