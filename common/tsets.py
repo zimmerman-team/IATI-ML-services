@@ -1,17 +1,17 @@
-import numpy as np
-
 from common import utils
 from common import persistency
 
+
 class Tsets(utils.Collection):
     tsets_names = ('train', 'test')
+
     def __init__(
             self,
             rel,
             **kwargs
     ):
         self.rel = rel
-        kwargs.update(dict.fromkeys(self.tsets_names,None))
+        kwargs.update(dict.fromkeys(self.tsets_names, None))
         super().__init__(**kwargs)
         for curr in self.tsets_names:
 
@@ -22,12 +22,12 @@ class Tsets(utils.Collection):
             if buf is not None:
                 self[curr] = buf
                 if self.with_set_index is False:
-                    self[curr] = self[curr][:,1:]
+                    self[curr] = self[curr][:, 1:]
                 sections = rel.divide(
                     self[curr],
                     with_set_index=self.with_set_index
                 )
-                self[curr+"_sections"] = sections # FIXME: needed to keep this?
+                self[curr+"_sections"] = sections  # FIXME: needed to keep this?
                 if curr == 'train':
                     self._make_and_fit_scalers(sections)
 
@@ -35,16 +35,14 @@ class Tsets(utils.Collection):
             else:
                 raise Exception(f"Didn't find {gridfs_filename}")
 
-    def _make_and_fit_scalers(self,sections):
+    def _make_and_fit_scalers(self, sections):
         for field, section in zip(self.rel.fields, sections):
             field.make_and_fit_scaler(section)
 
-    def _scale(self,sections):
+    def _scale(self, sections):
         scaled = []
         for field, section in zip(self.rel.fields, sections):
             section_scaled = field.scaler.transform(section)
             scaled.append(section_scaled)
         ret = self.rel.glue(scaled)
         return ret
-
-

@@ -7,10 +7,10 @@ import functools
 import sklearn.preprocessing
 import torch.nn
 
-from common  import persistency
+from common import persistency
 from common import utils
-import config
 from models import text_model
+
 
 @functools.cache
 def get_codelists():
@@ -20,8 +20,8 @@ def get_codelists():
         ret[curr['name']] = curr['codelist']
     return ret
 
-class RelsCollection(utils.Collection):
 
+class RelsCollection(utils.Collection):
 
     @property
     def downloadable(self):
@@ -43,6 +43,7 @@ class RelsCollection(utils.Collection):
         ]
         return ret
 
+
 class Rel(object):
     def __init__(self, name, fields, download=False):
         self.name = name
@@ -55,7 +56,7 @@ class Rel(object):
             ret.append(tensor[:, start:end])
         return ret
 
-    def glue(self, tensor_list): # FIXME: maybe to some other module?
+    def glue(self, tensor_list):  # FIXME: maybe to some other module?
         if type(tensor_list) is list:
             assert len(tensor_list) > 0
             first = tensor_list[0]
@@ -72,7 +73,7 @@ class Rel(object):
 
     @property
     def scalers(self):
-        return [ curr.scaler for curr in self.fields]
+        return [curr.scaler for curr in self.fields]
 
     @property
     def n_fields(self):
@@ -84,7 +85,7 @@ class Rel(object):
 
     @property
     def fields_names(self):
-        return [ f.name for f in self.fields ]
+        return [f.name for f in self.fields]
 
     @property
     def prefixed_fields_names(self):
@@ -94,15 +95,15 @@ class Rel(object):
             in self.fields_names
         ]
 
-    def fields_intervals(self,with_set_index=False):
+    def fields_intervals(self, with_set_index=False):
         start = 0
         intervals = []
         if with_set_index:
-            intervals.append((0,1))
-            start=1
+            intervals.append((0, 1))
+            start = 1
         for field in self.fields:
             end = start + field.n_features
-            intervals.append((start,end))
+            intervals.append((start, end))
             start = end
         return intervals
 
@@ -113,6 +114,7 @@ class Rel(object):
             if type(field) is CategoryField:
                 ret.append(field.codelist_name)
         return ret
+
 
 class AbstractField(abc.ABC):
     def __init__(
@@ -154,12 +156,13 @@ class AbstractField(abc.ABC):
         self._scaler.fit(data)
         return self._scaler
 
+
 class DatetimeField(AbstractField):
 
     def encode(self, entries, set_size, **kwargs):
         ret = []
         for entry in entries:
-            entry = re.match('(.*)Z', entry).groups()[0] # python's datetime does not parse the final 'Z'
+            entry = re.match('(.*)Z', entry).groups()[0]  # python's datetime does not parse the final 'Z'
             dt = datetime.datetime.fromisoformat(entry)
             t = tuple(dt.timetuple())
             ret.append(t)
@@ -172,17 +175,18 @@ class DatetimeField(AbstractField):
 
     def guess_correct(self, x_hat, x):
         # using only the first 3 values of the timetuple as they refer to Y/M/D
-        x_hat_descaled = self.scaler.inverse_transform(x_hat)[:,:3]
-        x_descaled = self.scaler.inverse_transform(x)[:,:3]
+        x_hat_descaled = self.scaler.inverse_transform(x_hat)[:, :3]
+        x_descaled = self.scaler.inverse_transform(x)[:, :3]
 
-        #FIXME: justify why norm < 0.5
-        correct_ones = np.linalg.norm(x_hat_descaled - x_descaled,axis=1) < 0.5
+        # FIXME: justify why norm < 0.5
+        correct_ones = np.linalg.norm(x_hat_descaled - x_descaled, axis=1) < 0.5
         correct_ratio = np.mean(correct_ones)
         return correct_ratio
 
     @property
     def n_features(self):
-        return 9 # 9 is the cardinality of the timetuple
+        return 9  # 9 is the cardinality of the timetuple
+
 
 class CategoryField(AbstractField):
     def __init__(self, name, codelist_name, **kwargs):
@@ -200,11 +204,10 @@ class CategoryField(AbstractField):
                 siz = len(self.codelist)
                 weight = np.ones(siz)/siz
                 weight[prevent_constant_prediction_idx] /= 10
-                print('foo',weight[prevent_constant_prediction_idx])
+                print('foo', weight[prevent_constant_prediction_idx])
             else:
                 weight = None
             kwargs['loss_function'] = utils.OneHotCrossEntropyLoss(weight=weight)
-
 
     @property
     def codelist(self):
@@ -212,7 +215,7 @@ class CategoryField(AbstractField):
         return ret
 
     def encode(self, entries, set_size, **kwargs):
-        ret = np.zeros((set_size,len(self.codelist)))
+        ret = np.zeros((set_size, len(self.codelist)))
         for index_code, code in enumerate(entries):
             if code is None:
                 raise Exception("code is None: this shouldn't happen")
@@ -245,6 +248,7 @@ class CategoryField(AbstractField):
     def make_scaler(self):
         return utils.IdentityTransformer()
 
+
 class NumericalField(AbstractField):
     def encode(self, entries, set_size, **kwargs):
         ret = [float(x) for x in entries]
@@ -256,7 +260,7 @@ class NumericalField(AbstractField):
 
     @property
     def n_features(self):
-        return 1 # it's just one
+        return 1  # it's just one
 
     def guess_correct(self, x_hat, x):
         # within 10%
@@ -264,9 +268,10 @@ class NumericalField(AbstractField):
         x_max = x*1.05
 
         n_correct = 0.0
-        for curr_x_hat, curr_x_min, curr_x_max in zip(x_hat,x_min,x_max):
-            n_correct += float(curr_x_hat < curr_x_max and curr_x_hat > curr_x_min)
+        for curr_x_hat, curr_x_min, curr_x_max in zip(x_hat, x_min, x_max):
+            n_correct += float(curr_x_max > curr_x_hat > curr_x_min)
         return n_correct/float(x.shape[0])
+
 
 class TextField(AbstractField):
     def encode(self, entries, set_size, **kwargs):
@@ -287,21 +292,22 @@ class TextField(AbstractField):
         x_max = x*1.05
 
         n_correct = 0.0
-        for curr_x_hat, curr_x_min, curr_x_max in zip(x_hat,x_min,x_max):
+        for curr_x_hat, curr_x_min, curr_x_max in zip(x_hat, x_min, x_max):
             datapoint_correct = True
-            for x_hat_loc,x_min_loc,x_max_loc in zip(curr_x_hat,curr_x_min,curr_x_max):
+            for x_hat_loc, x_min_loc, x_max_loc in zip(curr_x_hat, curr_x_min, curr_x_max):
                 datapoint_correct = datapoint_correct and x_hat_loc < x_max_loc
                 datapoint_correct = datapoint_correct and x_hat_loc > x_min_loc
             n_correct += float(datapoint_correct)
         return n_correct/float(x.shape[0])
+
 
 rels = RelsCollection([
     Rel("budget", [
         CategoryField(
             "value_currency",
             'Currency',
-            #output_activation_function=torch.nn.Sigmoid(),
-            #loss_function=torch.nn.MSELoss(),
+            # output_activation_function=torch.nn.Sigmoid(),
+            # loss_function=torch.nn.MSELoss(),
             prevent_constant_prediction='USD'
         ),
         CategoryField("type", 'BudgetType'),
@@ -310,30 +316,30 @@ rels = RelsCollection([
         DatetimeField("period_end_iso_date"),
         NumericalField("value")
     ], download=False),
-    Rel("result",[
+    Rel("result", [
         CategoryField("type", 'ResultType'),
         TextField("title_narrative"),
-        #TextField("description_narrative"),
-        #aggregation_status
-        #CategoryField("indicator_measure","IndicatorMeasure"),
-        #indicator_ascending
-        #indicator_aggregation_status
-        #TextField("indicator_title_narrative"),
-        #CategoryField("indicator_title_narrative_lang","Language"),
-        #TextField("indicator_description_narrative"),
-        #CategoryField("indicator_description_narrative_lang","Language"),
-        #NumericalField("indicator_baseline_year"),
-        #DatetimeField("indicator_baseline_iso_date"),
-        #indicator_baseline_value
+        # TextField("description_narrative"),
+        # aggregation_status
+        # CategoryField("indicator_measure","IndicatorMeasure"),
+        # indicator_ascending
+        # indicator_aggregation_status
+        # TextField("indicator_title_narrative"),
+        # CategoryField("indicator_title_narrative_lang","Language"),
+        # TextField("indicator_description_narrative"),
+        # CategoryField("indicator_description_narrative_lang","Language"),
+        # NumericalField("indicator_baseline_year"),
+        # DatetimeField("indicator_baseline_iso_date"),
+        # indicator_baseline_value
 
         # FIXME TODO WARNING: following fields may be presented multiple times for each
         # result instance. Hence their cardinality may be k*cardinality(result)
         # should I consider only the first for each result?
         # But then they are not grouped for each result but all put in the same list,
         # so that might be difficult.
-        #DatetimeField("indicator_period_period_start_iso_date"),
-        #DatetimeField("indicator_period_period_end_iso_date"),
-        #NumericalField("indicator_period_target_value"),
-        #NumericalField("indicator_period_actual_value")
+        # DatetimeField("indicator_period_period_start_iso_date"),
+        # DatetimeField("indicator_period_period_end_iso_date"),
+        # NumericalField("indicator_period_target_value"),
+        # NumericalField("indicator_period_actual_value")
     ], download=True)
 ])
