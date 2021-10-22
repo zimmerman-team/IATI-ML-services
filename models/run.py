@@ -86,9 +86,9 @@ class MeasurementsCallback(pl.callbacks.Callback):
         )
         z = self.measurements['z'].vstack(which_tset)
 
-        corr, corr_metric,mask = diagnostics.correlation(z)
-        mlflow.log_metric(f"{which_tset}_latent_corr_metric",corr_metric)
-        diagnostics.log_correlation_heatmap_artifact("latent",corr,corr_metric,mask,which_tset,epoch_nr)
+        corr, corr_metric, mask = diagnostics.correlation(z)
+        mlflow.log_metric(f"{which_tset}_latent_corr_metric", corr_metric)
+        diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_tset, epoch_nr)
 
     def on_train_epoch_end(self, trainer, lm):
         self._epoch_end( 'train', trainer, lm )
@@ -103,7 +103,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
             for which_tset in utils.Tsets:
                 stacked_npa = m.vstack(which_tset.value)
                 print(m.name,which_tset.value)
-                if len(stacked_npa)==0:
+                if len(stacked_npa) == 0:
                     logging.warning(f"{m.name} {which_tset} was empty")
                     continue
                 utils.log_npa_artifact(
@@ -120,7 +120,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
                 )
                 diagnostics.log_barplots_artifact(
                     m.name,
-                    stacked_npa[[-1],:], # consider only last epoch
+                    stacked_npa[[-1],:],  # consider only last epoch
                     which_tset.value,
                     rel=self.rel,
                     type_=m.plot_type
@@ -139,21 +139,27 @@ def run(Model,config_name):
         rel = relspecs.rels[model_config['rel_name']]
 
         # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
-        tsets = persistency.load_tsets(rel,with_set_index=False)
+        tsets = persistency.load_tsets(rel,with_set_index=Model.with_set_index)
 
         for curr in tsets.tsets_names:
             mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
         input_cardinality = tsets.train.shape[1]
 
-        train_loader = torch.utils.data.DataLoader(
+        def cfn(data):
+            print('len data',len(data))
+            ret = torch.tensor(data)
+            return ret
+
+        train_loader = Model.DataLoader(
             tsets.train_scaled,
-            batch_size=model_config['batch_size'],
+            #batch_size=model_config['batch_size'],
             shuffle=True,
             num_workers=4,
-            pin_memory=False
+            pin_memory=False,
+            collate_fn = cfn
         )
 
-        test_loader = torch.utils.data.DataLoader(
+        test_loader = Model.DataLoader(
             tsets.test_scaled,
             batch_size=model_config['batch_size'],
             shuffle=False,

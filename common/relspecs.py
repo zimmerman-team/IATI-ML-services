@@ -54,6 +54,8 @@ class Rel(object):
         ret = []
         for start, end in self.fields_intervals(with_set_index=with_set_index):
             ret.append(tensor[:, start:end])
+        if with_set_index:
+            ret[0] = ret[0].astype(np.int32)
         return ret
 
     def glue(self, tensor_list):  # FIXME: maybe to some other module?
