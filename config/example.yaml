@@ -3,3 +3,6 @@ mongo_password: somepassword
 mongo_host: somehost
 mongo_port: 27017
 mongo_db: learning_sets
+
+vm_user: someuser
+vm_host: somehost

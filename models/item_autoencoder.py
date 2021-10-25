@@ -8,101 +8,80 @@ path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 from models import diagnostics, run, measurements as ms, generic_model
 from common import utils, relspecs, persistency
+from models import measurements as ms
 utils.set_np_printoptions()
 
 
 class ItemAE(generic_model.GenericModel):
 
-    DataLoader = torch.utils.data.DataLoader
     with_set_index = False
+
+    def make_train_loader(self, tsets):
+        train_loader = torch.utils.data.DataLoader(
+            tsets.train_scaled,
+            batch_size=self.kwargs['batch_size'],
+            shuffle=True,
+            num_workers=4,
+            pin_memory=False
+        )
+        return train_loader
+
+    def make_test_loader(self, tsets):
+        test_loader = torch.utils.data.DataLoader(
+            tsets.test_scaled,
+            batch_size=self.kwargs['batch_size'],
+            shuffle=False,
+            num_workers=4
+        )
+        return test_loader
+
+    def make_measurements(self):
+        ret = ms.MeasurementsCollection([
+            ms.DatapointMeasurement("x_hat", dst=dict(
+                output_mean_per_feature=ms.mean,
+                output_var_per_feature=ms.var,
+                output_last_epoch=ms.random_sampling
+            )),
+            ms.DatapointMeasurement("z", diagnostics.correlation, dst=dict(
+                latent_last_epoch=ms.random_sampling
+            )),
+
+            ms.BatchMeasurement('diff'),
+            ms.BatchMeasurement('diff_reduced', dst=dict(
+                mae_per_feature=ms.mae
+            )),
+            ms.BatchMeasurement('losses', dst=dict(
+                mean_losses=ms.mean
+            )),
+            ms.BatchMeasurement('guess_correct', dst=dict(
+                mean_guess_correct=ms.mean
+            )),
+            ms.BatchMeasurement('latent_l1_norm', dst=dict(
+                mean_latent_l1_norm=ms.mean
+            )),
+
+            ms.EpochMeasurement("output_mean_per_feature", plot_type='fields'),
+            ms.EpochMeasurement("output_var_per_feature", plot_type='fields'),
+            ms.EpochMeasurement("mae_per_feature", plot_type='fields'),
+            ms.EpochMeasurement("mean_losses", plot_type='losses'),
+            ms.EpochMeasurement("mean_guess_correct", plot_type='losses'),
+            ms.EpochMeasurement("mean_latent_l1_norm", plot_type='losses', mlflow_log=True),
+
+            ms.LastEpochMeasurement("output_last_epoch", plot_type='fields'),
+            ms.LastEpochMeasurement("latent_last_epoch", plot_type='latent'),
+
+        ])
+        return ret
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.encoder_input_layer = torch.nn.Linear(
-            in_features=kwargs["input_shape"],
-            out_features=kwargs["layers_width"]
-        )
+        self.encoder = generic_model.Encoder(**kwargs)
+        self.decoder = generic_model.Decoder(**kwargs)
 
-        for i in self.depth_range():
-            setattr(self, f'encoder_hidden_layer_{i}',
-                    torch.nn.Linear(
-                        in_features=kwargs["layers_width"],
-                        out_features=kwargs["layers_width"]
-                    ))
-        self.encoder_output_layer = torch.nn.Linear(
-            in_features=kwargs["layers_width"],
-            out_features=kwargs["bottleneck_width"]
-        )
-        self.decoder_input_layer = torch.nn.Linear(
-            in_features=kwargs["bottleneck_width"],
-            out_features=kwargs["layers_width"]
-        )
-
-        for i in self.depth_range():
-            setattr(self, f'decoder_hidden_layer_{i}',
-                    torch.nn.Linear(
-                        in_features=kwargs["layers_width"],
-                        out_features=kwargs["layers_width"]
-                    ))
-        self.activation_function = getattr(torch.nn, kwargs["activation_function"])
-        if kwargs['divide_output_layer']:
-            # instead of considering the output as a single homogeneous vector
-            # its dimensionality is divided in many output layers, each belonging
-            # to a specific field.
-            # In this way, it's possible, for example, to apply a SoftMax activation
-            # function to a categorical output section
-            self.decoder_output_layers = [  # FIXME: smell
-                dict(
-                    layer=torch.nn.Linear(
-                        in_features=kwargs["layers_width"],
-                        out_features=field.n_features
-                    ),
-                    activation_function=(
-                        field.output_activation_function or torch.nn.Identity()
-                    )
-                )
-                for field
-                in self.rel.fields
-            ]
-        else:
-            self.decoder_output_layers = [
-                dict(
-                    layer=torch.nn.Linear(
-                        in_features=kwargs["layers_width"],
-                        out_features=kwargs["input_shape"]
-                    ),
-                    activation_function=torch.nn.Identity()
-                )
-            ]
-
-    def encoder(self, features):
-        activation = self.encoder_input_layer(features)
-        activation = self.activation_function()(activation)
-        for i in self.depth_range():
-            curr = getattr(self, f'encoder_hidden_layer_{i}')
-            activation = curr(activation)
-            activation = self.activation_function()(activation)
-        code = self.encoder_output_layer(activation)
-        return code
-
-    def decoder(self, code):
-        activation = self.decoder_input_layer(code)
-        activation = self.activation_function()(activation)
-        for i in self.depth_range():
-            curr = getattr(self, f'decoder_hidden_layer_{i}')
-            activation = curr(activation)
-            activation = self.activation_function()(activation)
-        reconstructed = []
-        for curr in self.decoder_output_layers:
-            activation_out = curr["layer"](activation)
-            activation_out = curr['activation_function'](activation_out)
-            reconstructed.append(activation_out)
-        reconstructed = self._glue(reconstructed)
-        return reconstructed
 
     def forward(self, features):
-        self.code = self.encoder(features)
-        self.reconstructed = self.decoder(self.code)
+        self.code = self.encoder.forward(features)
+        self.reconstructed = self.decoder.forward(self.code)
         return self.reconstructed
 
     def _loss(self,batch,x_hats,z):
@@ -112,7 +91,7 @@ class ItemAE(generic_model.GenericModel):
 
         # FIXME: debug with run_config['divided_output_layer'] = False
         for curr, curr_x_hat, batch_div, field in zip(
-                self.decoder_output_layers,
+                self.decoder.output_layers,
                 x_hats,
                 batch_divided,
                 self.rel.fields

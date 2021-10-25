@@ -4,6 +4,7 @@ import seaborn
 import tempfile
 import mlflow
 import pandas as pd
+import hiddenlayer
 
 from common import utils
 
@@ -138,3 +139,11 @@ def log_correlation_heatmap_artifact(name, corr, corr_metric, mask, which_tset, 
     mlflow.log_artifact(filename)
     print("done creating and logging correlation heatmap")
     return filename
+
+def log_net_visualization(model, features):
+    hl_graph = hiddenlayer.build_graph(model, features)
+    hl_graph.theme = hiddenlayer.graph.THEMES["blue"].copy()
+    filename = tempfile.mktemp(suffix=".png")
+    hl_graph.save(filename, format="png")
+    mlflow.log_artifact(filename)
+

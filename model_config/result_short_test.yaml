@@ -1,10 +1,10 @@
 experiment_name: autoencoder_baseline
-layers_width: 4
+layers_width: 3
 bottleneck_width: 2
 activation_function: "ELU"
-depth: 2
+depth: 5
 weight_decay: 0
-max_epochs: 3
+max_epochs: 2
 rel_name: 'result'
 batch_size: 1024
 divide_output_layer: True

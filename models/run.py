@@ -8,43 +8,6 @@ import os
 from common import utils, relspecs, persistency
 from models import diagnostics, measurements as ms
 
-def make_measurements():
-    ret = ms.MeasurementsCollection([
-        ms.DatapointMeasurement("x_hat", dst=dict(
-            output_mean_per_feature=ms.mean,
-            output_var_per_feature=ms.var,
-            output_last_epoch=ms.random_sampling
-        )),
-        ms.DatapointMeasurement("z",diagnostics.correlation, dst=dict(
-            latent_last_epoch=ms.random_sampling
-        )),
-
-        ms.BatchMeasurement('diff'),
-        ms.BatchMeasurement('diff_reduced', dst=dict(
-            mae_per_feature=ms.mae
-        )),
-        ms.BatchMeasurement('losses', dst=dict(
-            mean_losses=ms.mean
-        )),
-        ms.BatchMeasurement('guess_correct', dst=dict(
-            mean_guess_correct=ms.mean
-        )),
-        ms.BatchMeasurement('latent_l1_norm', dst=dict(
-            mean_latent_l1_norm=ms.mean
-        )),
-
-        ms.EpochMeasurement("output_mean_per_feature", plot_type='fields'),
-        ms.EpochMeasurement("output_var_per_feature", plot_type='fields'),
-        ms.EpochMeasurement("mae_per_feature", plot_type='fields'),
-        ms.EpochMeasurement("mean_losses", plot_type='losses'),
-        ms.EpochMeasurement("mean_guess_correct", plot_type='losses'),
-        ms.EpochMeasurement("mean_latent_l1_norm", plot_type='losses', mlflow_log=True),
-
-        ms.LastEpochMeasurement("output_last_epoch", plot_type='fields'),
-        ms.LastEpochMeasurement("latent_last_epoch", plot_type='latent'),
-
-    ])
-    return ret
 
 class MeasurementsCallback(pl.callbacks.Callback):
     rel = None
@@ -53,8 +16,9 @@ class MeasurementsCallback(pl.callbacks.Callback):
 
     def __init__(self, *args, **kwargs):
         self.rel = kwargs.pop('rel')
+        self.model = kwargs.pop('model')
         super().__init__(*args, **kwargs)
-        self.measurements = make_measurements()
+        self.measurements = self.model.make_measurements()
 
     def on_train_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
         self.measurements.collect(
@@ -84,11 +48,11 @@ class MeasurementsCallback(pl.callbacks.Callback):
             which_tset,
             measurements_types
         )
-        z = self.measurements['z'].vstack(which_tset)
-
-        corr, corr_metric, mask = diagnostics.correlation(z)
-        mlflow.log_metric(f"{which_tset}_latent_corr_metric", corr_metric)
-        diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_tset, epoch_nr)
+        if 'z' in self.measurements:  # FIXME: this is not abstracted
+            z = self.measurements['z'].vstack(which_tset)
+            corr, corr_metric, mask = diagnostics.correlation(z)
+            mlflow.log_metric(f"{which_tset}_latent_corr_metric", corr_metric)
+            diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_tset, epoch_nr)
 
     def on_train_epoch_end(self, trainer, lm):
         self._epoch_end( 'train', trainer, lm )
@@ -138,33 +102,11 @@ def run(Model,config_name):
         mlflow.log_artifact(model_config['config_filename'])
         rel = relspecs.rels[model_config['rel_name']]
 
-        # FIXME: create tset objects so I don't have to propagate 'with_set_index' everywhere
         tsets = persistency.load_tsets(rel,with_set_index=Model.with_set_index)
 
         for curr in tsets.tsets_names:
             mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
         input_cardinality = tsets.train.shape[1]
-
-        def cfn(data):
-            print('len data',len(data))
-            ret = torch.tensor(data)
-            return ret
-
-        train_loader = Model.DataLoader(
-            tsets.train_scaled,
-            #batch_size=model_config['batch_size'],
-            shuffle=True,
-            num_workers=4,
-            pin_memory=False,
-            collate_fn = cfn
-        )
-
-        test_loader = Model.DataLoader(
-            tsets.test_scaled,
-            batch_size=model_config['batch_size'],
-            shuffle=False,
-            num_workers=4
-        )
 
         #  use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -177,9 +119,12 @@ def run(Model,config_name):
             **model_config
         ).to(device)
 
+        train_loader = model.make_train_loader(tsets)
+        test_loader = model.make_test_loader(tsets)
+
         trainer = pl.Trainer(
             limit_train_batches=1.0,
-            callbacks=[MeasurementsCallback(rel=rel)],
+            callbacks=[MeasurementsCallback(rel=rel,model=model)],
             max_epochs=model_config['max_epochs']
         )
         trainer.fit(model, train_loader, test_loader)
