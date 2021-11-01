@@ -31,6 +31,10 @@ MAX_PAGES = 3
 
 
 def extract_codelists(_rels):
+    """
+    :param _rels: iterable of relations (`relspects.Rel` objects)
+    :return: set of codelist names used across the relations
+    """
     ret = set()
     for rel in _rels:
         ret = ret.union(rel.codelists_names)
@@ -38,6 +42,12 @@ def extract_codelists(_rels):
 
 
 def download(start, ti):
+    """
+    Airflow task: retrieve activities from back-end
+    :param start: starting search result index of the page (`start` to `start+PAGE_SIZE`) being downloaded
+    :param ti (str): task id
+    :return: None
+    """
     fl = ",".join(["iati_identifier"]+relspecs.rels.downloadable_prefixed_fields_names)
     params = {
         'q': "*:*",
@@ -53,6 +63,12 @@ def download(start, ti):
 
 
 def parse(page, ti):
+    """
+    Airflow task: parse downloaded page of activities
+    :param page: index of the downloaded page to be parsed
+    :param ti (str): task id
+    :return: None
+    """
     rels_vals = defaultdict(lambda: defaultdict(lambda: dict()))
     data = large_mp.recv(ti, f"download_{page}")
     for activity in data['response']['docs']:
@@ -83,6 +99,12 @@ def parse(page, ti):
 
 
 def persist(page, ti):
+    """
+    Airflow tasks: store previosly parsed page of activities in the mondodb
+    :param page: index of the downloaded page to be stored
+    :param ti (str): task id
+    :return: None
+    """
     db = persistency.mongo_db()
     data = large_mp.recv(ti, f'parse_{page}')
 
@@ -98,6 +120,11 @@ def persist(page, ti):
 
 
 def codelists(ti):
+    """
+    Airflow task: download all codelists that are needed in order to encode category fields
+    :param ti (str): task id
+    :return: None
+    """
     db = persistency.mongo_db()
     for codelist_name in extract_codelists(rels):
         url = DATASTORE_CODELIST_URL.format(codelist_name)
@@ -115,6 +142,11 @@ def codelists(ti):
 
 
 def get_set_size(set_):
+    """
+    Returns the maximum cardinality across multiple one2many relations sets
+    :param set_: list of one2many relations items
+    :return: the maximum cardinality across the one2many relations
+    """
     size = 0
     for field_name, values in set_.items():
         size = max(len(values), size)
@@ -122,6 +154,13 @@ def get_set_size(set_):
 
 
 def encode(rel, ti):
+    """
+    Airflow task: encodes all fields into machine learning-friendly
+        (numerical vectors)
+    :param rel: the relations that needs encoding
+    :param ti: task id
+    :return: None
+    """
     db = persistency.mongo_db()
     coll_in = db[rel.name]
     coll_out = db[rel.name + "_encoded"]
@@ -146,6 +185,13 @@ def encode(rel, ti):
 
 
 def arrayfy(rel, ti):
+    """
+    Gets all the encoded fields and concatenates them into a dataset arrays
+    indexed by set index
+    :param rel: relation to be encoded
+    :param ti: task id
+    :return: None
+    """
     db = persistency.mongo_db()
     coll_in = db[rel.name+"_encoded"]
     coll_out = db[rel.name+"_arrayfied"]
@@ -170,6 +216,12 @@ def arrayfy(rel, ti):
 
 
 def to_npa(rel, ti):
+    """
+    Airflow task: concatenates all set-indexed arrays into one numpy array dataset
+    :param rel: relation whose data is going to be converted into a dataset
+    :param ti: task id
+    :return: None
+    """
     db = persistency.mongo_db()
     coll_in = db[rel.name+"_arrayfied"]
     coll_out = db['npas']
@@ -192,6 +244,13 @@ def to_npa(rel, ti):
 
 
 def to_tsets(rel, ti):
+    """
+    Concatenates all set-indexed arrays into split array datasets, one for training
+    and the other for validation/test
+    :param rel: relation whose training/validation/test sets are being created
+    :param ti: task id
+    :return: None
+    """
     db = persistency.mongo_db()
     coll_in = db[rel.name+'_arrayfied']
     set_indices_results = coll_in.find({}, {'set_index': 1})
