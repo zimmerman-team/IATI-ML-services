@@ -53,11 +53,30 @@ class Tsets(utils.Collection):
 
 
     def n_sets(self, which_tset):
+        """
+        :param which_tset: "train" or "test"
+        :return: the number of sets contained in that dataset split
+        """
         assert self.with_set_index, "to use this attribute with_set_index needs to be True"
+
+        # WARNING: this is based on the assumption that the set indexes
+        # are presented as ordered, hence the last item should have the
+        # last set's id, hence the largest id
         return self[which_tset+"_set_index"][-1]
 
 
     def sets_intervals(self, which_tset):
+        """
+        returns a numpy array in which the rows are index intervals of item rows,
+        represented by two numbers:
+        the index of the start item for a set and the index for the ending item
+        for that same set.
+        Hence, the length of the intervals list is going to be the number of sets.
+        This is used, for example, by a data loader that needs to return all
+        all the contiguous items that belong to one (or, eventually multiple) set.
+        :param which_tset: "train" or "test"
+        :return: numpy array of shape (n_sets,2) containing the item intervals of each set
+        """
         assert self.with_set_index, "to use this attribute with_set_index needs to be True"
         indexes = self[which_tset+'_set_index']
         ret = []
@@ -80,8 +99,16 @@ class Tsets(utils.Collection):
 
 
     def _scale(self, sections):
+        """
+        Uses the previously-trained scalers to scale the given data,
+        which is presented as a list of per-field tensors (sections)
+        :param sections: list of per-field tensors
+        :return: the glued-up tensor which contains the horizontally-stacked
+        scaled tensors of each field.
+        """
         scaled = []
         for field, section in zip(self.rel.fields, sections):
+            # FIXME: is having the trained scaler in the field a good idea??
             section_scaled = field.scaler.transform(section)
             scaled.append(section_scaled)
         ret = self.rel.glue(scaled)
