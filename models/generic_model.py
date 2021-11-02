@@ -137,6 +137,10 @@ class GenericModel(pl.LightningModule):
 
 
     def configure_optimizers(self):
+        """
+        method required by Pytorch Lightning
+        :return: the optimizer function used to minimize the loss function
+        """
         optimizer = torch.optim.Adam(
             self.parameters(),
             lr=1e-3,
@@ -146,6 +150,12 @@ class GenericModel(pl.LightningModule):
 
 
     def _divide(self, tensor):  # FIXME: maybe something more OO?
+        """
+        Given a glued-up tensor of data/features, splits it, by column groups,
+        into a list of tensors each one belonging to a field
+        :param tensor: the data/features tensor
+        :return:
+        """
         if self.kwargs['divide_output_layer']:
             # actually do the division
             ret = self.rel.divide(tensor)
@@ -156,6 +166,13 @@ class GenericModel(pl.LightningModule):
 
 
     def _divide_or_glue(self, stuff):
+        """
+        Either splits an input tensor in chunked tensors by column groups
+        each belonging to a field; or glues a list of tensors in the column
+        dimension.
+        :param stuff: either a tensor or a list of tensors
+        :return: the divided tensor list *and* the glued-up tensor
+        """
         if type(stuff) is list:
             # stuff is already divided for various fields
             divided = stuff

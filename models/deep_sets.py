@@ -19,24 +19,48 @@ class InvariantModel(torch.nn.Module):
         out = self.rho.forward(set_repr)
         return out
 
-class DeepSets(generic_model.GenericModel):
+class DeepSetsAutoencoder(generic_model.GenericModel):
 
     with_set_index = True
 
     class CollateFn(object):
+        """
+        CollateFn is being used to use the start-item-index
+        and end-item-index to extract the set of contiguous items belonging to
+        the same set - and this will be returned by the DataLoader.
+        """
         def __init__(self, data):
             self.data = data
 
         def __call__(self, intervals):
             assert (len(intervals) == 1)
-            interval = intervals[0]
-            print("intervals", interval)
-            ret = torch.tensor(self.data[interval[0]:interval[1]])
+            interval = intervals[0] # because it's a batch of size 1
+            print("interval", interval)
+            start_item_index,end_item_index = interval[0:2]
+            ret = torch.tensor(self.data[start_item_index:end_item_index])
             print("ret.shape", ret.shape)
             return ret
 
 
     def make_train_loader(self, tsets):
+        """
+        For the deep sets it's important the the datapoints returned by the
+        DataLoader are of items belonging to the same set.
+        For this reason the input data to the dataloader cannot be a set of
+        items, otherwise items belonging to different sets would end up
+        being mixed-up.
+        Instead, the input "datapoints" are just information about
+        intervals of datapoints that belong to the same indexIn other .
+        This information is returned by `tset.set_intervals(..)`
+        Expanding on this: each input datapoint contain a start-item-index
+        and an end-item-index of items in the actual original dataset (which
+        is tsets.train_scaled, or tsets.test_scaled in make_test_loader(..)).
+        Subsequently, CollateFn is being used to use the start-item-index
+        and end-item-index to extract the set of contiguous items belonging to
+        the same set - and this will be returned by the DataLoader.
+        :param tsets: train/test dataset splits
+        :return:
+        """
         train_loader = torch.utils.data.DataLoader(
             tsets.sets_intervals('train'),
             shuffle=True,
@@ -48,6 +72,11 @@ class DeepSets(generic_model.GenericModel):
 
 
     def make_test_loader(self, tsets):
+        """
+        Please see description of DeepSetsAutoencoder.make_train_loader(..)
+        :param tsets: train/test dataset splits
+        :return:
+        """
         test_loader = torch.utils.data.DataLoader(
             tsets.sets_intervals('test'),
             shuffle=False,
@@ -85,4 +114,4 @@ class DeepSets(generic_model.GenericModel):
 
 if __name__ == "__main__":
     config_name = sys.argv[1]
-    run.run(DeepSets, config_name)
+    run.run(DeepSetsAutoencoder, config_name)
