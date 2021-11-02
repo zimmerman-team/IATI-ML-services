@@ -24,17 +24,29 @@ class Tsets(utils.Collection):
             if buf is not None:
                 self[which_tset] = buf
                 if self.with_set_index is False:
+                    # removes the set_index column from the glued-up tensor
                     self[which_tset] = self[which_tset][:, 1:]
+
+                # makes a list of tensors, each of which contains the data of a field of
+                # the relation
                 sections = rel.divide(
                     self[which_tset],
                     with_set_index=self.with_set_index
                 )
                 if self.with_set_index is True:
+                    # enriches the Tsets object with train_set_index and test_set_index
+                    # properties that contain a 1D-vector of set ids - positional, as
+                    # it refers to the item-rows of the data tensors
                     self[which_tset+"_set_index"] = sections[0].squeeze(1)
                 self[which_tset+"_sections"] = sections  # FIXME: needed to keep this?
+
                 if which_tset == 'train':
+                    # the preprocessing scaling functions are trained only
+                    # on the training data, of course
                     self._make_and_fit_scalers(sections)
 
+                # WARNING: this relies on the fact that the training
+                # set is going to be processed before the others
                 self[which_tset+"_scaled"] = self._scale(sections)
             else:
                 raise Exception(f"Didn't find {gridfs_filename}")

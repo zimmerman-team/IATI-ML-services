@@ -17,6 +17,13 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class Collection(dict):
+    """
+    In a utils.Collection, which inherits from `dict`,dynamic properties
+    can be set as `c['the_property'] = the_value`
+    and accessed as in `c.the_property`.
+    Moreover the `.names` property returns the properties that
+    have been set.
+    """
 
     def __init__(self, *args, **kwargs):
         if len(args) > 0:
@@ -30,13 +37,28 @@ class Collection(dict):
         super().__init__(**kwargs)
 
     def __iter__(self):
+        """
+        Iterating on the utils.Collection results in the values
+        of the properties set, not the names of the properties.
+        :return: iterator on the values of the properties that have been set
+        """
         return iter(self.values())
 
     @property
     def names(self):
+        """
+        :return: list of string names of the properties set
+        """
         return self.keys()
 
     def __getattr__(self, name):
+        """
+        in a utils.Collection, dynamic properties can be set as
+        `c['the_property'] = the_value`
+        and accessed as in `c.the_property`
+        :param name: the name of the property being accessed
+        :return: the value of the property
+        """
         assert name in self.names, f"{name} not in collection's names"
         return self[name]
 

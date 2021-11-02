@@ -29,6 +29,7 @@ class DeepSetsAutoencoder(generic_model.GenericModel):
         and end-item-index to extract the set of contiguous items belonging to
         the same set - and this will be returned by the DataLoader.
         """
+
         def __init__(self, data):
             self.data = data
 
@@ -59,7 +60,7 @@ class DeepSetsAutoencoder(generic_model.GenericModel):
         and end-item-index to extract the set of contiguous items belonging to
         the same set - and this will be returned by the DataLoader.
         :param tsets: train/test dataset splits
-        :return:
+        :return: the DataLoader
         """
         train_loader = torch.utils.data.DataLoader(
             tsets.sets_intervals('train'),
@@ -75,7 +76,7 @@ class DeepSetsAutoencoder(generic_model.GenericModel):
         """
         Please see description of DeepSetsAutoencoder.make_train_loader(..)
         :param tsets: train/test dataset splits
-        :return:
+        :return: the DataLoader
         """
         test_loader = torch.utils.data.DataLoader(
             tsets.sets_intervals('test'),
