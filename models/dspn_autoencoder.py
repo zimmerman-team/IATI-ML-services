@@ -124,13 +124,21 @@ class DSPNAE(generic_model.GenericModel):
         self.reconstructed = self.decoder(self.code)
         return self.reconstructed
 
-    def training_step(self, batch, batch_idx):
-        print("training_set",batch.shape,batch_idx)
-        return 1
+    def _step(self, batch, batch_idx, which_tset):
+        # copied from dspn.train.main.run()
+        (progress, masks, evals, gradn), (y_enc, y_label) = self( input, batch )
 
+        set_loss = dspn.utils.chamfer_loss(
+            torch.stack(progress), batch.unsqueeze(0)
+        )
+
+        return set_loss.mean()
+
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, 'train')
 
     def validation_step(self, batch, batch_idx):
-        return 1
+        return self._step(batch, batch_idx, 'val')
 
 
 if __name__ == "__main__":
