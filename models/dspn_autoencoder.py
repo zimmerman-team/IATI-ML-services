@@ -97,13 +97,25 @@ class DSPNAutoencoder(generic_model.GenericModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        assert 'max_set_size' in self.kwargs, "must set max_set_size for this model"
+        self.max_set_size = self.kwargs['max_set_size']
         self.encoder = dspn.model.FSEncoder()
         self.decoder = dspn.dspn.DSPN()
 
-    def forward(self, features):
+    def forward(self, loaded_set):
+
+        # loaded_set dimensionality: (set_size, item_dims)
+        set_size = loaded_set.size(0)
+        item_dims = loaded_set.size(1)
 
         # target_set dimensionality: (batch_size, item_dims, set_size)
+        # here we assume a batch_size=1
+        target_set = torch.zeros(1,item_dims,set_size)
+        target_set[0,0:item_dims,0:set_size] = torch.swapaxes(loaded_set,0,1)
+
         # target_mask dimensionality: (batch_size, set_size)
+        target_mask = torch.zeros(1,item_dims,set_size)
+        target_set[0, 0:item_dims, 0:set_size] = 1
 
         self.code = self.encoder(target_set, target_mask)
         self.reconstructed = self.decoder(self.code)
