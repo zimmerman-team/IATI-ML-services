@@ -3,6 +3,8 @@ import sys
 import os
 from typing import Union
 
+from dspn_annotated import dspn
+
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 from models import generic_model, run, measurements as ms
@@ -95,14 +97,13 @@ class DeepSetsAutoencoder(generic_model.GenericModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.la = torch.nn.Linear(
-            in_features=kwargs['input_shape'],
-            out_features=1
-        )
+        self.encoder = dspn.model.FSEncoder()
+        self.decoder = dspn.dspn.DSPN()
 
     def forward(self, features):
-        return self.la(features)
-
+        self.code = self.encoder(target_set, target_mask)
+        self.reconstructed = self.decoder(self.code)
+        return self.reconstructed
 
     def training_step(self, batch, batch_idx):
         print("training_set",batch.shape,batch_idx)

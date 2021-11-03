@@ -95,6 +95,7 @@ class Tsets(utils.Collection):
 
     def _make_and_fit_scalers(self, sections):
         for field, section in zip(self.rel.fields, sections):
+            # FIXME: is having the trained scaler in the field a good idea??
             field.make_and_fit_scaler(section)
 
 
