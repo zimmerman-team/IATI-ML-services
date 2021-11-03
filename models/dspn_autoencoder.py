@@ -103,8 +103,19 @@ class DSPNAE(generic_model.GenericModel):
         super().__init__(**kwargs)
         assert 'max_set_size' in self.kwargs, "must set max_set_size for this model"
         self.max_set_size = self.kwargs['max_set_size']
-        self.encoder = dspn.model.FSEncoder()
-        self.decoder = dspn.dspn.DSPN()
+        self.encoder = dspn.model.FSEncoder(
+            kwargs['item_dim'],
+            kwargs['latent_dim'],
+            kwargs['layers_width']
+        )
+        self.decoder = dspn.dspn.DSPN(
+            self.encoder,
+            kwargs['item_dim'],
+            kwargs['max_set_size'],
+            kwargs['item_dim'],
+            10, # number of iteration on the decoder
+            800, # inner learning rate
+        )
 
     def forward(self, loaded_set):
 

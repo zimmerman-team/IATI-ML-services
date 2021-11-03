@@ -25,7 +25,7 @@ class Encoder(AEModule):
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         self.encoder_input_layer = torch.nn.Linear(
-            in_features=self.kwargs["input_shape"],
+            in_features=self.kwargs["item_dim"],
             out_features=self.kwargs["layers_width"]
         )
 
@@ -37,7 +37,7 @@ class Encoder(AEModule):
                     ))
         self.encoder_output_layer = torch.nn.Linear(
             in_features=self.kwargs["layers_width"],
-            out_features=self.kwargs["bottleneck_width"]
+            out_features=self.kwargs["latent_dim"]
         )
 
 
@@ -56,7 +56,7 @@ class Decoder(AEModule):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.decoder_input_layer = torch.nn.Linear(
-            in_features=self.kwargs["bottleneck_width"],
+            in_features=self.kwargs["latent_dim"],
             out_features=self.kwargs["layers_width"]
         )
 
@@ -90,7 +90,7 @@ class Decoder(AEModule):
                 dict(
                     layer=torch.nn.Linear(
                         in_features=self.kwargs["layers_width"],
-                        out_features=self.kwargs["input_shape"]
+                        out_features=self.kwargs["item_dim"]
                     ),
                     activation_function=torch.nn.Identity()
                 )

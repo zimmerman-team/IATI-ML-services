@@ -106,7 +106,7 @@ def run(Model,config_name):
 
         for curr in tsets.tsets_names:
             mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
-        input_cardinality = tsets.train.shape[1]
+        item_dim = tsets.train.shape[1]
 
         #  use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -114,7 +114,7 @@ def run(Model,config_name):
         # create a model from the Model class
         # load it to the specified device, either gpu or cpu
         model = Model(
-            input_shape=input_cardinality,
+            item_dim=item_dim,
             rel=rel,
             **model_config
         ).to(device)

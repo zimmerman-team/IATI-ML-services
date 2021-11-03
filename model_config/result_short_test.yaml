@@ -1,6 +1,6 @@
 experiment_name: autoencoder_baseline
 layers_width: 3
-bottleneck_width: 2
+latent_dim: 2
 activation_function: "ELU"
 depth: 5
 weight_decay: 0
