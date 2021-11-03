@@ -21,7 +21,10 @@ class InvariantModel(torch.nn.Module): #FIXME: delete?
         out = self.rho.forward(set_repr)
         return out
 
-class DSPNAutoencoder(generic_model.GenericModel):
+class DSPNAE(generic_model.GenericModel):
+    """
+    DSPNAE is an acronym for Deep Set Prediction Network AutoEncoder
+    """
 
     with_set_index = True
 
@@ -132,4 +135,4 @@ class DSPNAutoencoder(generic_model.GenericModel):
 
 if __name__ == "__main__":
     config_name = sys.argv[1]
-    run.run(DSPNAutoencoder, config_name)
+    run.run(DSPNAE, config_name)
