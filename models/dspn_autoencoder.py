@@ -3,11 +3,12 @@ import sys
 import os
 from typing import Union
 
-from dspn_annotated import dspn
-
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
-sys.path = [path]+sys.path
+sys.path = [path,os.path.join(path,'dspn_annotated')]+sys.path
 from models import generic_model, run, measurements as ms
+import dspn
+import dspn.model
+import dspn.dspn
 
 class InvariantModel(torch.nn.Module): #FIXME: delete?
     def __init__(self, phi, rho):

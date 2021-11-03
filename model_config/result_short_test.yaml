@@ -9,3 +9,4 @@ rel_name: 'result'
 batch_size: 1024
 divide_output_layer: True
 latent_l1_norm: 10.0
+max_set_size: 100
