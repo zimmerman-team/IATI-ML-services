@@ -9,7 +9,7 @@ path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 from models import generic_model, run, measurements as ms
 
-class InvariantModel(torch.nn.Module):
+class InvariantModel(torch.nn.Module): #FIXME: delete?
     def __init__(self, phi, rho):
         super().__init__()
         self.phi = phi
@@ -21,7 +21,7 @@ class InvariantModel(torch.nn.Module):
         out = self.rho.forward(set_repr)
         return out
 
-class DeepSetsAutoencoder(generic_model.GenericModel):
+class DSPNAutoencoder(generic_model.GenericModel):
 
     with_set_index = True
 
@@ -101,6 +101,10 @@ class DeepSetsAutoencoder(generic_model.GenericModel):
         self.decoder = dspn.dspn.DSPN()
 
     def forward(self, features):
+
+        # target_set dimensionality: (batch_size, item_dims, set_size)
+        # target_mask dimensionality: (batch_size, set_size)
+
         self.code = self.encoder(target_set, target_mask)
         self.reconstructed = self.decoder(self.code)
         return self.reconstructed
@@ -116,4 +120,4 @@ class DeepSetsAutoencoder(generic_model.GenericModel):
 
 if __name__ == "__main__":
     config_name = sys.argv[1]
-    run.run(DeepSetsAutoencoder, config_name)
+    run.run(DSPNAutoencoder, config_name)
