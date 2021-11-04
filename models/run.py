@@ -101,12 +101,14 @@ def run(Model,config_name):
         mlflow.log_artifact(__file__)
         mlflow.log_artifact(model_config['config_filename'])
         rel = relspecs.rels[model_config['rel_name']]
+        print("rel",rel)
 
         tsets = persistency.load_tsets(rel,with_set_index=Model.with_set_index)
 
         for curr in tsets.tsets_names:
             mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
-        item_dim = tsets.train.shape[1]
+        item_dim = tsets.item_dim
+        print("item_dim is",item_dim)
 
         #  use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -119,6 +121,7 @@ def run(Model,config_name):
             **model_config
         ).to(device)
 
+        tsets.print_shapes()
         train_loader = model.make_train_loader(tsets)
         test_loader = model.make_test_loader(tsets)
 

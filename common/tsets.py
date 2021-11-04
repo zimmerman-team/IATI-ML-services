@@ -33,6 +33,7 @@ class Tsets(utils.Collection):
                     self[which_tset],
                     with_set_index=self.with_set_index
                 )
+                print("divided:",[s.shape for s in sections])
                 if self.with_set_index is True:
                     # enriches the Tsets object with train_set_index and test_set_index
                     # properties that contain a 1D-vector of set ids - positional, as
@@ -43,14 +44,22 @@ class Tsets(utils.Collection):
                 if which_tset == 'train':
                     # the preprocessing scaling functions are trained only
                     # on the training data, of course
-                    self._make_and_fit_scalers(sections)
+                    self._make_and_fit_scalers(sections, self.with_set_index)
 
                 # WARNING: this relies on the fact that the training
                 # set is going to be processed before the others
-                self[which_tset+"_scaled"] = self._scale(sections)
+                self[which_tset+"_scaled"] = self._scale(sections, self.with_set_index)
             else:
                 raise Exception(f"Didn't find {gridfs_filename}")
 
+    def print_shapes(self):
+        for which_tset in self.tsets_names:
+            print(which_tset+".shape",self[which_tset].shape)
+            print(which_tset+"_scaled.shape",self[which_tset+"_scaled"].shape)
+
+    @property
+    def item_dim(self):
+        return self.train.shape[1]
 
     def n_sets(self, which_tset):
         """
@@ -93,13 +102,16 @@ class Tsets(utils.Collection):
         ret.append([curr_start, all_count])
         return np.array(ret)
 
-    def _make_and_fit_scalers(self, sections):
+    def _make_and_fit_scalers(self, sections, with_set_index):
+        if with_set_index:
+            # but the index does not need to be scaled
+            sections = sections[1:]
         for field, section in zip(self.rel.fields, sections):
             # FIXME: is having the trained scaler in the field a good idea??
             field.make_and_fit_scaler(section)
 
 
-    def _scale(self, sections):
+    def _scale(self, sections, with_set_index):
         """
         Uses the previously-trained scalers to scale the given data,
         which is presented as a list of per-field tensors (sections)
@@ -108,9 +120,23 @@ class Tsets(utils.Collection):
         scaled tensors of each field.
         """
         scaled = []
+        if with_set_index:
+
+            # adding the index to the scaled quantities
+            scaled.append(sections[0])
+
+            # but the index does not need to be scaled
+            sections = sections[1:]
+
         for field, section in zip(self.rel.fields, sections):
+            assert field.n_features == section.shape[1], \
+                f"mismatch between field n_features and n columns of section: {field.n_features} != {section.shape[1]}"
             # FIXME: is having the trained scaler in the field a good idea??
+            print("scaling field",field,"section.shape:",section.shape)
             section_scaled = field.scaler.transform(section)
+            print('resulting section_scaled.shape:',section_scaled.shape)
             scaled.append(section_scaled)
+        print("scaled sections:",[s.shape for s in scaled])
+
         ret = self.rel.glue(scaled)
         return ret

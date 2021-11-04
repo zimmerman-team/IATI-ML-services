@@ -50,6 +50,9 @@ class Rel(object):
         self.fields = fields
         self.download = download
 
+    def __str__(self):
+        return f"<R:{self.name}: {self.fields}>"
+
     def divide(self, tensor, with_set_index=False):
         ret = []
         for start, end in self.fields_intervals(with_set_index=with_set_index):
@@ -129,6 +132,12 @@ class AbstractField(abc.ABC):
         self._output_activation_function = output_activation_function
         self._loss_function = loss_function
         self._scaler = None
+
+    def __str__(self):
+        return f"<F:{self.name} n_features:{self.n_features}>"
+
+    def __repr__(self):
+        return str(self)
 
     @property
     def n_features(self):

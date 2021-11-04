@@ -38,14 +38,15 @@ class DSPNAE(generic_model.GenericModel):
 
         def __init__(self, data):
             self.data = data
+            print("CollateFn: data.shape",data.shape)
 
         def __call__(self, intervals):
             assert (len(intervals) == 1)
             interval = intervals[0] # because it's a batch of size 1
-            print("interval", interval)
+            print("CollateFn: interval", interval)
             start_item_index,end_item_index = interval[0:2]
             ret = torch.tensor(self.data[start_item_index:end_item_index])
-            print("ret.shape", ret.shape)
+            print("CollateFn: ret.shape", ret.shape)
             return ret
 
 
@@ -111,34 +112,37 @@ class DSPNAE(generic_model.GenericModel):
         self.decoder = dspn.dspn.DSPN(
             self.encoder,
             kwargs['item_dim'],
-            kwargs['max_set_size'],
+            self.max_set_size,
             kwargs['item_dim'],
-            10, # number of iteration on the decoder
-            800, # inner learning rate
+            10, # number of iteration on the decoder # FIXME: to conf
+            800, # inner learning rate # FIXME: to conf
         )
 
     def forward(self, loaded_set):
 
+        print("loaded_set size:",loaded_set.size())
         # loaded_set dimensionality: (set_size, item_dims)
         set_size = loaded_set.size(0)
         item_dims = loaded_set.size(1)
 
         # target_set dimensionality: (batch_size, item_dims, set_size)
         # here we assume a batch_size=1
-        target_set = torch.zeros(1,item_dims,set_size)
+        target_set = torch.zeros(1,item_dims,self.max_set_size)
         target_set[0,0:item_dims,0:set_size] = torch.swapaxes(loaded_set,0,1)
 
         # target_mask dimensionality: (batch_size, set_size)
-        target_mask = torch.zeros(1,item_dims,set_size)
-        target_set[0, 0:item_dims, 0:set_size] = 1
+        target_mask = torch.zeros(1,self.max_set_size)
+        target_set[0, 0:set_size] = 1
 
+        print('target_set.size()',target_set.size())
+        print('target_mask.size()',target_mask.size())
         self.code = self.encoder(target_set, target_mask)
         self.reconstructed = self.decoder(self.code)
         return self.reconstructed
 
     def _step(self, batch, batch_idx, which_tset):
         # copied from dspn.train.main.run()
-        (progress, masks, evals, gradn), (y_enc, y_label) = self( input, batch )
+        (progress, masks, evals, gradn), (y_enc, y_label) = self( batch )
 
         set_loss = dspn.utils.chamfer_loss(
             torch.stack(progress), batch.unsqueeze(0)
