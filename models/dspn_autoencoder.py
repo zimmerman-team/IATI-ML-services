@@ -118,13 +118,9 @@ class DSPNAE(generic_model.GenericModel):
             800, # inner learning rate # FIXME: to conf
         )
 
-    def forward(self, loaded_set):
-
-        print("loaded_set size:",loaded_set.size())
-        # loaded_set dimensionality: (set_size, item_dims)
+    def _make_target(self,loaded_set):
         set_size = loaded_set.size(0)
         item_dims = loaded_set.size(1)
-
         # target_set dimensionality: (batch_size, item_dims, set_size)
         # here we assume a batch_size=1
         target_set = torch.zeros(1,item_dims,self.max_set_size)
@@ -132,17 +128,39 @@ class DSPNAE(generic_model.GenericModel):
 
         # target_mask dimensionality: (batch_size, set_size)
         target_mask = torch.zeros(1,self.max_set_size)
-        target_set[0, 0:set_size] = 1
+        target_mask[0, 0:set_size] = 1
+        return target_set,target_mask
+
+    def forward(self, loaded_set):
+
+        print("loaded_set size:",loaded_set.size())
+        # loaded_set dimensionality: (set_size, item_dims)
+
+        target_set,target_mask = self._make_target(loaded_set)
 
         print('target_set.size()',target_set.size())
         print('target_mask.size()',target_mask.size())
         self.code = self.encoder(target_set, target_mask)
-        self.reconstructed = self.decoder(self.code)
-        return self.reconstructed
+        ret = self.decoder(self.code)
+        intermediate_sets, intermediate_masks, repr_losses, grad_norms = ret
+        self.reconstructed = intermediate_sets[-1]
+        return ret
 
     def _step(self, batch, batch_idx, which_tset):
         # copied from dspn.train.main.run()
-        (progress, masks, evals, gradn), (y_enc, y_label) = self( batch )
+        tmp = self( batch )
+        (progress, masks, evals, gradn) = tmp
+
+        print("batch size:",batch.size())
+        target_set,target_mask = self._make_target(batch)
+        # if using mask as feature, concat mask feature into progress
+        target_set = torch.cat(
+            [target_set, target_mask.unsqueeze(dim=1)], dim=1
+        )
+        progress = [
+            torch.cat([p, m.unsqueeze(dim=1)], dim=1)
+            for p, m in zip(progress, masks)
+        ]
 
         set_loss = dspn.utils.chamfer_loss(
             torch.stack(progress), batch.unsqueeze(0)
