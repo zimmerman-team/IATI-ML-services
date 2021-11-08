@@ -3,7 +3,9 @@ import torch
 
 
 class AEModule(torch.nn.Module):
-
+    """
+    Superclass of both Encoder and Decoder, which are very similar components.
+    """
 
     def __init__(self,**kwargs):
         self.kwargs = kwargs
@@ -20,7 +22,10 @@ class AEModule(torch.nn.Module):
         return range(self.kwargs["depth"]-2)
 
 class Encoder(AEModule):
-
+    """
+    An encoder takes a datapoint and produces a compressed
+    low-dimensional latent code.
+    """
 
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
@@ -42,6 +47,11 @@ class Encoder(AEModule):
 
 
     def forward(self, features):
+        """
+        Specification of the computation path of the encoder
+        :param features: the datapoint(s)
+        :return: the compressed low-dimensional latent code
+        """
         activation = self.encoder_input_layer(features)
         activation = self.activate(activation)
         for i in self.depth_range():
@@ -53,6 +63,10 @@ class Encoder(AEModule):
 
 
 class Decoder(AEModule):
+    """
+    A decoder expands a compressed low-dimensional latent code
+    into the original datapoint.
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.decoder_input_layer = torch.nn.Linear(
@@ -98,6 +112,10 @@ class Decoder(AEModule):
 
 
     def forward(self, code):
+        """
+        :param code: the compressed low-dimensional latent code
+        :return: the reconstructed datapoint
+        """
         activation = self.decoder_input_layer(code)
         activation = self.activate(activation)
         for i in self.depth_range():
@@ -118,6 +136,9 @@ class Decoder(AEModule):
 
 
 class GenericModel(pl.LightningModule):
+    """
+    Superclass of ItemAE and DSPNAE
+    """
 
     with_set_index = None  # please set in subclass
 

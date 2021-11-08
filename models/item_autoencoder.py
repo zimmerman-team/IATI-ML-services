@@ -13,6 +13,9 @@ utils.set_np_printoptions()
 
 
 class ItemAE(generic_model.GenericModel):
+    """
+    Represents the Item-based AutoEncoder (baseline model)
+    """
 
     with_set_index = False
 
