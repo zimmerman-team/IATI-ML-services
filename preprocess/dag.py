@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL = "https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL = "https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE = 1000
-MAX_PAGES = 3
+MAX_PAGES = 1500
 
 
 def extract_codelists(_rels):

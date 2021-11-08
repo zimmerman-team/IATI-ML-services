@@ -326,7 +326,7 @@ rels = RelsCollection([
         DatetimeField("period_start_iso_date"),
         DatetimeField("period_end_iso_date"),
         NumericalField("value")
-    ], download=False),
+    ], download=True),
     Rel("result", [
         CategoryField("type", 'ResultType'),
         TextField("title_narrative"),
