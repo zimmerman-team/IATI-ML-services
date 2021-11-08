@@ -1,11 +1,13 @@
-experiment_name: autoencoder_baseline
+experiment_name: dspn_first
 layers_width: 256
 latent_dim: 32
 activation_function: "ELU"
 depth: 2
 weight_decay: 1.0e-4
-max_epochs: 20
-rel_name: 'result'
+max_epochs: 1000
+rel_name: 'budget'
 batch_size: 1024
 divide_output_layer: True
 latent_l1_norm: 10.0
+max_set_size: 200
+dspn_iter: 4
