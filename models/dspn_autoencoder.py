@@ -38,15 +38,12 @@ class DSPNAE(generic_model.GenericModel):
 
         def __init__(self, data):
             self.data = data
-            print("CollateFn: data.shape",data.shape)
 
         def __call__(self, intervals):
             assert (len(intervals) == 1)
             interval = intervals[0] # because it's a batch of size 1
-            print("CollateFn: interval", interval)
             start_item_index,end_item_index = interval[0:2]
             ret = torch.tensor(self.data[start_item_index:end_item_index])
-            print("CollateFn: ret.shape", ret.shape)
             return ret
 
 
@@ -132,14 +129,10 @@ class DSPNAE(generic_model.GenericModel):
         return target_set,target_mask
 
     def forward(self, loaded_set):
-
-        print("loaded_set size:",loaded_set.size())
         # loaded_set dimensionality: (set_size, item_dims)
 
         target_set,target_mask = self._make_target(loaded_set)
 
-        print('target_set.size()',target_set.size())
-        print('target_mask.size()',target_mask.size())
         self.code = self.encoder(target_set, target_mask)
         ret = self.decoder(self.code)
         intermediate_sets, intermediate_masks, repr_losses, grad_norms = ret
@@ -151,7 +144,6 @@ class DSPNAE(generic_model.GenericModel):
         tmp = self( batch )
         (progress, masks, evals, gradn) = tmp
 
-        print("batch size:",batch.size())
         target_set,target_mask = self._make_target(batch)
         # if using mask as feature, concat mask feature into progress
         target_set = torch.cat(
@@ -163,7 +155,7 @@ class DSPNAE(generic_model.GenericModel):
         ]
 
         set_loss = dspn.utils.chamfer_loss(
-            torch.stack(progress), batch.unsqueeze(0)
+            torch.stack(progress), target_set.unsqueeze(0)
         )
 
         return set_loss.mean()
