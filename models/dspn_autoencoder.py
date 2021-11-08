@@ -112,7 +112,7 @@ class DSPNAE(generic_model.GenericModel):
             self.max_set_size,
             kwargs['item_dim'],
             kwargs['dspn_iter'], # number of iteration on the decoder # FIXME: to conf
-            800, # inner learning rate # FIXME: to conf
+            kwargs['dspn_lr'], # inner learning rate # FIXME: to conf
         )
 
     def _make_target(self,loaded_set):
