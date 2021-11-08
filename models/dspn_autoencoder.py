@@ -9,6 +9,7 @@ from models import generic_model, run, measurements as ms
 import dspn
 import dspn.model
 import dspn.dspn
+from models import diagnostics
 
 class InvariantModel(torch.nn.Module): #FIXME: delete?
     def __init__(self, phi, rho):
@@ -93,7 +94,13 @@ class DSPNAE(generic_model.GenericModel):
 
     def make_measurements(self):
         ret = ms.MeasurementsCollection([
-            ])
+                ms.DatapointMeasurement("z",
+                dst=dict(
+                    latent_last_epoch=ms.random_sampling
+                )
+            ),
+            ms.LastEpochMeasurement("latent_last_epoch", plot_type='latent'),
+        ])
         return ret
 
 
@@ -112,7 +119,7 @@ class DSPNAE(generic_model.GenericModel):
             self.max_set_size,
             kwargs['item_dim'],
             kwargs['dspn_iter'], # number of iteration on the decoder # FIXME: to conf
-            kwargs['dspn_lr'], # inner learning rate # FIXME: to conf
+            kwargs['dspn_lr'], # inner learning rate
         )
 
     def _make_target(self,loaded_set):
@@ -159,8 +166,13 @@ class DSPNAE(generic_model.GenericModel):
         set_loss = dspn.utils.chamfer_loss(
             torch.stack(progress), target_set.unsqueeze(0)
         )
+        loss = set_loss.mean()
 
-        return set_loss.mean()
+        # for measurements:
+        self.z = self.encoder(target_set, target_mask)
+        self.log(f"{which_tset}_loss", loss)
+
+        return loss
 
     def training_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, 'train')
