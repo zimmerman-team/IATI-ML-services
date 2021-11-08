@@ -137,7 +137,6 @@ class Measurement(object):
     def __init__(
             self,
             name,
-            aggregation_fn=None, # FIXME: delete if unused (legacy)
             dst=None,
             plot_type=None,
             mlflow_log=False
@@ -146,10 +145,6 @@ class Measurement(object):
         self.data = dict()
         self.plot_type = plot_type
         self.mlflow_log = mlflow_log
-        if aggregation_fn is None:
-            self.aggregation_fn = mean
-        else:
-            self.aggregation_fn = aggregation_fn
         self._dst = dst
         for which_tset in utils.Tsets:
             self.clear(which_tset.value)
@@ -230,12 +225,6 @@ class Measurement(object):
         ret = aggregation_fn(stacked)
         log(f"done aggregating; the result has shape {ret.shape}.")
         return ret
-
-    def aggregation(self, which_tset):
-        """
-        Applies the default aggregation function (FIXME: obsolete deprecated?)
-        """
-        return self.aggregate(which_tset, self.aggregation_fn)
 
     def count(self, which_tset):
         """

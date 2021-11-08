@@ -42,7 +42,7 @@ class ItemAE(generic_model.GenericModel):
                 output_var_per_feature=ms.var,
                 output_last_epoch=ms.random_sampling
             )),
-            ms.DatapointMeasurement("z", diagnostics.correlation, dst=dict(
+            ms.DatapointMeasurement("z", dst=dict(
                 latent_last_epoch=ms.random_sampling
             )),
 
