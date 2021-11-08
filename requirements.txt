@@ -15,3 +15,4 @@ seaborn
 gensim
 nltk
 airflow
+torchvision

@@ -121,7 +121,9 @@ class DSPNAE(generic_model.GenericModel):
         # target_set dimensionality: (batch_size, item_dims, set_size)
         # here we assume a batch_size=1
         target_set = torch.zeros(1,item_dims,self.max_set_size)
-        target_set[0,0:item_dims,0:set_size] = torch.swapaxes(loaded_set,0,1)
+        src = torch.swapaxes(loaded_set,0,1)
+        src = src[:,0:self.max_set_size] # capping set size to max_set_size
+        target_set[0,0:item_dims,0:set_size] = src
 
         # target_mask dimensionality: (batch_size, set_size)
         target_mask = torch.zeros(1,self.max_set_size)
