@@ -17,25 +17,42 @@ class ItemAE(generic_model.GenericModel):
     with_set_index = False
 
     def make_train_loader(self, tsets):
+        """
+        Creates a DataLoader object (torch library) for the training set.
+        :param tsets: the object containing the training and
+            validation set data.
+        :return: the data loader
+        """
         train_loader = torch.utils.data.DataLoader(
-            tsets.train_scaled,
-            batch_size=self.kwargs['batch_size'],
-            shuffle=True,
+            tsets.train_scaled, # training set needs to be scaled
+            batch_size=self.kwargs['batch_size'], # working with batches
+            shuffle=True, # shuffles datapoints at every epoch
             num_workers=4,
             pin_memory=False
         )
         return train_loader
 
     def make_test_loader(self, tsets):
+        """
+        Creates a DataLoader object (torch library) for the validation set.
+        :param tsets: the object containing the training and
+            validation set data.
+        :return: the data loader
+        """
         test_loader = torch.utils.data.DataLoader(
-            tsets.test_scaled,
-            batch_size=self.kwargs['batch_size'],
-            shuffle=False,
+            tsets.test_scaled, # scaled validation data
+            batch_size=self.kwargs['batch_size'], # uses same batch size as training
+            shuffle=False, # no need to shuffle data when querying the model for validation
             num_workers=4
         )
         return test_loader
 
     def make_measurements(self):
+        """
+        defines all the metrics that need to be extracted from then model
+        :return: a collection of Measurements (MeasurementsCollection), which are
+            defining how the metrics are going to be calculated
+        """
         ret = ms.MeasurementsCollection([
             ms.DatapointMeasurement("x_hat", dst=dict(
                 output_mean_per_feature=ms.mean,
@@ -74,17 +91,37 @@ class ItemAE(generic_model.GenericModel):
         return ret
 
     def __init__(self, **kwargs):
+        """
+        Creates the model. Instantiates the encoder and decoder parts.
+        :param kwargs: mostly configuration. For example, depth and width
+            of encoder and decoder
+        """
         super().__init__(**kwargs)
         self.encoder = generic_model.Encoder(**kwargs)
         self.decoder = generic_model.Decoder(**kwargs)
 
 
     def forward(self, features):
+        """
+        Defines forward autoencoding path of the processing of the data.
+        A code is being extracted from the input features.
+        The decoder re-expands the reduced dimensions of the code
+        into the original dimensionality of the datapoints.
+        :param features: input data
+        :return: the reconstructed input data
+        """
         self.code = self.encoder.forward(features)
         self.reconstructed = self.decoder.forward(self.code)
         return self.reconstructed
 
     def _loss(self,batch,x_hats,z):
+        """
+        loss calculation
+        :param batch: input data
+        :param x_hats: reconstructions
+        :param z: latent representations
+        :return: the loss scalar
+        """
         losses = []
         guess_correct = []
         batch_divided = self._divide(batch)
@@ -110,12 +147,22 @@ class ItemAE(generic_model.GenericModel):
         loss = functools.reduce(lambda a, b: a + b, losses)
 
         self.latent_l1_norm = self.kwargs.pop('latent_l1_norm',0)
+
+        # applies L1 norm to the latent codes in order to encourage sparsity
         loss += torch.norm(z,p=1)*self.latent_l1_norm
+
         self.losses = [curr.detach().numpy() for curr in losses]
         self.guess_correct = guess_correct
         return loss
 
     def _step(self,batch,batch_idx,which_tset):
+        """
+        Returns the quantity to be minimized, for every batch.
+        :param batch: the data batch
+        :param batch_idx: # FIXME: UNUSED? remove?
+        :param which_tset: # either 'train' or 'val
+        :return:
+        """
         x_hat_divided, x_hat_glued = self._divide_or_glue(self(batch))
         z = self.encoder(batch)
         diff = batch - x_hat_glued
@@ -126,10 +173,15 @@ class ItemAE(generic_model.GenericModel):
         self.log(f"{which_tset}_mae", mae)
         self.log(f"{which_tset}_mse", mse)
 
+        # the following instance variables are eventually going
+        # to be extracted by the Measurement system
+        # that will ultimately lead to logged metrics on mlflow
         self.diff = diff.detach().numpy()
         self.x_hat = x_hat_glued.detach().numpy()
         self.z = z.detach().numpy()
         self.diff_reduced = np.mean(np.abs(self.diff), axis=0)
+
+        # PyTorch Lightning will take care of minimization and parameter update
         return loss
 
     def training_step(self, batch, batch_idx):
