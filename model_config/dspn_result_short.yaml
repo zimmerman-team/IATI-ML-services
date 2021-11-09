@@ -12,3 +12,4 @@ latent_l1_norm: 10.0
 max_set_size: 200
 dspn_iter: 4
 dspn_lr: 800
+cap_dataset: 5000

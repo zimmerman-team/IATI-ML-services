@@ -29,10 +29,21 @@ def load_tsets_document(rel):
     return document
 
 
-def load_tsets(rel, with_set_index=False):
+def load_tsets(rel, with_set_index=False, cap=None):
+    """
+    :param rel: relation's data to be loaded
+    :param with_set_index: set as True to include the set index
+    :param cap: limit to a certain amount of datapoints. Useful to quickly debug a new model
+    :return: the Tsets object containing the dataset splits
+    """
     document = load_tsets_document(rel)
     del document['rel']
-    ret = tsets.Tsets(rel, **document, with_set_index=with_set_index)
+    ret = tsets.Tsets(
+        rel,
+        **document,
+        with_set_index=with_set_index,
+        cap=cap
+    )
     return ret
 
 

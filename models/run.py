@@ -98,17 +98,19 @@ def run(Model,config_name):
     mlflow.pytorch.autolog()
     with mlflow.start_run(run_name=model_config['config_name']):
         mlflow.log_params(model_config)
+        print("__file__",__file__)
         mlflow.log_artifact(__file__)
         mlflow.log_artifact(model_config['config_filename'])
         rel = relspecs.rels[model_config['rel_name']]
-        print("rel",rel)
 
-        tsets = persistency.load_tsets(rel,with_set_index=Model.with_set_index)
+        tsets = persistency.load_tsets(
+            rel,
+            with_set_index=Model.with_set_index,
+            cap=model_config['cap_dataset']
+        )
 
         for curr in tsets.tsets_names:
             mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
-        item_dim = tsets.item_dim
-        print("item_dim is",item_dim)
 
         #  use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -116,12 +118,12 @@ def run(Model,config_name):
         # create a model from the Model class
         # load it to the specified device, either gpu or cpu
         model = Model(
-            item_dim=item_dim,
+            input_shape=tsets.item_dim,
             rel=rel,
+            item_dim=tsets.item_dim,
             **model_config
         ).to(device)
 
-        tsets.print_shapes()
         train_loader = model.make_train_loader(tsets)
         test_loader = model.make_test_loader(tsets)
 
@@ -132,4 +134,4 @@ def run(Model,config_name):
         )
         trainer.fit(model, train_loader, test_loader)
         print("current mlflow run:",mlflow.active_run().info.run_id, " - all done.")
-        #log_net_visualization(model,torch.zeros(model_config['batch_size'], input_cardinality))
+        #log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))
