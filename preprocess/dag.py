@@ -88,12 +88,23 @@ def parse(page, ti):
     for rel, sets in rels_vals.items():
         for activity_id, fields in sets.items():
             logging.info('fields.keys'+str(fields.keys()))
+
+            # now we check if all the fields in this set have the same
+            # cardinality. They have to be because every item in the
+            # set needs to have all the fields.
+
             lens = {}
             for k, v in fields.items():
                 lens[k] = len(v)
-            assert len(set(lens.values())) == 1,\
-                "all fields need to have same amount of values"\
-                + f"(rel:{rel}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
+
+            if len(set(lens.values())) != 1:
+
+                logging.error(
+                    "all fields need to have same amount of values"\
+                    + f"(rel:{rel}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
+                )
+                # remove the invalid activity-set
+                rels_vals.pop(activity_id)
     large_mp.send(ti, rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
 
@@ -293,7 +304,8 @@ with DAG(
     'download_and_preprocess_sets',
     description='Downloads sets data from IATI.cloud',
     tags=['download', 'preprocess', 'sets'],
-    default_args=default_args
+    default_args=default_args,
+    schedule_interval=None
 ) as dag:
 
     pages = list(range(MAX_PAGES))
