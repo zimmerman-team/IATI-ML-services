@@ -21,13 +21,13 @@ default_timezone = utc
 # ``SequentialExecutor``, ``LocalExecutor``, ``CeleryExecutor``, ``DaskExecutor``,
 # ``KubernetesExecutor``, ``CeleryKubernetesExecutor`` or the
 # full import path to the class when using a custom executor.
-executor = SequentialExecutor
+executor = LocalExecutor
 
 # The SqlAlchemy connection string to the metadata database.
 # SqlAlchemy supports many different database engines.
 # More information here:
 # http://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html#database-uri
-sql_alchemy_conn = sqlite:///HOME/airflow/airflow.db
+sql_alchemy_conn = postgresql+psycopg2://scot:tiger@localhost:5432/airflow
 
 # The encoding for the databases
 sql_engine_encoding = utf-8
@@ -43,7 +43,7 @@ sql_alchemy_pool_enabled = True
 
 # The SqlAlchemy pool size is the maximum number of database connections
 # in the pool. 0 indicates no limit.
-sql_alchemy_pool_size = 5
+sql_alchemy_pool_size = 16
 
 # The maximum overflow size of the pool.
 # When the number of checked-out connections reaches the size set in pool_size,
@@ -54,7 +54,7 @@ sql_alchemy_pool_size = 5
 # and the total number of "sleeping" connections the pool will allow is pool_size.
 # max_overflow can be set to ``-1`` to indicate no overflow limit;
 # no limit will be placed on the total number of concurrent connections. Defaults to ``10``.
-sql_alchemy_max_overflow = 10
+sql_alchemy_max_overflow = 20
 
 # The SqlAlchemy pool recycle is the number of seconds a connection
 # can be idle in the pool before it is invalidated. This config does
