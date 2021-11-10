@@ -27,7 +27,7 @@ executor = LocalExecutor
 # SqlAlchemy supports many different database engines.
 # More information here:
 # http://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html#database-uri
-sql_alchemy_conn = postgresql+psycopg2://scot:tiger@localhost:5432/airflow
+sql_alchemy_conn = postgresql+psycopg2://airflow_user:PG_PASSWORD@localhost:5432/airflow_db
 
 # The encoding for the databases
 sql_engine_encoding = utf-8

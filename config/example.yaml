@@ -1,3 +1,7 @@
+# suggestion on how to generate a password:
+# tr -dc A-Za-z0-9 </dev/urandom | head -c 13 ; echo ''
+# https://unix.stackexchange.com/questions/230673/how-to-generate-a-random-string
+
 mongo_user: someuser
 mongo_password: somepassword
 mongo_host: somehost
@@ -6,3 +10,8 @@ mongo_db: learning_sets
 
 vm_user: someuser
 vm_host: somehost
+
+pg_password: somepassword
+airflow_user: someuser
+airflow_password: somepassword
+airflow_email: someuser@zimmerman.team

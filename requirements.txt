@@ -16,3 +16,4 @@ gensim
 nltk
 airflow
 torchvision
+psycopg2
