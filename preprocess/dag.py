@@ -86,6 +86,7 @@ def parse(page, ti):
                         rels_vals[rel.name][activity_id][rel_field] = v
 
     for rel, sets in rels_vals.items():
+        remove = []
         for activity_id, fields in sets.items():
             logging.info('fields.keys'+str(fields.keys()))
 
@@ -103,8 +104,12 @@ def parse(page, ti):
                     "all fields need to have same amount of values"\
                     + f"(rel:{rel}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
                 )
-                # remove the invalid activity-set
-                rels_vals.pop(activity_id, None)
+                remove.append(activity_id)
+
+        for activity_id in remove:
+            # remove the invalid activity-set
+            rels_vals[rel].pop(activity_id, None)
+
     large_mp.send(ti, rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
 
