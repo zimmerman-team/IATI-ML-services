@@ -215,7 +215,6 @@ class CategoryField(AbstractField):
                 siz = len(self.codelist)
                 weight = np.ones(siz)/siz
                 weight[prevent_constant_prediction_idx] /= 10
-                print('foo', weight[prevent_constant_prediction_idx])
             else:
                 weight = None
             kwargs['loss_function'] = utils.OneHotCrossEntropyLoss(weight=weight)
