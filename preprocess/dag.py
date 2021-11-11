@@ -104,7 +104,7 @@ def parse(page, ti):
                     + f"(rel:{rel}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
                 )
                 # remove the invalid activity-set
-                rels_vals.pop(activity_id)
+                rels_vals.pop(activity_id, None)
     large_mp.send(ti, rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
 
