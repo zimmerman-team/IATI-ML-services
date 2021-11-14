@@ -94,7 +94,7 @@ class DSPNAE(generic_model.GenericModel):
 
     def make_measurements(self):
         ret = ms.MeasurementsCollection([
-                ms.DatapointMeasurement("z",
+            ms.DatapointMeasurement("z",
                 dst=dict(
                     latent_last_epoch=ms.random_sampling
                 )
@@ -137,39 +137,39 @@ class DSPNAE(generic_model.GenericModel):
         target_mask[0, 0:set_size] = 1
         return target_set,target_mask
 
-    def forward(self, loaded_set):
-        # loaded_set dimensionality: (set_size, item_dims)
-
-        target_set,target_mask = self._make_target(loaded_set)
-
-        self.code = self.encoder(target_set, target_mask)
-        ret = self.decoder(self.code)
+    def forward(self,target_set,target_mask):
+        self.z = self.encoder(target_set, mask=target_mask)
+        ret = self.decoder(self.z)
         intermediate_sets, intermediate_masks, repr_losses, grad_norms = ret
         self.reconstructed = intermediate_sets[-1]
         return ret
 
     def _step(self, batch, batch_idx, which_tset):
+        print("batch.size",batch.size())
+        # "batch" dimensionality: (set_size, item_dims)
+        target_set,target_mask = self._make_target(batch)
+
         # copied from dspn.train.main.run()
-        tmp = self( batch )
-        (progress, masks, evals, gradn) = tmp
+        (progress, masks, evals, gradn) = self(target_set,target_mask)
 
         target_set,target_mask = self._make_target(batch)
+        print("target_set.shape",target_set.shape)
         # if using mask as feature, concat mask feature into progress
-        target_set = torch.cat(
+        target_set_with_mask = torch.cat(
             [target_set, target_mask.unsqueeze(dim=1)], dim=1
         )
+        print("target_set_with_mask.shape after cat with mask",target_set_with_mask.shape)
         progress = [
             torch.cat([p, m.unsqueeze(dim=1)], dim=1)
             for p, m in zip(progress, masks)
         ]
 
         set_loss = dspn.utils.chamfer_loss(
-            torch.stack(progress), target_set.unsqueeze(0)
+            torch.stack(progress), target_set_with_mask.unsqueeze(0)
         )
         loss = set_loss.mean()
 
         # for measurements:
-        self.z = self.encoder(target_set, target_mask)
         self.log(f"{which_tset}_loss", loss)
 
         return loss
