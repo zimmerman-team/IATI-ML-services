@@ -196,7 +196,7 @@ def load_model_config(config_name):
             'model_config/'))
         filename = os.path.join(directory, config_name+".yaml")
     with open(filename, 'r') as f:
-        ret = yaml.load(f)
+        ret = yaml.load(f,Loader=yaml.Loader)
 
     # default values for missing parameters
     ret['cap_dataset'] = ret.get('cap_dataset',None)

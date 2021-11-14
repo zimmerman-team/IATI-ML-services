@@ -38,7 +38,7 @@ def load():
         raise FileNotFoundError(f"cannot find {filename}")
     print(f"loading {filename}.. ", end="")
     f = open(filename, 'r')
-    conf_dict = yaml.load(f)
+    conf_dict = yaml.load(f, Loader=yaml.Loader)
     print("done.")
 
 
