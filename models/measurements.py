@@ -4,6 +4,7 @@ import enum
 import gc
 import logging
 import mlflow
+import torch
 
 def log(*args):
     """
@@ -172,6 +173,9 @@ class Measurement(object):
             chunk_size = chunk.shape
         elif type(chunk) is list:
             chunk_size = len(chunk)
+        elif type(chunk) is torch.Tensor:
+            chunk = chunk.detach().numpy()
+            chunk_size = chunk.shape
         else:
             chunk_size = f"??{type(chunk)}"
         if self.mlflow_log:
