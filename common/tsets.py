@@ -18,13 +18,14 @@ class Tsets(utils.Collection):
             if self[which_tset] is None:
                 raise Exception(f"Didn't find {gridfs_filename}")
 
-            total_n_datapoints += self[which_tset].shape[1]
+            total_n_datapoints += self[which_tset].shape[0]
 
         if self.cap is not None:
             # the dataset_cap option in the configuration file allows to use
             # a smaller amount of datapoints in order to quickly debug a new model.
             for which_tset in self.tsets_names:
-                tset_fraction = float(self[which_tset].shape[1])/float(total_n_datapoints)
+                orig = self[which_tset].shape[0]
+                tset_fraction = float(orig)/float(total_n_datapoints)
                 tset_cap = int(tset_fraction*self.cap)
                 self[which_tset] = self[which_tset][:tset_cap,:]
 
