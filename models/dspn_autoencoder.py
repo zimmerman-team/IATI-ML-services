@@ -10,6 +10,7 @@ import dspn
 import dspn.model
 import dspn.dspn
 from models import diagnostics
+from common import utils
 
 class InvariantModel(torch.nn.Module): #FIXME: delete?
     def __init__(self, phi, rho):
@@ -145,7 +146,7 @@ class DSPNAE(generic_model.GenericModel):
         return ret
 
     def _step(self, batch, batch_idx, which_tset):
-        print("batch.size",batch.size())
+        utils.debug("batch.size",batch.size())
         # "batch" dimensionality: (set_size, item_dims)
         target_set,target_mask = self._make_target(batch)
 
@@ -153,12 +154,12 @@ class DSPNAE(generic_model.GenericModel):
         (progress, masks, evals, gradn) = self(target_set,target_mask)
 
         target_set,target_mask = self._make_target(batch)
-        print("target_set.shape",target_set.shape)
+        utils.debug("target_set.shape",target_set.shape)
         # if using mask as feature, concat mask feature into progress
         target_set_with_mask = torch.cat(
             [target_set, target_mask.unsqueeze(dim=1)], dim=1
         )
-        print("target_set_with_mask.shape after cat with mask",target_set_with_mask.shape)
+        utils.debug("target_set_with_mask.shape after cat with mask",target_set_with_mask.shape)
         progress = [
             torch.cat([p, m.unsqueeze(dim=1)], dim=1)
             for p, m in zip(progress, masks)

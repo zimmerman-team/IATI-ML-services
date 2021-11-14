@@ -13,6 +13,7 @@ import enum
 import yaml
 import collections
 import datetime
+import logging
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -237,3 +238,7 @@ def is_empty(stuff):
         else:
             return False
     raise Exception(f"is_empty: unhandled case for type {type(stuff)}")
+
+def debug(*args):
+    msg = " ".join([str(a) for a in args])
+    logging.debug(msg)
