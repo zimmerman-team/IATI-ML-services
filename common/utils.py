@@ -63,6 +63,8 @@ class Collection(dict):
         assert name in self.names, f"{name} not in collection's names"
         return self[name]
 
+    def add(self, item):
+        self[item.name] = item
 
 class Tsets(enum.Enum):
     TRAIN = 'train'  # training set
