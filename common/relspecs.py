@@ -351,5 +351,29 @@ rels = RelsCollection([
         # DatetimeField("indicator_period_period_end_iso_date"),
         # NumericalField("indicator_period_target_value"),
         # NumericalField("indicator_period_actual_value")
+    ], download=True),
+    Rel("participating_org", [
+        TextField("ref"),
+        CategoryField("type","OrganisationType"),
+        CategoryField("role","OrganisationRole"),
+        TextField("narrative"),
+    ], download=True),
+    Rel("activity_date", [
+        CategoryField("type","ActivityDateType"),
+        DatetimeField("iso_date")
+    ], download=True),
+    Rel("contact_info", [
+        TextField("email"),
+        TextField("website"),
+        TextField("organisation_narrative"),
+    ], download=True),
+    Rel("location", [
+        TextField("ref"),
+        CategoryField("reach_code", "GeographicLocationReach"),
+        PositionField("point_pos"),
+        CategoryField("exactness_code", "GeographicExactness"),
+        CategoryField("class_code","GeographicLocationClass"),
+        TextField("name_narrative")
     ], download=True)
+
 ])
