@@ -168,7 +168,7 @@ class AbstractField(abc.ABC):
         return self._scaler
 
 
-class LocationField(AbstractField):
+class PositionField(AbstractField):
 
     def encode(self, entries, set_size, **kwargs):
         ret = []
@@ -342,6 +342,25 @@ class TextField(AbstractField):
             n_correct += float(datapoint_correct)
         return n_correct/float(x.shape[0])
 
+class BooleanField(AbstractField):
+    def encode(self, entries, set_size, **kwargs):
+        ret = [bool(x) for x in entries]
+        short_of = set_size - len(entries)
+        if short_of > 0:
+            for i in range(short_of):
+                ret.append(text_model.instance().empty_vector.tolist())
+        return ret
+
+    @property
+    def n_features(self):
+        return 1
+
+    def guess_correct(self, x_hat, x):
+        x_hat_descaled = self.scaler.inverse_transform(x_hat)
+        x_descaled = self.scaler.inverse_transform(x)
+        correct_ones = np.linalg.norm(x_hat_descaled - x_descaled, axis=1) < 0.5
+        correct_ratio = np.mean(correct_ones)
+        return correct_ratio
 
 rels = RelsCollection([
     Rel("budget", [
@@ -406,6 +425,34 @@ rels = RelsCollection([
         CategoryField("exactness_code", "GeographicExactness"),
         CategoryField("class_code","GeographicLocationClass"),
         TextField("name_narrative")
+    ], download=True),
+    Rel("sector", [
+        CategoryField("vocabulary","SectorVocabulary"),
+        CategoryField("code","SectorCategory")
+    ], download=True),
+    Rel("policy_marker", [
+        CategoryField("vocabulary","PolicyMarkerVocabulary"),
+        CategoryField("code","PolicyMarker")
+        CategoryField("significance", "PolicySignificance:within")
+    ], download=True),
+    Rel("default_aid_type", [
+        CategoryField("vocabulary","AidTypeVocabulary"),
+        CategoryField("code","AidType")
+    ], download=True),
+    Rel("transaction", [
+        TextField("ref"),
+        BooleanField("humanitarian"),
+        CategoryField("type","TransactionType"),
+        DatetimeField("date_iso_date"),
+        CategoryField("value_currency","Currency"),
+        DatetimeField("value_date"),
+        NumericalField("value"),
+        NumericalField("value_usd"),
+        TextField("provider_org_provider_activity_id"),
+        CategoryField("provider_org_type","OrganisationType"),
+        TextField("provider_org_ref"),
+        CategoryField("flow_type_code","FlowType"),
+        CategoryField("finance_type_code","FinanceType"),
+        CategoryField("tied_status_code","TiedStatus")
     ], download=True)
-
 ])
