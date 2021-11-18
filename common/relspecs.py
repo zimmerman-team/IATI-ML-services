@@ -6,6 +6,17 @@ import numpy as np
 import functools
 import sklearn.preprocessing
 import torch.nn
+import sys
+import os
+import logging
+
+sys.path.append(
+    os.path.abspath(
+        os.path.dirname(
+            os.path.abspath(__file__)
+        )+"/.."
+    )
+)
 
 from common import persistency
 from common import utils
@@ -173,9 +184,9 @@ class PositionField(AbstractField):
     def encode(self, entries, set_size, **kwargs):
         ret = []
         for entry in entries:
-            groups = re.match('\s+\(\s+(.*)\s+,\s+(.*)\s+\)\s+', entry).groups()
+            groups = re.match('\s*\(\s*(.*)\s*,\s*(.*)\s*\)\s*', entry).groups()
             lat, lon = tuple(groups)
-            t = tuple(float(lat),float(lon))
+            t = (float(lat),float(lon))
             ret.append(t)
 
         # FIXME: code duplication from other fields
@@ -260,7 +271,10 @@ class CategoryField(AbstractField):
         ret = np.zeros((set_size, len(self.codelist)))
         for index_code, code in enumerate(entries):
             if code is None:
-                raise Exception("code is None: this shouldn't happen")
+                logging.warning("code is None: this shouldn't happen")
+                continue
+            elif code not in self.codelist:
+                logging.warning(f"code '{code}' not found in the codelist {self.codelist}")
             else:
                 index_one = self.codelist.index(code)
                 ret[index_code, index_one] = 1
@@ -363,6 +377,10 @@ class BooleanField(AbstractField):
         return correct_ratio
 
 rels = RelsCollection([
+    Rel("activity_date", [
+        CategoryField("type","ActivityDateType"),
+        DatetimeField("iso_date")
+    ], download=True),
     Rel("budget", [
         CategoryField(
             "value_currency",
@@ -409,10 +427,6 @@ rels = RelsCollection([
         CategoryField("role","OrganisationRole"),
         TextField("narrative"),
     ], download=True),
-    Rel("activity_date", [
-        CategoryField("type","ActivityDateType"),
-        DatetimeField("iso_date")
-    ], download=True),
     Rel("contact_info", [
         TextField("email"),
         TextField("website"),
@@ -432,8 +446,8 @@ rels = RelsCollection([
     ], download=True),
     Rel("policy_marker", [
         CategoryField("vocabulary","PolicyMarkerVocabulary"),
-        CategoryField("code","PolicyMarker")
-        CategoryField("significance", "PolicySignificance:within")
+        CategoryField("code","PolicyMarker"),
+        CategoryField("significance", "PolicySignificance")
     ], download=True),
     Rel("default_aid_type", [
         CategoryField("vocabulary","AidTypeVocabulary"),
