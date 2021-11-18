@@ -10,7 +10,7 @@ import dspn
 import dspn.model
 import dspn.dspn
 from models import diagnostics
-from common import utils
+from common import utils, config
 
 class InvariantModel(torch.nn.Module): #FIXME: delete?
     def __init__(self, phi, rho):
@@ -71,7 +71,7 @@ class DSPNAE(generic_model.GenericModel):
         train_loader = torch.utils.data.DataLoader(
             tsets.sets_intervals('train'),
             shuffle=True,
-            num_workers=4,
+            num_workers=config.data_loader_num_workers,
             pin_memory=False,
             collate_fn=self.CollateFn(tsets.train_scaled)
         )

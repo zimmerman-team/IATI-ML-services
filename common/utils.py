@@ -187,7 +187,7 @@ def str_shapes(stuff):
         return str(stuff.shape)
 
 
-def load_model_config(config_name):
+def load_model_config(config_name, dynamic_config=None):
     if os.path.exists(config_name):
         # a filename is given
         filename = config_name
@@ -206,6 +206,12 @@ def load_model_config(config_name):
 
     ret['config_name'] = config_name
     ret['config_filename'] = filename
+
+    # dynamic config generation will override the yaml file config
+    if dynamic_config is not None:
+        for k,v in dynamic_config.items():
+            logging.info(f"configuration item {k} dynamically set at {v}")
+            ret[k] = v
     return ret
 
 

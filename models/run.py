@@ -4,10 +4,20 @@ import pytorch_lightning as pl
 import numpy as np
 import logging
 import os
+import sys
+import argparse
 
 from common import utils, relspecs, persistency
 from models import diagnostics, measurements as ms
 
+def get_args():
+    args = {}
+    for arg in sys.argv:
+        if arg.startswith(("--")):
+            k = arg.split('=')[0][2:]
+            v = arg.split('=')[1]
+            args[k] = v
+    return args
 
 class MeasurementsCallback(pl.callbacks.Callback):
     rel = None
@@ -90,10 +100,27 @@ class MeasurementsCallback(pl.callbacks.Callback):
                     type_=m.plot_type
                 )
 
-def run(Model,config_name):
+def run(Model,config_name, dynamic_config={}):
+
+    # need to make sure that logs/* and mlruns/* are generated
+    # in the correct project root directory, as well as
+    # config files are loaded from model_config/
+    project_root_dir= os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '..' # parent directory of models/
+    ))
+    os.chdir(project_root_dir)
+
+    # gets args from command line that end up in the model run's configuration
+    # and overrides the eventual given dynamic_config with the passed arguments
+    # as in --rel_name=activity_date for example
+    args = get_args()
+    for arg, val in args.items():
+        dynamic_config[arg] = val
+
     log_filename = os.path.join("logs",utils.strnow_compact()+'.log')
     logging.basicConfig(filename=log_filename, filemode='w', level=logging.DEBUG)
-    model_config = utils.load_model_config(config_name)
+    model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
     mlflow.set_experiment(model_config['experiment_name'])
     mlflow.pytorch.autolog()
     with mlflow.start_run(run_name=model_config['config_name']):
