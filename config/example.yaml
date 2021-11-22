@@ -11,7 +11,7 @@ mongo_db: learning_sets
 vm_user: someuser
 vm_host: somehost
 
-pg_password: somepassword
+airflow_pg_password: somepassword
 airflow_user: someuser
 airflow_password: somepassword
 airflow_email: someuser@zimmerman.team
