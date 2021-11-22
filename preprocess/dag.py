@@ -108,7 +108,10 @@ def parse(page, ti):
 
         for activity_id in remove:
             # remove the invalid activity-set
-            rels_vals[rel].pop(activity_id, None)
+            try:
+                del rels_vals[rel][activity_id]
+            except:
+                pass # silently ignore the fact that activity_id is not in the data from that rel
 
     large_mp.send(ti, rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
