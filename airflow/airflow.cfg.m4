@@ -43,7 +43,7 @@ sql_alchemy_pool_enabled = True
 
 # The SqlAlchemy pool size is the maximum number of database connections
 # in the pool. 0 indicates no limit.
-sql_alchemy_pool_size = 0009
+sql_alchemy_pool_size = 0
 
 # The maximum overflow size of the pool.
 # When the number of checked-out connections reaches the size set in pool_size,
@@ -95,7 +95,7 @@ dags_are_paused_at_creation = True
 # The maximum number of active DAG runs per DAG. The scheduler will not create more DAG runs
 # if it reaches the limit. This is configurable at the DAG level with ``max_active_runs``,
 # which is defaulted as ``max_active_runs_per_dag``.
-max_active_runs_per_dag = 0009
+max_active_runs_per_dag = 2
 max_active_runs = 0009
 max_threads = 0009
 
@@ -169,7 +169,7 @@ dag_run_conf_overrides_params = True
 dag_discovery_safe_mode = True
 
 # The number of retries each task is going to have by default. Can be overridden at dag or task level.
-default_task_retries = 0
+default_task_retries = 2
 
 # Updating serialized DAG can not be faster than a minimum interval to reduce database write rate.
 min_serialized_dag_update_interval = 30
@@ -427,7 +427,7 @@ password =
 # provided explicitly or passed via ``default_args``
 default_owner = airflow
 default_cpus = 1
-default_ram = 512
+default_ram = 4096
 default_disk = 512
 default_gpus = 0
 
@@ -462,7 +462,7 @@ base_url = http://localhost:8080
 default_ui_timezone = Europe/Amsterdam
 
 # The ip specified when starting the web server
-web_server_host = 0.0.0.0
+web_server_host = 127.0.0.1
 
 # The port on which to run the web server
 web_server_port = 8080
