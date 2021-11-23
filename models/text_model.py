@@ -13,11 +13,11 @@ class ModelWrapper():
         full_path = os.path.join(directory,MODEL_FILENAME)
         self.model = Doc2Vec.load(full_path)
     def encode(self, text):
-        logging.info("encoding "+str(text))
+        #logging.info("encoding "+str(text))
         tokens = nltk.word_tokenize(text)
         tokens = [curr.lower() for curr in tokens]
         ret = self.model.infer_vector(tokens)
-        logging.info("text encode returning "+str(ret))
+        #logging.info("text encode returning "+str(ret))
         return ret
 
     def decode(self, code):

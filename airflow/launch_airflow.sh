@@ -15,6 +15,10 @@ screen -X -S airflow_webserver quit
 
 sleep 1
 
+ps aux | grep airflow | grep -v launch | awk '{print $2}' | xargs kill
+
+sleep 1
+
 screen -L -Logfile logs/airflow_scheduler_${TS}.log -S airflow_scheduler -d -m airflow scheduler
 screen -L -Logfile logs/airflow_webserver_${TS}.log -S airflow_webserver -d -m airflow webserver
 

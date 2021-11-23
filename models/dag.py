@@ -57,7 +57,7 @@ with DAG(
         train_cmd = f"cd {project_root_dir}; python3 models/dspn_autoencoder.py {config.models_dag_config_name} --rel_name={rel.name}"
 
         t_train_model = BashOperator(
-            task_id=f"train_dsp_model_{rel.name}",
+            task_id=f"train_dspn_model_{rel.name}",
             depends_on_past=False,
             bash_command=train_cmd,
             start_date=in_days((rel_i-1)*days_interval),

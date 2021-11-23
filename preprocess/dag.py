@@ -11,6 +11,7 @@ from collections import defaultdict
 import sklearn.model_selection
 import os
 import sys
+import pymongo
 
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
@@ -27,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL = "https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL = "https://datastore.iati.cloud/api/codelists/{}/"
 PAGE_SIZE = 1000
-MAX_PAGES = 500
+MAX_PAGES = 3
 
 
 def extract_codelists(_rels):
@@ -200,8 +201,13 @@ def encode(rel, ti):
             logging.info(document)
             raise Exception(msg)
         coll_out.delete_one({'activity_id': document['activity_id']})  # remove pre-existing set for this activity
-        coll_out.insert_one(document)
 
+        try:
+            coll_out.insert_one(document)
+        except pymongo.errors.DocumentTooLarge as e:
+            for field in rel.fields:
+                logging.info(f"{field.name} shape: {set_[field.name].shape}")
+            raise Exception(f"cannot insert document into relation {rel.name} because {str(e)}")
 
 def arrayfy(rel, ti):
     """
