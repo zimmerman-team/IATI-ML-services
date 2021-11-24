@@ -274,7 +274,7 @@ class CategoryField(AbstractField):
                 logging.warning("code is None: this shouldn't happen")
                 continue
             elif code not in self.codelist:
-                logging.warning(f"code '{code}' not found in the codelist {self.codelist}")
+                pass # FIXME: this is way too common: logging.warning(f"code '{code}' not found in the codelist {self.codelist}")
             else:
                 index_one = self.codelist.index(code)
                 ret[index_code, index_one] = 1

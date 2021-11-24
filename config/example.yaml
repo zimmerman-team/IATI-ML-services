@@ -16,6 +16,10 @@ airflow_user: someuser
 airflow_password: somepassword
 airflow_email: someuser@zimmerman.team
 
+download_page_size: 1000
+download_max_pages: 3
+download_max_set_size: 50
+
 data_loader_num_workers: 4
 models_dag_config_name: dspn_deepnarrow
 models_dag_days_interval: 2
