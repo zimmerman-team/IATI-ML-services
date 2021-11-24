@@ -123,7 +123,8 @@ def run(Model,config_name, dynamic_config={}):
     model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
     mlflow.set_experiment(model_config['experiment_name'])
     mlflow.pytorch.autolog()
-    with mlflow.start_run(run_name=model_config['config_name']):
+    run_name = f"{model_config['config_name']}_{model_config['rel_name']}"
+    with mlflow.start_run(run_name=run_name):
         mlflow.log_params(model_config)
         print("__file__",__file__)
         mlflow.log_artifact(__file__)
@@ -135,7 +136,7 @@ def run(Model,config_name, dynamic_config={}):
             with_set_index=Model.with_set_index,
             cap=model_config['cap_dataset']
         )
-
+        mlflow.log_param('tsets_creation_time',tsets.creation_time)
         for curr in tsets.tsets_names:
             mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
 

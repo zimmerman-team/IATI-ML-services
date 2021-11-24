@@ -37,12 +37,12 @@ class Tsets(utils.Collection):
     ):
         self.rel = rel
         kwargs.update(dict.fromkeys(self.tsets_names, None))
+        self.creation_time = kwargs['creation_time']
         super().__init__(**kwargs)
 
         self.load_data()
 
         for which_tset in self.tsets_names:
-
             if self.with_set_index is False:
                 # removes the set_index column from the glued-up tensor
                 self[which_tset] = self[which_tset][:, 1:]
