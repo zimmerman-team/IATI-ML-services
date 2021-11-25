@@ -18,8 +18,7 @@ sys.path.append(
     )
 )
 
-from common import persistency
-from common import utils
+from common import persistency, utils, config
 from models import text_model
 
 
@@ -85,6 +84,19 @@ class Rel(object):
         else:
             # possibly already glued?
             ret = tensor_list
+        return ret
+
+    def extract_from_activity_data(self,activity_data):
+        ret = {}
+        for k, v in activity_data.items():
+            m = re.match(f'{self.name}_(.*)', k)
+            if m is not None:
+                rel_field = m.group(1)
+                if rel_field in self.fields_names:
+                    # cap the amount of items to config.download_max_set_size
+                    v = v[:config.download_max_set_size]
+                    # logging.info(f"considering field {rel_field}")
+                    ret[rel_field] = v
         return ret
 
     @property

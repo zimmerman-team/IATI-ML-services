@@ -70,18 +70,8 @@ def parse(page, ti):
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
         # logging.info(f"processing activity {activity_id}")
-        for k, v in activity.items():
-            # logging.info(f"processing activity item {k}")
-            for rel in rels:
-                # logging.info(f"processing rel {rel.name}")
-                m = re.match(f'{rel.name}_(.*)', k)
-                if m is not None:
-                    rel_field = m.group(1)
-                    if rel_field in rel.fields_names:
-                        # cap the amount of items to config.download_max_set_size
-                        v = v[:config.download_max_set_size]
-                        # logging.info(f"considering field {rel_field}")
-                        rels_vals[rel.name][activity_id][rel_field] = v
+        for rel in rels:
+            rels_vals[rel.name][activity_id] = rel.extract_from_activity_data(activity)
 
     for rel, sets in rels_vals.items():
         remove = []
