@@ -10,9 +10,13 @@ class AEModule(torch.nn.Module):
     def __init__(self,**kwargs):
         self.kwargs = kwargs
         self.activation_function = getattr(torch.nn, self.kwargs["activation_function"])
+        # FIXME: maybe this requires multiple inheritance
         self.rel = kwargs.get('rel', None)
         super().__init__()
 
+    @property
+    def name(self):
+        return f"{self.classname}_{self.rel.name}"
 
     def activate(self, x):
         return self.activation_function()(x)
@@ -142,6 +146,13 @@ class GenericModel(pl.LightningModule):
 
     with_set_index = None  # please set in subclass
 
+    @property
+    def classname(self):
+        return self.__class__.__name__
+
+    @property
+    def name(self):
+        raise Exception("implement in subclass")
 
     def make_train_loader(self,tsets):
         raise Exception("implement in subclass")

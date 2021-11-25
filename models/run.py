@@ -100,6 +100,8 @@ class MeasurementsCallback(pl.callbacks.Callback):
                     type_=m.plot_type
                 )
 
+# FIXME: the run function seems to be a lot of stuff, can
+#   probably fix it with some additional abstraction?
 def run(Model,config_name, dynamic_config={}):
 
     # need to make sure that logs/* and mlruns/* are generated
@@ -154,10 +156,21 @@ def run(Model,config_name, dynamic_config={}):
 
         train_loader = model.make_train_loader(tsets)
         test_loader = model.make_test_loader(tsets)
-
+        model_filename = model.name
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(
+            monitor="train_loss",
+            dirpath="trained_models/",
+            filename=model_filename,
+            save_top_k=1,
+            mode="min",
+        )
+        callbacks = [
+            MeasurementsCallback(rel=rel,model=model),
+            checkpoint_callback
+        ]
         trainer = pl.Trainer(
             limit_train_batches=1.0,
-            callbacks=[MeasurementsCallback(rel=rel,model=model)],
+            callbacks=callbacks,
             max_epochs=model_config['max_epochs']
         )
         trainer.fit(model, train_loader, test_loader)
