@@ -1,6 +1,13 @@
 import pytorch_lightning as pl
 import torch
+import os
+import sys
+import pickle
 
+project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
+sys.path.insert(0, project_root_dir)
+
+from common import config
 
 class AEModule(torch.nn.Module):
     """
@@ -14,9 +21,6 @@ class AEModule(torch.nn.Module):
         self.rel = kwargs.get('rel', None)
         super().__init__()
 
-    @property
-    def name(self):
-        return f"{self.classname}_{self.rel.name}"
 
     def activate(self, x):
         return self.activation_function()(x)
@@ -152,7 +156,18 @@ class GenericModel(pl.LightningModule):
 
     @property
     def name(self):
-        raise Exception("implement in subclass")
+        return f"{self.classname}_{self.rel.name}"
+
+    @property
+    def kwargs_filename(self):
+        os.path.join(
+            config.trained_models_dirpath,
+            f"{self.name}_kwargs.pickle"
+        )
+
+    def dump_kwargs(self):
+        with open(self.kwargs_filename, 'wb') as handle:
+            pickle.dump(self.kwargs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def make_train_loader(self,tsets):
         raise Exception("implement in subclass")

@@ -6,8 +6,8 @@ import logging
 import os
 import sys
 import argparse
-
-from common import utils, relspecs, persistency
+import pickle
+from common import utils, relspecs, persistency, config
 from models import diagnostics, measurements as ms
 
 def get_args():
@@ -153,13 +153,13 @@ def run(Model,config_name, dynamic_config={}):
             item_dim=tsets.item_dim,
             **model_config
         ).to(device)
-
+        model.dump_kwargs()
         train_loader = model.make_train_loader(tsets)
         test_loader = model.make_test_loader(tsets)
         model_filename = model.name
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor="train_loss",
-            dirpath="trained_models/",
+            dirpath=config.trained_models_dirpath,
             filename=model_filename,
             save_top_k=1,
             mode="min",

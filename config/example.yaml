@@ -23,3 +23,5 @@ download_max_set_size: 50
 data_loader_num_workers: 4
 models_dag_config_name: dspn_deepnarrow
 models_dag_days_interval: 2
+
+trained_models_dirpath: trained_models/
