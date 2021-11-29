@@ -21,6 +21,9 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
     """
     def __init__(self):
         os.chdir(project_root_dir)
+
+    def load_all_models(self):
+        os.chdir(project_root_dir)
         for rel in relspecs.rels:
             model = self.load(rel)
             self[rel.name] = model
@@ -48,7 +51,7 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
 
     def generate_kwargs_filename(self, model):
 
-        # using the versioning of the last model filename
+        # using tha version from the last model filename
         # as it is saved before the kwargs dump
         version = self.last_version(model.rel)
 
@@ -60,8 +63,8 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
 
     def dump_kwargs(self,model):
         kwargs_filename = self.generate_kwargs_filename(model)
-        with open(kwargs_filename, 'wb') as handle:
-            pickle.dump(model.kwargs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(kwargs_filename, 'wb') as f:
+            pickle.dump(model.kwargs, f)
 
     def filenames(self,rel,extension):
         filenames_glob = os.path.join(
@@ -118,39 +121,44 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
             return None
         return filenames[last_version]
 
+    def rel_has_stored_model(self,rel):
+        kwargs_filename = self.most_recent_kwargs_filename(rel)
+        model_filename = self.most_recent_model_filename(rel)
+        if None in (kwargs_filename, model_filename):
+            return False
+        if os.path.exists(kwargs_filename) and os.path.exists(model_filename):
+            return True
+        return False
+
     def load(self, rel):
         """
         :param rel: the relation this model has been trained on
         :return:
         """
-        filename = self.most_recent_model_filename(rel)
+        if not self.rel_has_stored_model(rel):
+            logging.warning(f"no model for rel {rel.name}")
+            return
 
-        if filename is None or not os.path.exists(filename):
-            logging.warning(f"could not find model saved in {filename}")
+        kwargs_filename = self.most_recent_kwargs_filename(rel)
+        with open(kwargs_filename, 'rb') as f:
+            kwargs = pickle.load(f)
+
+        model_filename = self.most_recent_model_filename(rel)
+        if model_filename is None or not os.path.exists(model_filename):
+            logging.warning(f"could not find model saved in {model_filename}")
             return
 
         # FIXME: duplicated from GenericModel
-        kwargs_filename = self.most_recent_kwargs_filename(rel)
-        with open(kwargs_filename) as f:
-            kwargs = pickle.load(f)
-        logging.info(f"loading {filename}..")
+        logging.info(f"loading {model_filename}..")
 
+        # FIXME: kwargs provided twice?
         model = dspn_autoencoder.DSPNAE(**kwargs)
-        model.load_from_checkpoint(filename)
+        model.load_from_checkpoint(model_filename, **kwargs)
         return model
-
-    def test(self, rel):
-        """
-        testing that a loaded model is functioning correctly
-        :param rel: the relation
-        :return:
-        """
-        model = self.load(rel)
-        # FIXME: TODO
-
 
 def test():
     ms = DSPNAEModelsStorage()
+    ms.load_all_models()
     print("ms",ms)
     print("done.")
 

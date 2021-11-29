@@ -167,6 +167,8 @@ def run(Model,config_name, dynamic_config={}):
             max_epochs=model_config['max_epochs']
         )
         trainer.fit(model, train_loader, test_loader)
+
         storage.dump_kwargs(model)
+
         print("current mlflow run:",mlflow.active_run().info.run_id, " - all done.")
         #log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))
