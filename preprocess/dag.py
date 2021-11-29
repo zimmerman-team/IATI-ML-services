@@ -104,6 +104,11 @@ def parse(page, ti):
     large_mp.send(ti, rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
 
+def clear(ti, rel):
+    db = persistency.mongo_db()
+
+    # remove all data previously stored for this relation
+    db[rel].remove({})
 
 def persist(page, ti):
     """
@@ -117,9 +122,6 @@ def persist(page, ti):
 
     # FIXME: per-rel tasks
     for rel, sets in data.items():
-
-        # remove all data previously stored for this relation
-        db[rel].remove({})
 
         for activity_id, set_ in sets.items():
 
@@ -183,13 +185,12 @@ def encode(rel, ti):
     # remove existing data in the collection
     coll_out.remove({})
 
-    # how much time does each item require to be encoded
-
     for document in coll_in.find(no_cursor_timeout=True):
         document = dict(document)  # copy
         set_ = document['set_']
         set_size = get_set_size(set_)
 
+        # how much time does each item require to be encoded
         start = time.time()
 
         for field in rel.fields:
@@ -341,6 +342,15 @@ with DAG(
         op_kwargs={}
     )
 
+    t_clear = {}
+    for rel in rels:
+        t_clear[rel] = PythonOperator(
+            task_id="clear",
+            python_callable=clear,
+            start_date=days_ago(2),
+            op_kwargs={'rel': rel}
+        )
+
     t_persist = {}
     for page in pages:
         start = page*config.download_page_size
@@ -364,7 +374,9 @@ with DAG(
             start_date=days_ago(2),
             op_kwargs={'page': page}
         )
-        t_download >> t_parse >> t_persist[page]
+        for rel in rels:
+            t_clear[rel] >> t_download
+        t_download>> t_parse >> t_persist[page]
 
     for rel in rels:
         t_to_npa = PythonOperator(

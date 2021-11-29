@@ -71,21 +71,17 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
             "trained_models",
             f"DSPNAE_{rel.name}*.{extension}"
         )
-        print("filenames_glob",filenames_glob)
         ret = {}
         filenames = glob.glob(filenames_glob)
         for curr in filenames:
             m = re.match(f'.*-v(\d+).{extension}', curr)
             if m:
                 # has version number
-                print(curr, m.groups())
                 version = int(m.groups()[0])
             else:
                 # no version number in filename: this was the first
-                print(f'filename {curr} not matching versioned pattern')
                 version = 0
             ret[version] = curr
-        print("ret",ret)
         return ret
 
     def kwargs_filenames(self,rel):
