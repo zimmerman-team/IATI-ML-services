@@ -8,7 +8,7 @@ import sys
 import argparse
 import pickle
 from common import utils, relspecs, persistency, config
-from models import diagnostics, measurements as ms
+from models import diagnostics, measurements as ms, models_storage
 
 def get_args():
     args = {}
@@ -153,20 +153,13 @@ def run(Model,config_name, dynamic_config={}):
             item_dim=tsets.item_dim,
             **model_config
         ).to(device)
-        model.dump_kwargs()
+        storage = model.storage()
         train_loader = model.make_train_loader(tsets)
         test_loader = model.make_test_loader(tsets)
-        model_filename = model.name
-        checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            monitor="train_loss",
-            dirpath=config.trained_models_dirpath,
-            filename=model_filename,
-            save_top_k=1,
-            mode="min",
-        )
+        model_write_callback = storage.create_write_callback(model)
         callbacks = [
             MeasurementsCallback(rel=rel,model=model),
-            checkpoint_callback
+            model_write_callback
         ]
         trainer = pl.Trainer(
             limit_train_batches=1.0,
@@ -174,5 +167,6 @@ def run(Model,config_name, dynamic_config={}):
             max_epochs=model_config['max_epochs']
         )
         trainer.fit(model, train_loader, test_loader)
+        storage.dump_kwargs(model)
         print("current mlflow run:",mlflow.active_run().info.run_id, " - all done.")
         #log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))

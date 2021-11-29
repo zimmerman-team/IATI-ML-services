@@ -151,23 +151,21 @@ class GenericModel(pl.LightningModule):
     with_set_index = None  # please set in subclass
 
     @property
+    @classmethod
+    def storage(cls):
+        raise Exception("implement in subclass")
+
+    @property
     def classname(self):
         return self.__class__.__name__
 
+    #@classmethod FIXME DELME
+    #def name(cls,rel):
+    #    return f"{cls.__name__}_{rel.name}"
+
     @property
     def name(self):
-        return f"{self.classname}_{self.rel.name}"
-
-    @property
-    def kwargs_filename(self):
-        os.path.join(
-            config.trained_models_dirpath,
-            f"{self.name}_kwargs.pickle"
-        )
-
-    def dump_kwargs(self):
-        with open(self.kwargs_filename, 'wb') as handle:
-            pickle.dump(self.kwargs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        return f"{self.__class__.__name__}_{self.rel.name}"
 
     def make_train_loader(self,tsets):
         raise Exception("implement in subclass")

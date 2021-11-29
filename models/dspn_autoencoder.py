@@ -11,6 +11,7 @@ import dspn.model
 import dspn.dspn
 from models import diagnostics
 from common import utils, config
+from models import models_storage
 
 class InvariantModel(torch.nn.Module): #FIXME: delete?
     def __init__(self, phi, rho):
@@ -29,7 +30,12 @@ class DSPNAE(generic_model.GenericModel):
     DSPNAE is an acronym for Deep Set Prediction Network AutoEncoder
     """
 
+    @classmethod
+    def storage(cls):
+        return models_storage.DSPNAEModelsStorage()
+
     with_set_index = True
+
 
     class CollateFn(object):
         """
