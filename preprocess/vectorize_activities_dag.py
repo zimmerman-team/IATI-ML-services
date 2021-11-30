@@ -29,8 +29,10 @@ def clear(ti):
     :return:
     """
     db = persistency.mongo_db()
-    db['activity_data_encoded'].remove()
-    db['activity_vectors'].remove()
+    db['activity_data_encoded'].delete_many({})
+    db['activity_data_encoded'].create_index([("activity_id", -1)])
+    db['activity_vectors'].delete_many({})
+    db['activity_vectors'].create_index([("activity_id", -1)])
 
 def collect(ti):
     """
@@ -49,7 +51,6 @@ def collect(ti):
         coll_sets[rel.name] = db[rel.name + "_encoded"]
 
     activity_docs = coll_activity.find({}, {'activity_id':1})
-    activity_sets = collections.OrderedDict()
     for activity_doc in activity_docs:
         encoded_sets = collections.OrderedDict()
         activity_id = activity_doc['activity_id']
@@ -106,7 +107,7 @@ with DAG(
     t_vectorize = PythonOperator(
         task_id="vectorize",
         python_callable=vectorize,
-
+        start_date=days_ago(2)
     )
 
     t_clear >> t_collect >> t_vectorize
