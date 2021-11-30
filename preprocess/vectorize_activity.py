@@ -19,12 +19,14 @@ class ActivityVectorizer(object):
     """
     def __init__(self):
         self.model_storage = models_storage.DSPNAEModelsStorage()
+        self.model_storage.load_all_models()
 
-    def vectorize_activity(self, activity):
+    def process(self, activity):
+
         vectorized_fields = []
-        for rel in relspecs:
-            field_data = activity[rel.name]
-            vectorized_field = self.model_storage[rel.name].encoder(field_data)
+        for rel_name, encoded_set in activity.items():
+            encoded_set_npa = np.array(encoded_set)
+            vectorized_field = self.model_storage[rel_name].encoder(encoded_set_npa)
             vectorized_fields.append(vectorized_field)
         ret = np.hstack(vectorized_fields)
         return ret

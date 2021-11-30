@@ -57,8 +57,22 @@ def download(start, ti):
     data = response.json()
     large_mp.send(ti, data)
 
+def persist_activity_data(page, ti):
+    db = persistency.mongo_db()
+    coll_out = db['activity_data']
 
-def parse(page, ti):
+    # this large message is cleared in parse_sets_*,
+    # which is subsequent to persist_activity_data_*
+    data = large_mp.recv(ti, f"download_{page}")
+
+    for activity in data['response']['docs']:
+        activity_id = activity['iati_identifier']
+
+        coll_out.insert_one({
+            'activity_id': activity_id
+        })
+
+def parse_sets(page, ti):
     """
     Airflow task: parse downloaded page of activities
     :param page: index of the downloaded page to be parsed
@@ -104,13 +118,19 @@ def parse(page, ti):
     large_mp.send(ti, rels_vals)
     large_mp.clear_recv(ti, f"download_{page}")
 
-def clear(ti, rel):
+def clear_activity_data(rel, ti):
     db = persistency.mongo_db()
 
     # remove all data previously stored for this relation
-    db[rel].remove({})
+    db['activity_data'].remove({})
 
-def persist(page, ti):
+def clear(rel, ti):
+    db = persistency.mongo_db()
+
+    # remove all data previously stored for this relation
+    db[rel.name].remove({})
+
+def persist_sets(page, ti):
     """
     Airflow tasks: store previosly parsed page of activities in the mondodb
     :param page: index of the downloaded page to be stored
@@ -118,7 +138,7 @@ def persist(page, ti):
     :return: None
     """
     db = persistency.mongo_db()
-    data = large_mp.recv(ti, f'parse_{page}')
+    data = large_mp.recv(ti, f'parse_sets_{page}')
 
     # FIXME: per-rel tasks
     for rel, sets in data.items():
@@ -133,7 +153,7 @@ def persist(page, ti):
                 'set_': set_
             })
 
-    large_mp.clear_recv(ti, f'parse_{page}')
+    large_mp.clear_recv(ti, f'parse_sets_{page}')
 
 
 def codelists(ti):
@@ -342,16 +362,21 @@ with DAG(
         op_kwargs={}
     )
 
-    t_clear = {}
+    t_clear_activity_data = PythonOperator(
+        task_id=f"clear_activity_data",
+        python_callable=clear_activity_data,
+        start_date=days_ago(2)
+    )
+    t_clear_sets = {}
     for rel in rels:
-        t_clear[rel] = PythonOperator(
-            task_id="clear",
+        t_clear_sets[rel.name] = PythonOperator(
+            task_id=f"clear_sets_{rel.name}",
             python_callable=clear,
             start_date=days_ago(2),
             op_kwargs={'rel': rel}
         )
 
-    t_persist = {}
+    t_persist_sets = {}
     for page in pages:
         start = page*config.download_page_size
         t_download = PythonOperator(
@@ -361,22 +386,31 @@ with DAG(
             op_kwargs={'start': start}
         )
 
-        t_parse = PythonOperator(
-            task_id=f"parse_{page}",
-            python_callable=parse,
+        t_persist_activity_data = PythonOperator(
+            task_id=f"parse_sets_{page}",
+            python_callable=parse_sets,
             start_date=days_ago(2),
             op_kwargs={'page': page}
         )
 
-        t_persist[page] = PythonOperator(
-            task_id=f"persist_{page}",
-            python_callable=persist,
+        t_parse_sets = PythonOperator(
+            task_id=f"parse_sets_{page}",
+            python_callable=parse_sets,
+            start_date=days_ago(2),
+            op_kwargs={'page': page}
+        )
+
+        t_persist_sets[page] = PythonOperator(
+            task_id=f"persist_sets_{page}",
+            python_callable=persist_sets,
             start_date=days_ago(2),
             op_kwargs={'page': page}
         )
         for rel in rels:
-            t_clear[rel] >> t_download
-        t_download>> t_parse >> t_persist[page]
+            t_clear_activity_data >> t_clear_sets[rel.name]
+            t_clear_sets[rel.name] >> t_download
+        t_download >> t_parse_sets >> t_persist_activity_data[page]
+        t_persist_activity_data[page] >> t_persist_sets[page]
 
     for rel in rels:
         t_to_npa = PythonOperator(
@@ -407,7 +441,8 @@ with DAG(
         )
 
         for page in pages:
-            t_persist[page] >> t_encode
+            t_persist_sets[page] >> t_encode
         t_codelists >> t_encode >> t_arrayfy
         t_arrayfy >> t_to_npa
         t_arrayfy >> t_to_tsets
+
