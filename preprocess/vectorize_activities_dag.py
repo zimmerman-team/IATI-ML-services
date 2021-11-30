@@ -47,14 +47,14 @@ def collect(ti):
     coll_sets = {}
     coll_activity = db['activity_data']
     coll_out = db['activity_data_encoded']
-    for rel in relspecs:
+    for rel in rels:
         coll_sets[rel.name] = db[rel.name + "_encoded"]
 
     activity_docs = coll_activity.find({}, {'activity_id':1})
     for activity_doc in activity_docs:
         encoded_sets = collections.OrderedDict()
         activity_id = activity_doc['activity_id']
-        for rel in relspecs:
+        for rel in rels:
             encoded_sets[rel.name] = coll_sets[rel.name].find({'activity_id': activity_id})
         new_document = {
             'activity_id':activity_id,
