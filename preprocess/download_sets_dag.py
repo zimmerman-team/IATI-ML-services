@@ -402,8 +402,8 @@ with DAG(
         )
 
         t_persist_activity_data = PythonOperator(
-            task_id=f"parse_sets_{page}",
-            python_callable=parse_sets,
+            task_id=f"persist_activity_data_{page}",
+            python_callable=persist_activity_data,
             start_date=days_ago(2),
             op_kwargs={'page': page}
         )
@@ -424,8 +424,8 @@ with DAG(
         for rel in rels:
             t_clear_activity_data >> t_clear_sets[rel.name]
             t_clear_sets[rel.name] >> t_download
-        t_download >> t_parse_sets >> t_persist_activity_data[page]
-        t_persist_activity_data[page] >> t_persist_sets[page]
+        t_download >> t_parse_sets >> t_persist_activity_data
+        t_persist_activity_data >> t_persist_sets[page]
 
     for rel in rels:
         t_to_npa = PythonOperator(
