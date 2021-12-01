@@ -365,7 +365,8 @@ with DAG(
     description='Downloads sets data from IATI.cloud',
     tags=['download', 'preprocess', 'sets'],
     default_args=default_args,
-    schedule_interval=None
+    schedule_interval=None,
+    max_active_runs=1,
 ) as dag:
 
     pages = list(range(config.download_max_pages))
