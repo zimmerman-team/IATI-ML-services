@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.utils import timezone
+from airflow.utils.dates import days_ago
 import datetime
 import os
 import sys
@@ -49,7 +50,10 @@ with DAG(
         description='trains DSPN models',
         tags=['train', 'dspn', 'sets', 'models'],
         default_args=default_args,
-        schedule_interval=None
+        schedule_interval=None,
+        concurrency=2,
+        max_active_runs=1,
+        max_active_tasks=2
 ) as dag:
     days_interval = config.models_dag_days_interval
     for rel_i,rel in enumerate(relspecs.rels):
@@ -60,7 +64,7 @@ with DAG(
             task_id=f"train_dspn_model_{rel.name}",
             depends_on_past=False,
             bash_command=train_cmd,
-            start_date=in_days((rel_i-1)*days_interval),
+            start_date=days_ago(2),
             dag=dag
         )
 
