@@ -14,7 +14,7 @@ screen -X -S mongod quit
 
 sleep 1
 
-screen -L -Logfile logs/mongod_${TS}.log -S mongod -d -m mongod --config /etc/mongod.conf
+screen -L -Logfile logs/mongod_${TS}.log -S mongod -d -m mongod --config /etc/mongod.conf --setParameter maxSessions=100000000
 
 echo "done."
 

@@ -116,9 +116,8 @@ def parse_sets(page, ti):
                 pass # silently ignore the fact that activity_id is not in the data from that rel
 
     large_mp.send(ti, rels_vals)
-    large_mp.clear_recv(ti, f"download_{page}")
 
-def clear_activity_data(rel, ti):
+def clear_activity_data(ti):
     db = persistency.mongo_db()
     coll = db['activity_data']
 
@@ -158,7 +157,7 @@ def persist_sets(page, ti):
             })
 
     large_mp.clear_recv(ti, f'parse_sets_{page}')
-
+    large_mp.clear_recv(ti, f"download_{page}")
 
 def codelists(ti):
     """
