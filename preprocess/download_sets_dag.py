@@ -21,19 +21,20 @@ sys.path = [path]+sys.path
 from common import utils, relspecs, persistency, config
 from preprocess import large_mp
 rels = relspecs.rels.downloadable
+specs = relspecs.specs.downloadable
 logging.basicConfig(level=logging.DEBUG)
 
 DATASTORE_ACTIVITY_URL = "https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL = "https://datastore.iati.cloud/api/codelists/{}/"
 
-def extract_codelists(_rels):
+def extract_codelists(_specs):
     """
     :param _rels: iterable of relations (`relspects.Rel` objects)
     :return: set of codelist names used across the relations
     """
     ret = set()
-    for rel in _rels:
-        ret = ret.union(rel.codelists_names)
+    for spec in _specs:
+        ret = ret.union(spec.codelists_names)
     return ret
 
 
@@ -168,7 +169,7 @@ def codelists(ti):
     db = persistency.mongo_db()
     coll_out = db['codelists']
     coll_out.create_index([("name", -1)])
-    for codelist_name in extract_codelists(rels):
+    for codelist_name in extract_codelists(specs):
         url = DATASTORE_CODELIST_URL.format(codelist_name)
         params = {'format': 'json'}
         response = requests.get(url, params=params)

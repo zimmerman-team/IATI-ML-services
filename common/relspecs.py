@@ -21,7 +21,6 @@ sys.path.append(
 from common import persistency, utils, config
 from models import text_model
 
-
 @functools.cache
 def get_codelists():
     db = persistency.mongo_db()
@@ -29,7 +28,6 @@ def get_codelists():
     for curr in db['codelists'].find({}):
         ret[curr['name']] = curr['codelist']
     return ret
-
 
 class RelsCollection(utils.Collection):
 
@@ -53,15 +51,14 @@ class RelsCollection(utils.Collection):
         ]
         return ret
 
-
-class Rel(object):
+class Spec(object):
     def __init__(self, name, fields, download=False):
         self.name = name
         self.fields = fields
         self.download = download
 
     def __str__(self):
-        return f"<R:{self.name}: {self.fields}>"
+        return f"<S:{self.name}: {self.fields}>"
 
     def divide(self, tensor, with_set_index=False):
         ret = []
@@ -115,13 +112,6 @@ class Rel(object):
     def fields_names(self):
         return [f.name for f in self.fields]
 
-    @property
-    def prefixed_fields_names(self):
-        return [
-            self.name+"_"+curr
-            for curr
-            in self.fields_names
-        ]
 
     def fields_intervals(self, with_set_index=False):
         start = 0
@@ -143,6 +133,24 @@ class Rel(object):
                 ret.append(field.codelist_name)
         return ret
 
+class Rel(Spec):
+    """
+    relation field that holds a set of items.
+    """
+
+    @property
+    def prefixed_fields_names(self):
+        return [
+            self.name+"_"+curr
+            for curr
+            in self.fields_names
+        ]
+
+class Activity(Spec):
+    """
+    Specifies the fields of an activity.
+    """
+    pass
 
 class AbstractField(abc.ABC):
     def __init__(
@@ -482,3 +490,18 @@ rels = RelsCollection([
         CategoryField("tied_status_code","TiedStatus")
     ], download=True)
 ])
+
+activity = Activity("activity",[
+    TextField("iati_identifier"),
+    CategoryField("default_lang","Language"),
+    CategoryField("default_curency","Currency"),
+    BooleanField("humanitarian"),
+    CategoryField("activity_status_code", "ActivityStatus"),
+    CategoryField("collaboration_type_code", "CollaborationType"),
+    #FIXME this field: "hierarchy"
+    CategoryField("default_flow_type", "FlowType"),
+    CategoryField("default_finance_type_code", "FinanceType"),
+    CategoryField("default_tied_status_code","TiedStatus")
+], download=True)
+
+specs = [activity] + rels
