@@ -18,6 +18,12 @@ def mongo_db():
 def gridfs_instance():
     db = mongo_db()
     gf = gridfs.GridFS(db)
+    db['fs.files'].create_index([('filename', 1), ('uploadDate',1)])
+    db['fs.files'].create_index([('filename', 1)])
+    db['fs.files'].create_index([('uploadDate',1)])
+    db['fs.chunks'].create_index([('files_id',1),('n',1)])
+    db['fs.chunks'].create_index([('files_id',1)])
+    db['fs.chunks'].create_index([('n',1)])
     return gf
 
 
