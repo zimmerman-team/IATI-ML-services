@@ -504,4 +504,4 @@ activity = Activity("activity",[
     CategoryField("default_tied_status_code","TiedStatus")
 ], download=True)
 
-specs = [activity] + rels
+specs = rels + [activity]

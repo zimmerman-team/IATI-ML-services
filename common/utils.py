@@ -1,7 +1,6 @@
 from bson.binary import Binary
 import pickle
 import zlib
-import pymongo
 import numpy as np
 import tempfile
 import mlflow
@@ -14,6 +13,7 @@ import yaml
 import collections
 import datetime
 import logging
+import copy
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -60,11 +60,24 @@ class Collection(dict):
         :param name: the name of the property being accessed
         :return: the value of the property
         """
+        if name[0] == '_':
+            return self.__getattribute__(name)
         assert name in self.names, f"{name} not in collection's names"
         return self[name]
 
+
+    def __add__(self, addendum):
+
+        # new object is going to be returned,
+        # without altering the source one
+        new = copy.deepcopy(self)
+        for curr in addendum:
+            new.add(curr)
+        return new
+
     def add(self, item):
         self[item.name] = item
+
 
 class Tsets(enum.Enum):
     TRAIN = 'train'  # training set
