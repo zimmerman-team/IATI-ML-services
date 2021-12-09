@@ -1,4 +1,5 @@
 #!/bin/bash
 echo "db.serverStatus().connections
-db.serverStatus().logicalSessionRecordCache" | mongosh
+db.serverStatus().logicalSessionRecordCache" \
+| mongosh --quiet
 
