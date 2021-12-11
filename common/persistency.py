@@ -28,8 +28,7 @@ def gridfs_instance():
 
 
 def load_tsets_document(rel):
-    client = pymongo.MongoClient(config.mongo_uri())
-    db = client['learning_sets']
+    db = mongo_db()
     coll = db['npas_tsets']
     document = coll.find({'rel': rel.name}).sort('_id', pymongo.DESCENDING).limit(1)[0]
     return document
