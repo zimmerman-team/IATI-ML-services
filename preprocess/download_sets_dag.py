@@ -88,14 +88,17 @@ def parse(page, ti):
         for spec in specs:
             specs_vals[spec.name][activity_id] = spec.extract_from_raw_data(activity)
 
-    for spec, sets in specs_vals.items():
+    for spec_name, spec_data in specs_vals.items():
 
-        if type(spec) is relspecs.Activity:
+        if spec_name == "activity":
+            # no need to check for field cardinality
+            # in single-cardinality fields of activity
+            #logging.info(f"activity data:{spec_data}")
             continue
 
         remove = []
-        for activity_id, fields in sets.items():
-            logging.info('fields.keys'+str(fields.keys()))
+        for activity_id, fields in spec_data.items():
+            #logging.info('fields.keys'+str(fields.keys()))
 
             # now we check if all the fields in this set have the same
             # cardinality. They have to be because every item in the
@@ -109,14 +112,14 @@ def parse(page, ti):
 
                 logging.error(
                     "all fields need to have same amount of values"\
-                    + f"(spec:{spec}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
+                    + f"(spec:{spec_name}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
                 )
                 remove.append(activity_id)
 
         for activity_id in remove:
             # remove the invalid activity-set
             try:
-                del specs_vals[spec][activity_id]
+                del specs_vals[spec_name][activity_id]
             except:
                 pass # silently ignore the fact that activity_id is not in the data from that rel
 
@@ -148,10 +151,12 @@ def persist(page, ti):
     db = persistency.mongo_db()
     data = large_mp.recv(ti, f'parse_{page}')
 
-    # FIXME: per-rel tasks
+    # FIXME: per-spec tasks
     for spec_name, spec_data in data.items():
 
         for activity_id, activity_data in spec_data.items():
+            #if spec_name == "activity":
+            #    logging.info(f"activity data:{activity_id}:{activity_data}")
 
             # remove pre-existing set for this activity
             db[spec_name].delete_one({'activity_id': activity_id})
