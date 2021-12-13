@@ -45,7 +45,7 @@ def download(start, ti):
     :param ti (str): task id
     :return: None
     """
-    fl = ",".join(["iati_identifier"]+relspecs.rels.downloadable_prefixed_fields_names)
+    fl = ",".join(["iati_identifier"]+relspecs.specs.downloadable_prefixed_fields_names)
     params = {
         'q': "*:*",
         'fl': fl,
@@ -58,11 +58,11 @@ def download(start, ti):
     data = response.json()
     large_mp.send(ti, data)
 
-def persist_activity_data(page, ti):
+def persist_activity_ids(page, ti):
     db = persistency.mongo_db()
-    coll_out = db['activity_data']
+    coll_out = db['activity_ids']
 
-    # this large message is cleared in parse_sets_*,
+    # this large message is cleared in parse_*,
     # which is subsequent to persist_activity_data_*
     data = large_mp.recv(ti, f"download_{page}")
 
@@ -70,25 +70,29 @@ def persist_activity_data(page, ti):
         activity_id = activity['iati_identifier']
 
         coll_out.insert_one({
-            'activity_id': activity_id
+            'activity_id': activity_id,
         })
 
-def parse_sets(page, ti):
+def parse(page, ti):
     """
     Airflow task: parse downloaded page of activities
     :param page: index of the downloaded page to be parsed
     :param ti (str): task id
     :return: None
     """
-    rels_vals = defaultdict(lambda: defaultdict(lambda: dict()))
+    specs_vals = defaultdict(lambda: defaultdict(lambda: dict()))
     data = large_mp.recv(ti, f"download_{page}")
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
         # logging.info(f"processing activity {activity_id}")
-        for rel in rels:
-            rels_vals[rel.name][activity_id] = rel.extract_from_activity_data(activity)
+        for spec in specs:
+            specs_vals[spec.name][activity_id] = spec.extract_from_raw_data(activity)
 
-    for rel, sets in rels_vals.items():
+    for spec, sets in specs_vals.items():
+
+        if type(spec) is relspecs.Activity:
+            continue
+
         remove = []
         for activity_id, fields in sets.items():
             logging.info('fields.keys'+str(fields.keys()))
@@ -105,36 +109,36 @@ def parse_sets(page, ti):
 
                 logging.error(
                     "all fields need to have same amount of values"\
-                    + f"(rel:{rel}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
+                    + f"(spec:{spec}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
                 )
                 remove.append(activity_id)
 
         for activity_id in remove:
             # remove the invalid activity-set
             try:
-                del rels_vals[rel][activity_id]
+                del specs_vals[spec][activity_id]
             except:
                 pass # silently ignore the fact that activity_id is not in the data from that rel
 
-    large_mp.send(ti, rels_vals)
+    large_mp.send(ti, specs_vals)
 
-def clear_activity_data(ti):
+def clear_activity_ids(ti):
     db = persistency.mongo_db()
-    coll = db['activity_data']
+    coll = db['activity_ids']
 
     # remove all data previously stored for this relation
     coll.delete_many({})
     coll.create_index([("activity_id", -1)])
 
-def clear(rel, ti):
+def clear(spec, ti):
     db = persistency.mongo_db()
-    coll = db[rel.name]
+    coll = db[spec.name]
 
     # remove all data previously stored for this relation
     coll.delete_many({})
     coll.create_index([("activity_id", -1)])
 
-def persist_sets(page, ti):
+def persist(page, ti):
     """
     Airflow tasks: store previosly parsed page of activities in the mondodb
     :param page: index of the downloaded page to be stored
@@ -142,22 +146,22 @@ def persist_sets(page, ti):
     :return: None
     """
     db = persistency.mongo_db()
-    data = large_mp.recv(ti, f'parse_sets_{page}')
+    data = large_mp.recv(ti, f'parse_{page}')
 
     # FIXME: per-rel tasks
-    for rel_name, sets in data.items():
+    for spec_name, spec_data in data.items():
 
-        for activity_id, set_ in sets.items():
+        for activity_id, activity_data in spec_data.items():
 
             # remove pre-existing set for this activity
-            db[rel_name].delete_one({'activity_id': activity_id})
+            db[spec_name].delete_one({'activity_id': activity_id})
 
-            db[rel_name].insert_one({
+            db[spec_name].insert_one({
                 'activity_id': activity_id,
-                'set_': set_
+                'data': activity_data
             })
 
-    large_mp.clear_recv(ti, f'parse_sets_{page}')
+    large_mp.clear_recv(ti, f'parse_{page}')
     large_mp.clear_recv(ti, f"download_{page}")
 
 def codelists(ti):
@@ -196,7 +200,7 @@ def get_set_size(set_):
     return size
 
 
-def encode(rel, ti):
+def encode(spec, ti):
     """
     Airflow task: encodes all fields into machine learning-friendly
         (numerical vectors)
@@ -205,8 +209,8 @@ def encode(rel, ti):
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[rel.name]
-    coll_out = db[rel.name + "_encoded"]
+    coll_in = db[spec.name]
+    coll_out = db[spec.name + "_encoded"]
 
     # remove existing data in the collection
     coll_out.delete_many({})
@@ -214,24 +218,28 @@ def encode(rel, ti):
 
     for document in coll_in.find(no_cursor_timeout=True):
         document = dict(document)  # copy
-        set_ = document['set_']
-        set_size = get_set_size(set_)
+
+        data = document['data']
+        if type(spec) is relspecs.Activity:
+            data_amount = 1
+        else:
+            data_amount = get_set_size(data)
 
         # how much time does each item require to be encoded
         start = time.time()
 
-        for field in rel.fields:
-            encodable = set_.get(field.name, [])
-            tmp = field.encode(encodable, set_size)
-            set_[field.name] = tmp
+        for field in spec.fields:
+            encodable = data.get(field.name, [])
+            tmp = field.encode(encodable, data_amount)
+            data[field.name] = tmp
 
         end = time.time()
         encoding_time = end-start
         document['encoding_time'] = encoding_time
         del document['_id']
-        lens = list(map(lambda fld: len(set_[fld.name]), rel.fields))
+        lens = list(map(lambda fld: len(data[fld.name]), spec.fields))
         if len(set(lens)) > 1:
-            msg = "lens " + str(lens) + " for fields " + str(rel.fields_names)
+            msg = "lens " + str(lens) + " for fields " + str(spec.fields_names)
             logging.info(msg)
             logging.info(document)
             raise Exception(msg)
@@ -241,32 +249,32 @@ def encode(rel, ti):
             coll_out.insert_one(document)
         except pymongo.errors.DocumentTooLarge as e:
             logging.info(f"document[activity_id]: {document['activity_id']}")
-            for field in rel.fields:
-                logging.info(f"{field.name} len: {len(set_[field.name])}")
-            raise Exception(f"cannot insert document into relation {rel.name} because {str(e)}")
+            for field in spec.fields:
+                logging.info(f"{field.name} len: {len(data[field.name])}")
+            raise Exception(f"cannot insert document into spec {spec.name} because {str(e)}")
 
-def arrayfy(rel, ti):
+def arrayfy(spec, ti):
     """
     Gets all the encoded fields and concatenates them into a dataset arrays
     indexed by set index
-    :param rel: relation to be encoded
+    :param spec: spec to be encoded
     :param ti: task id
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[rel.name+"_encoded"]
-    coll_out = db[rel.name+"_arrayfied"]
+    coll_in = db[spec.name+"_encoded"]
+    coll_out = db[spec.name+"_arrayfied"]
     coll_out.delete_many({})  # empty the collection
     coll_out.create_index([("activity_id", -1)])
     for set_index, document in enumerate(coll_in.find()):
         set_npas = []
-        set_ = document['set_']
-        keys = rel.fields_names
+        data = document['data']
+        keys = spec.fields_names
         for k in keys:  # we need to always have a same ordering of the fields!
-            if len(set_[k]) > 0 and type(set_[k][0]) is list:
-                floats = list(map(lambda v: list(map(lambda x: float(x), v)), set_[k]))
+            if len(data[k]) > 0 and type(data[k][0]) is list:
+                floats = list(map(lambda v: list(map(lambda x: float(x), v)), data[k]))
             else:  # not something that is dummified: simple numerical value field
-                floats = list(map(lambda x: [float(x)], set_[k]))
+                floats = list(map(lambda x: [float(x)], data[k]))
             field_npa = np.array(floats)
             set_npas.append(field_npa)
         if len(set(map(lambda curr: curr.shape[0], set_npas))) > 1:
@@ -277,52 +285,52 @@ def arrayfy(rel, ti):
         coll_out.insert_one({'set_index': set_index, 'npa': set_npa_serialized})
 
 
-def to_npa(rel, ti):
+def to_npa(spec, ti):
     """
     Airflow task: concatenates all set-indexed arrays into one numpy array dataset
-    :param rel: relation whose data is going to be converted into a dataset
+    :param spec: relation whose data is going to be converted into a dataset
     :param ti: task id
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[rel.name+"_arrayfied"]
+    coll_in = db[spec.name + "_arrayfied"]
     coll_out = db['npas']
-    coll_out.create_index([("rel", -1)])
+    coll_out.create_index([("spec", -1)])
     coll_out.create_index([("creation_date", -1)])
     coll_out.create_index([("npa_file_id", -1)])
-    rel_npas = []
+    spec_npas = []
     for document in coll_in.find():
         set_npa = utils.deserialize(document['npa'])
         set_index = document['set_index']
         set_index_col = np.ones((set_npa.shape[0], 1))*set_index
-        rel_npas.append(np.hstack([set_index_col, set_npa]))
-    rel_npa = np.vstack(rel_npas)
-    coll_out.delete_many({'rel': rel.name})
+        spec_npas.append(np.hstack([set_index_col, set_npa]))
+    spec_npa = np.vstack(spec_npas)
+    coll_out.delete_many({'spec': spec.name})
 
     coll_out.insert_one({
-        'rel': rel.name,
+        'spec': spec.name,
         'creation_date': utils.strnow_iso(),
-        'npa_file_id': persistency.save_npa(f"{rel.name}", rel_npa),
-        'npa_rows': rel_npa.shape[0],
-        'npa_cols': rel_npa.shape[1]
+        'npa_file_id': persistency.save_npa(f"{spec.name}", spec_npa),
+        'npa_rows': spec_npa.shape[0],
+        'npa_cols': spec_npa.shape[1]
     })
 
 
-def to_tsets(rel, ti):
+def to_tsets(spec, ti):
     """
     Concatenates all set-indexed arrays into split array datasets, one for training
     and the other for validation/test
-    :param rel: relation whose training/validation/test sets are being created
+    :param spec: relation whose training/validation/test sets are being created
     :param ti: task id
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[rel.name+'_arrayfied']
+    coll_in = db[spec.name + '_arrayfied']
     set_indices_results = coll_in.find({}, {'set_index': 1})
     set_indices = list(set(map(lambda document: document['set_index'], set_indices_results)))
     train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.90)
     coll_out = db['npas_tsets']
-    coll_out.create_index([("rel", -1)])
+    coll_out.create_index([("spec", -1)])
     coll_out.create_index([("creation_date", -1)])
     coll_out.create_index([("train_npa_file_id", -1)])
     coll_out.create_index([("test_npa_file_id", -1)])
@@ -341,12 +349,12 @@ def to_tsets(rel, ti):
     train_npa = np.vstack(train_npas)
     test_npa = np.vstack(test_npas)
 
-    coll_out.delete_many({'rel': rel.name})
+    coll_out.delete_many({'spec': spec.name})
     coll_out.insert_one({
-        'rel': rel.name,
+        'spec': spec.name,
         'creation_time': utils.strnow_iso(),
-        'train_npa_file_id': persistency.save_npa(f"{rel.name}_train", train_npa),
-        'test_npa_file_id': persistency.save_npa(f"{rel.name}_test", test_npa),
+        'train_npa_file_id': persistency.save_npa(f"{spec.name}_train", train_npa),
+        'test_npa_file_id': persistency.save_npa(f"{spec.name}_test", test_npa),
         'train_npa_rows': train_npa.shape[0],
         'train_npa_cols': train_npa.shape[1],
         'test_npa_rows': test_npa.shape[0],
@@ -378,21 +386,22 @@ with DAG(
         op_kwargs={}
     )
 
-    t_clear_activity_data = PythonOperator(
-        task_id=f"clear_activity_data",
-        python_callable=clear_activity_data,
+    t_clear_activity_ids = PythonOperator(
+        task_id=f"clear_activity_ids",
+        python_callable=clear_activity_ids,
         start_date=days_ago(2)
     )
-    t_clear_sets = {}
-    for rel in rels:
-        t_clear_sets[rel.name] = PythonOperator(
-            task_id=f"clear_sets_{rel.name}",
+
+    t_clear = {}
+    for spec in specs:
+        t_clear[spec.name] = PythonOperator(
+            task_id=f"clear_{spec.name}",
             python_callable=clear,
             start_date=days_ago(2),
-            op_kwargs={'rel': rel}
+            op_kwargs={'spec': spec}
         )
 
-    t_persist_sets = {}
+    t_persist = {}
     for page in pages:
         start = page*config.download_page_size
         t_download = PythonOperator(
@@ -402,62 +411,63 @@ with DAG(
             op_kwargs={'start': start}
         )
 
-        t_persist_activity_data = PythonOperator(
-            task_id=f"persist_activity_data_{page}",
-            python_callable=persist_activity_data,
+        t_persist_activity_ids = PythonOperator(
+            task_id=f"persist_activity_ids_{page}",
+            python_callable=persist_activity_ids,
             start_date=days_ago(2),
             op_kwargs={'page': page}
         )
 
-        t_parse_sets = PythonOperator(
-            task_id=f"parse_sets_{page}",
-            python_callable=parse_sets,
+        t_parse = PythonOperator(
+            task_id=f"parse_{page}",
+            python_callable=parse,
             start_date=days_ago(2),
             op_kwargs={'page': page}
         )
 
-        t_persist_sets[page] = PythonOperator(
-            task_id=f"persist_sets_{page}",
-            python_callable=persist_sets,
+        t_persist[page] = PythonOperator(
+            task_id=f"persist_{page}",
+            python_callable=persist,
             start_date=days_ago(2),
             op_kwargs={'page': page}
         )
-        for rel in rels:
-            t_clear_activity_data >> t_clear_sets[rel.name]
-            t_clear_sets[rel.name] >> t_download
-        t_download >> t_parse_sets >> t_persist_activity_data
-        t_persist_activity_data >> t_persist_sets[page]
+        for spec in specs:
+            t_clear_activity_ids >> t_clear[spec.name]
+            t_clear[spec.name] >> t_download
+        t_download >> t_parse >> t_persist_activity_ids
+        t_persist_activity_ids >> t_persist[page]
 
-    for rel in rels:
+    for spec in specs:
+        t_encode = PythonOperator(
+            task_id=f"encode_{spec.name}",
+            python_callable=encode,
+            start_date=days_ago(2),
+            op_kwargs={'spec': spec}
+        )
+
         t_to_npa = PythonOperator(
-            task_id=f"to_npa_{rel.name}",
+            task_id=f"to_npa_{spec.name}",
             python_callable=to_npa,
             start_date=days_ago(2),
-            op_kwargs={'rel': rel}
+            op_kwargs={'spec': spec}
         )
 
         t_to_tsets = PythonOperator(
-            task_id=f"to_tsets_{rel.name}",
+            task_id=f"to_tsets_{spec.name}",
             python_callable=to_tsets,
             start_date=days_ago(2),
-            op_kwargs={'rel': rel}
-        )
-        t_encode = PythonOperator(
-            task_id=f"encode_{rel.name}",
-            python_callable=encode,
-            start_date=days_ago(2),
-            op_kwargs={'rel': rel}
+            op_kwargs={'spec': spec}
         )
 
         t_arrayfy = PythonOperator(
-            task_id=f"arrayfy_{rel.name}",
+            task_id=f"arrayfy_{spec.name}",
             python_callable=arrayfy,
             start_date=days_ago(2),
-            op_kwargs={'rel': rel}
+            op_kwargs={'spec': spec}
         )
 
         for page in pages:
-            t_persist_sets[page] >> t_encode
+            t_persist[page] >> t_encode
         t_codelists >> t_encode >> t_arrayfy
         t_arrayfy >> t_to_npa
         t_arrayfy >> t_to_tsets

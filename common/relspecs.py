@@ -83,17 +83,22 @@ class Spec(object):
             ret = tensor_list
         return ret
 
-    def extract_from_activity_data(self,activity_data):
+    @property
+    def extract_field_regex(self):
+        raise Exception("implement in subclass")
+
+    def extract_from_field_data(self, v):
+        raise Exception("implement in subclass")
+
+    def extract_from_raw_data(self,activity_data):
         ret = {}
         for k, v in activity_data.items():
-            m = re.match(f'{self.name}_(.*)', k)
+            m = re.match(self.extract_field_regex, k)
             if m is not None:
                 rel_field = m.group(1)
                 if rel_field in self.fields_names:
-                    # cap the amount of items to config.download_max_set_size
-                    v = v[:config.download_max_set_size]
                     # logging.info(f"considering field {rel_field}")
-                    ret[rel_field] = v
+                    ret[rel_field] = self.extract_from_field_data(v)
         return ret
 
     @property
@@ -146,11 +151,33 @@ class Rel(Spec):
             in self.fields_names
         ]
 
+    @property
+    def extract_field_regex(self):
+        return f'{self.name}_(.*)'
+
+    def extract_from_field_data(self, v):
+        # cap the amount of items to config.download_max_set_size
+        v = v[:config.download_max_set_size]
+        return v
+
 class Activity(Spec):
     """
     Specifies the fields of an activity.
     """
-    pass
+    @property
+    def prefixed_fields_names(self):
+        return self.fields_names
+
+    @property
+    def extract_field_regex(self):
+        return '(.*)'
+
+    def extract_from_field_data(self, v):
+        if type(v) in (list,tuple):
+            # if it's a list, which is unlikely, then just
+            # get the first element
+            v = v[0]
+        return v
 
 class AbstractField(abc.ABC):
     def __init__(
