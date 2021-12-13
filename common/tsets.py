@@ -12,11 +12,11 @@ class Tsets(utils.Collection):
         total_n_datapoints = 0
         for which_tset in self.tsets_names:
             # FIXME: maybe make a Tset object so I can get rid of these underscores
-            gridfs_filename = f"{self.rel.name}_{which_tset}"
+            gridfs_fileid = self[f"{which_tset}_npa_file_id"]
 
-            self[which_tset] = persistency.load_npa(filename=gridfs_filename)
+            self[which_tset] = persistency.load_npa(file_id=gridfs_fileid)
             if self[which_tset] is None:
-                raise Exception(f"Didn't find {gridfs_filename}")
+                raise Exception(f"Didn't find {gridfs_fileid}")
 
             total_n_datapoints += self[which_tset].shape[0]
 

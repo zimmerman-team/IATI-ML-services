@@ -1,6 +1,7 @@
 import functools
 import pymongo
 import gridfs
+import logging
 
 from common import config
 from common import tsets
@@ -18,19 +19,33 @@ def mongo_db():
 def gridfs_instance():
     db = mongo_db()
     gf = gridfs.GridFS(db)
-    db['fs.files'].create_index([('filename', 1), ('uploadDate',1)])
-    db['fs.files'].create_index([('filename', 1)])
-    db['fs.files'].create_index([('uploadDate',1)])
-    db['fs.chunks'].create_index([('files_id',1),('n',1)])
-    db['fs.chunks'].create_index([('files_id',1)])
-    db['fs.chunks'].create_index([('n',1)])
+
+    def create_index(coll_name,spec):
+        try:
+            db[coll_name].create_index(spec)
+        except:
+            # already existing index
+            pass
+
+    for spec in [
+        [('filename', 1), ('uploadDate', 1)],
+        [('filename', 1)],
+        [('uploadDate', 1)]
+        ]:
+        create_index('fs.files',spec)
+    for spec in [
+        [('files_id', 1), ('n', 1)],
+        [('files_id', 1)],
+        [('n', 1)],
+    ]:
+        create_index('fs.chunks',spec)
     return gf
 
 
 def load_tsets_document(rel):
     db = mongo_db()
     coll = db['npas_tsets']
-    document = coll.find({'rel': rel.name}).sort('_id', pymongo.DESCENDING).limit(1)[0]
+    document = coll.find({'rel': rel.name}).sort('creation_time', pymongo.DESCENDING).limit(1)[0]
     return document
 
 
@@ -42,6 +57,7 @@ def load_tsets(rel, with_set_index=False, cap=None):
     :return: the Tsets object containing the dataset splits
     """
     document = load_tsets_document(rel)
+    print(f"tsets creation time: {document['creation_time']}")
     del document['rel']
     ret = tsets.Tsets(
         rel,
