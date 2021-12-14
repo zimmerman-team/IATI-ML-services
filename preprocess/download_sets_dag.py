@@ -235,6 +235,12 @@ def encode(spec, ti):
 
         for field in spec.fields:
             encodable = data.get(field.name, [])
+
+            if type(spec) is relspecs.Activity:
+                # if it's an activity, there is only one value
+                # per field
+                encodable = [encodable]
+
             tmp = field.encode(encodable, data_amount)
             data[field.name] = tmp
 
@@ -345,7 +351,11 @@ def to_tsets(spec, ti):
         set_npa = utils.deserialize(document['npa'])
         set_index = document['set_index']
         set_index_col = np.ones((set_npa.shape[0], 1))*set_index
+
+        # NOTE: there will be a set_index even for relspecs.Activity
+        #       data, even if they are not sets!
         npa = np.hstack([set_index_col, set_npa])
+
         if set_index in train_indices:
             train_npas.append(npa)
         elif set_index in test_indices:
