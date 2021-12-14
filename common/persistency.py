@@ -42,25 +42,25 @@ def gridfs_instance():
     return gf
 
 
-def load_tsets_document(rel):
+def load_tsets_document(spec):
     db = mongo_db()
     coll = db['npas_tsets']
-    document = coll.find({'rel': rel.name}).sort('creation_time', pymongo.DESCENDING).limit(1)[0]
+    document = coll.find({'spec': spec.name}).sort('creation_time', pymongo.DESCENDING).limit(1)[0]
     return document
 
 
-def load_tsets(rel, with_set_index=False, cap=None):
+def load_tsets(spec, with_set_index=False, cap=None):
     """
-    :param rel: relation's data to be loaded
+    :param spec: specification of the data to be loaded
     :param with_set_index: set as True to include the set index
     :param cap: limit to a certain amount of datapoints. Useful to quickly debug a new model
     :return: the Tsets object containing the dataset splits
     """
-    document = load_tsets_document(rel)
+    document = load_tsets_document(spec)
     print(f"tsets creation time: {document['creation_time']}")
-    del document['rel']
+    del document['spec']
     ret = tsets.Tsets(
-        rel,
+        spec,
         **document,
         with_set_index=with_set_index,
         cap=cap

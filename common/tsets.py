@@ -32,10 +32,10 @@ class Tsets(utils.Collection):
 
     def __init__(
             self,
-            rel,
+            spec,
             **kwargs
     ):
-        self.rel = rel
+        self.spec = spec
         kwargs.update(dict.fromkeys(self.tsets_names, None))
         self.creation_time = kwargs['creation_time']
         super().__init__(**kwargs)
@@ -49,7 +49,7 @@ class Tsets(utils.Collection):
 
             # makes a list of tensors, each of which contains the data of a field of
             # the relation
-            sections = rel.divide(
+            sections = spec.divide(
                 self[which_tset],
                 with_set_index=self.with_set_index
             )
@@ -124,7 +124,7 @@ class Tsets(utils.Collection):
         if with_set_index:
             # but the index does not need to be scaled
             sections = sections[1:]
-        for field, section in zip(self.rel.fields, sections):
+        for field, section in zip(self.spec.fields, sections):
             # FIXME: is having the trained scaler in the field a good idea??
             field.make_and_fit_scaler(section)
 
@@ -146,7 +146,7 @@ class Tsets(utils.Collection):
             # but the index does not need to be scaled
             sections = sections[1:]
 
-        for field, section in zip(self.rel.fields, sections):
+        for field, section in zip(self.spec.fields, sections):
             assert field.n_features == section.shape[1], \
                 f"mismatch between field n_features and n columns of section: {field.n_features} != {section.shape[1]}"
             # FIXME: is having the trained scaler in the field a good idea??
@@ -156,5 +156,5 @@ class Tsets(utils.Collection):
             scaled.append(section_scaled)
         print("scaled sections:",[s.shape for s in scaled])
 
-        ret = self.rel.glue(scaled)
+        ret = self.spec.glue(scaled)
         return ret
