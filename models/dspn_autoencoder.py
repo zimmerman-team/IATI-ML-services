@@ -1,6 +1,7 @@
 import torch
 import sys
 import os
+import torchviz
 from typing import Union
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
@@ -12,7 +13,6 @@ import dspn.dspn
 from models import diagnostics
 from common import utils, config
 from models import models_storage
-
 class InvariantModel(torch.nn.Module): #FIXME: delete?
     def __init__(self, phi, rho):
         super().__init__()
@@ -110,7 +110,6 @@ class DSPNAE(generic_model.GenericModel):
         ])
         return ret
 
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         assert 'max_set_size' in self.kwargs, "must set max_set_size for this model"
@@ -152,7 +151,7 @@ class DSPNAE(generic_model.GenericModel):
         return ret
 
     def _step(self, batch, batch_idx, which_tset):
-        utils.debug("batch.size",batch.size())
+        #utils.debug("batch.size",batch.size())
         # "batch" dimensionality: (set_size, item_dims)
         target_set,target_mask = self._make_target(batch)
 
@@ -160,12 +159,12 @@ class DSPNAE(generic_model.GenericModel):
         (progress, masks, evals, gradn) = self(target_set,target_mask)
 
         target_set,target_mask = self._make_target(batch)
-        utils.debug("target_set.shape",target_set.shape)
+        #utils.debug("target_set.shape",target_set.shape)
         # if using mask as feature, concat mask feature into progress
         target_set_with_mask = torch.cat(
             [target_set, target_mask.unsqueeze(dim=1)], dim=1
         )
-        utils.debug("target_set_with_mask.shape after cat with mask",target_set_with_mask.shape)
+        #utils.debug("target_set_with_mask.shape after cat with mask",target_set_with_mask.shape)
         progress = [
             torch.cat([p, m.unsqueeze(dim=1)], dim=1)
             for p, m in zip(progress, masks)
@@ -177,7 +176,7 @@ class DSPNAE(generic_model.GenericModel):
         loss = set_loss.mean()
 
         # for measurements:
-        self.log(f"{which_tset}_loss", loss)
+        #self.log(f"{which_tset}_loss", loss)
 
         return loss
 

@@ -1,7 +1,6 @@
 from common import utils
 import numpy as np
 import enum
-import gc
 import logging
 import mlflow
 import torch
@@ -58,7 +57,6 @@ class MeasurementsCollection(utils.Collection):
         log(f"now clearing {utilized}")
         for curr in utilized:
             curr.clear(which_tset)
-        gc.collect()
 
     def all_of_type(self,of_type):
         """
