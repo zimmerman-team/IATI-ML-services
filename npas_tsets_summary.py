@@ -3,16 +3,16 @@ from tabulate import tabulate
 from common import persistency, relspecs
 
 def main():
-    headers = ['rel']
+    headers = ['spec']
     for t in ('train', 'test'):
         for cr in ('rows', 'cols'):
             k = t + "_npa_" + cr
             headers.append(k)
 
     table = []
-    for rel in relspecs.rels:
+    for spec in relspecs.specs:
         row = []
-        doc = persistency.load_tsets_document(rel)
+        doc = persistency.load_tsets_document(spec)
         if len(set(headers) - set(doc.keys())) != 0:
             # incomplete document
             continue
