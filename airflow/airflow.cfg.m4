@@ -86,8 +86,8 @@ parallelism = AIRFLOW_CONCURRENCY
 # The maximum number of task instances allowed to run concurrently in each DAG. To calculate
 # the number of tasks that is running concurrently for a DAG, add up the number of running
 # tasks for all DAG runs of the DAG. This is configurable at the DAG level with ``concurrency``,
-# which is defaulted as ``dag_concurrency``.
-dag_concurrency = AIRFLOW_CONCURRENCY
+# which is defaulted as ``max_active_tasks_per_dag``.
+max_active_tasks_per_dag = AIRFLOW_CONCURRENCY
 
 # Are DAGs paused by default at creation
 dags_are_paused_at_creation = True
