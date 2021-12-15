@@ -15,6 +15,7 @@ airflow_pg_password: somepassword
 airflow_user: someuser
 airflow_password: somepassword
 airflow_email: someuser@zimmerman.team
+airflow_concurrency: 0012
 
 download_page_size: 1000
 download_max_pages: 3

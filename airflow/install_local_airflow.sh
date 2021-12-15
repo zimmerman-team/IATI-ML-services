@@ -18,6 +18,7 @@ AIRFLOW_PG_PASSWORD="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_p
 AIRFLOW_USER="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_user)"
 AIRFLOW_PASSWORD="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_password)"
 AIRFLOW_EMAIL="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_email)"
+AIRFLOW_CONCURRENCY="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_concurrency)"
 
 m4 -DAIRFLOW_PG_PASSWORD=$AIRFLOW_PG_PASSWORD psql_commands.m4 |
   sudo su postgres -c "/usr/bin/psql"
@@ -28,6 +29,7 @@ mkdir -pv $HOME/airflow/dags
 # will macroexpand HOME with the user's home directory
 m4 -DHOME=$HOME \
    -DAIRFLOW_PG_PASSWORD=$AIRFLOW_PG_PASSWORD \
+   -DAIRFLOW_CONCURRENCY=$AIRFLOW_CONCURRENCY \
    airflow.cfg.m4 > $HOME/airflow/airflow.cfg
 
 # will set the learning_sets dir (extracted from this script's path) to the module that will add learning_sets' dag
