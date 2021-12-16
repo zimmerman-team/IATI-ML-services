@@ -12,8 +12,7 @@ from common import utils, relspecs, config
 from models import dspn_autoencoder
 
 
-
-class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
+class DSPNAEModelsStorage(utils.Collection):  # FIXME: classname-parameterized?
     """
     We need to store the DSPNAE models somewhere and to recall them
     easily. This class offers a straightforward interface to load
@@ -74,7 +73,7 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         )
         return ret
 
-    def dump_kwargs(self,model):
+    def dump_kwargs(self, model):
         """
         dumps the construction parameters of the given model
         to a persistent file.
@@ -85,7 +84,7 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         with open(kwargs_filename, 'wb') as f:
             pickle.dump(model.kwargs, f)
 
-    def filenames(self,rel,extension):
+    def filenames(self, rel, extension):
         """
         generic function that returns the names of files containing persisted aspects
         of a model trained on the data from a specific relation.
@@ -110,23 +109,23 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
             ret[version] = curr
         return ret
 
-    def kwargs_filenames(self,rel):
+    def kwargs_filenames(self, rel):
         """
         Returns all filenames of the persisted construction parameters for models
         of a given relation.
         :param rel:
         :return: a dictionary of filenames indexed on the version of the construction parameters
         """
-        return self.filenames(rel,'kwargs.pickle')
+        return self.filenames(rel, 'kwargs.pickle')
 
-    def models_filenames(self,rel):
+    def models_filenames(self, rel):
         """
         Returns all filenames of the persisted trained model parameters of models
         of a given relation.
         :param rel:
         :return: a dictionary of filenames indexed on the version of the construction parameters
         """
-        return self.filenames(rel,'ckpt')
+        return self.filenames(rel, 'ckpt')
 
     def last_version(self, rel):
         """
@@ -171,7 +170,7 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
             return None
         return filenames[last_version]
 
-    def rel_has_stored_model(self,rel):
+    def rel_has_stored_model(self, rel):
         """
         returns True if there is a trained model belonging to a specific relation
         :param rel:
@@ -211,6 +210,7 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         model.load_from_checkpoint(model_filename, **kwargs)
         return model
 
+
 def test():
     """
     When this script is run directly from command-line, a test
@@ -219,8 +219,9 @@ def test():
     """
     ms = DSPNAEModelsStorage()
     ms.load_all_models()
-    print("ms",ms)
+    print("ms", ms)
     print("done.")
+
 
 if __name__ == "__main__":
     test()

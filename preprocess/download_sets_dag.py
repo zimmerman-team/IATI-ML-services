@@ -27,29 +27,31 @@ logging.basicConfig(level=logging.DEBUG)
 DATASTORE_ACTIVITY_URL = "https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL = "https://datastore.iati.cloud/api/codelists/{}/"
 
+
 def extract_codelists(_specs):
     """
-    :param _rels: iterable of relations (`relspects.Rel` objects)
+    :param _specs: iterable of relations (`relspects.Rel` objects)
     :return: set of codelist names used across the relations
     """
     ret = set()
-    for spec in _specs:
-        ret = ret.union(spec.codelists_names)
+    for _spec in _specs:
+        ret = ret.union(_spec.codelists_names)
     return ret
 
 
-def download(start, ti):
+def download(_start, ti):
     """
     Airflow task: retrieve activities from back-end
-    :param start: starting search result index of the page (`start` to `start+config.download_page_size`) being downloaded
-    :param ti (str): task id
+    :param _start: starting search result index of the page (`start` to `start+config.download_page_size`)
+                   being downloaded
+    :param ti: task id (string)
     :return: None
     """
     fl = ",".join(["iati_identifier"]+relspecs.specs.downloadable_prefixed_fields_names)
     params = {
         'q': "*:*",
         'fl': fl,
-        'start': start,
+        'start': _start,
         'rows': config.download_page_size
     }
     logging.info(f"requesting {DATASTORE_ACTIVITY_URL} with {params}")
@@ -58,12 +60,13 @@ def download(start, ti):
     data = response.json()
     large_mp.send(ti, data)
 
-def persist_activity_ids(page, ti):
+
+def persist_activity_ids(_page, ti):
     """
     Collects the activity ids from the downloaded page, and
     stores them in a dedicated collection (activity_ids) in
     the mongo db.
-    :param page:
+    :param _page:
     :param ti:
     :return:
     """
@@ -72,7 +75,7 @@ def persist_activity_ids(page, ti):
 
     # this large message is cleared in parse_*,
     # which is subsequent to persist_activity_data_*
-    data = large_mp.recv(ti, f"download_{page}")
+    data = large_mp.recv(ti, f"download_{_page}")
 
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
@@ -81,32 +84,33 @@ def persist_activity_ids(page, ti):
             'activity_id': activity_id,
         })
 
-def parse(page, ti):
+
+def parse(_page, ti):
     """
     Airflow task: parse downloaded page of activities
-    :param page: index of the downloaded page to be parsed
-    :param ti (str): task id
+    :param _page: index of the downloaded page to be parsed
+    :param ti: task id (string)
     :return: None
     """
     specs_vals = defaultdict(lambda: defaultdict(lambda: dict()))
-    data = large_mp.recv(ti, f"download_{page}")
+    data = large_mp.recv(ti, f"download_{_page}")
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
         # logging.info(f"processing activity {activity_id}")
-        for spec in specs:
-            specs_vals[spec.name][activity_id] = spec.extract_from_raw_data(activity)
+        for _spec in specs:
+            specs_vals[_spec.name][activity_id] = _spec.extract_from_raw_data(activity)
 
     for spec_name, spec_data in specs_vals.items():
 
         if spec_name == "activity":
             # no need to check for field cardinality
             # in single-cardinality fields of activity
-            #logging.info(f"activity data:{spec_data}")
+            # logging.info(f"activity data:{spec_data}")
             continue
 
         remove = []
         for activity_id, fields in spec_data.items():
-            #logging.info('fields.keys'+str(fields.keys()))
+            # logging.info('fields.keys'+str(fields.keys()))
 
             # now we check if all the fields in this set have the same
             # cardinality. They have to be because every item in the
@@ -119,7 +123,7 @@ def parse(page, ti):
             if len(set(lens.values())) != 1:
 
                 logging.error(
-                    "all fields need to have same amount of values"\
+                    "all fields need to have same amount of values"
                     + f"(spec:{spec_name}, lens:{lens} activity_id:{activity_id}, fields:{fields}"
                 )
                 remove.append(activity_id)
@@ -129,9 +133,10 @@ def parse(page, ti):
             try:
                 del specs_vals[spec_name][activity_id]
             except:
-                pass # silently ignore the fact that activity_id is not in the data from that rel
+                pass  # silently ignore the fact that activity_id is not in the data from that rel
 
     large_mp.send(ti, specs_vals)
+
 
 def clear_activity_ids(ti):
     """
@@ -146,36 +151,38 @@ def clear_activity_ids(ti):
     coll.delete_many({})
     coll.create_index([("activity_id", -1)])
 
-def clear(spec, ti):
+
+def clear(_spec, ti):
     """
     Delete contents of the preliminary persistent storage (to mongodb)
     of either the non-relation activity field values, or relation fields.
-    :param spec: either Activity or Rel
+    :param _spec: either Activity or Rel
     :param ti:
     :return:
     """
     db = persistency.mongo_db()
-    coll = db[spec.name]
+    coll = db[_spec.name]
 
     # remove all data previously stored for this relation
     coll.delete_many({})
     coll.create_index([("activity_id", -1)])
 
-def persist(page, ti):
+
+def persist(_page, ti):
     """
     Airflow tasks: store previosly parsed page of activities in the mondodb
-    :param page: index of the downloaded page to be stored
-    :param ti (str): task id
+    :param _page: index of the downloaded page to be stored
+    :param ti: task id (string)
     :return: None
     """
     db = persistency.mongo_db()
-    data = large_mp.recv(ti, f'parse_{page}')
+    data = large_mp.recv(ti, f'parse_{_page}')
 
     # FIXME: per-spec tasks
     for spec_name, spec_data in data.items():
 
         for activity_id, activity_data in spec_data.items():
-            #if spec_name == "activity":
+            # if spec_name == "activity":
             #    logging.info(f"activity data:{activity_id}:{activity_data}")
 
             # remove pre-existing set for this activity
@@ -186,13 +193,14 @@ def persist(page, ti):
                 'data': activity_data
             })
 
-    large_mp.clear_recv(ti, f'parse_{page}')
-    large_mp.clear_recv(ti, f"download_{page}")
+    large_mp.clear_recv(ti, f'parse_{_page}')
+    large_mp.clear_recv(ti, f"download_{_page}")
+
 
 def codelists(ti):
     """
     Airflow task: download all codelists that are needed in order to encode category fields
-    :param ti (str): task id
+    :param ti: task id (string)
     :return: None
     """
     db = persistency.mongo_db()
@@ -225,17 +233,17 @@ def get_set_size(set_):
     return size
 
 
-def encode(spec, ti):
+def encode(_spec, ti):
     """
     Airflow task: encodes all fields into machine learning-friendly
         (numerical vectors)
-    :param rel: the relations that needs encoding
+    :param _spec: the relations that needs encoding
     :param ti: task id
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[spec.name]
-    coll_out = db[spec.name + "_encoded"]
+    coll_in = db[_spec.name]
+    coll_out = db[_spec.name + "_encoded"]
 
     # remove existing data in the collection
     coll_out.delete_many({})
@@ -245,18 +253,18 @@ def encode(spec, ti):
         document = dict(document)  # copy
 
         data = document['data']
-        if type(spec) is relspecs.Activity:
+        if type(_spec) is relspecs.Activity:
             data_amount = 1
         else:
             data_amount = get_set_size(data)
 
         # how much time does each item require to be encoded
-        start = time.time()
+        _start = time.time()
 
-        for field in spec.fields:
+        for field in _spec.fields:
             encodable = data.get(field.name, [])
 
-            if type(spec) is relspecs.Activity:
+            if type(_spec) is relspecs.Activity:
                 # if it's an activity, there is only one value
                 # per field
                 encodable = [encodable]
@@ -265,12 +273,12 @@ def encode(spec, ti):
             data[field.name] = tmp
 
         end = time.time()
-        encoding_time = end-start
+        encoding_time = end-_start
         document['encoding_time'] = encoding_time
         del document['_id']
-        lens = list(map(lambda fld: len(data[fld.name]), spec.fields))
+        lens = list(map(lambda fld: len(data[fld.name]), _spec.fields))
         if len(set(lens)) > 1:
-            msg = "lens " + str(lens) + " for fields " + str(spec.fields_names)
+            msg = "lens " + str(lens) + " for fields " + str(_spec.fields_names)
             logging.info(msg)
             logging.info(document)
             raise Exception(msg)
@@ -284,23 +292,24 @@ def encode(spec, ti):
                 logging.info(f"{field.name} len: {len(data[field.name])}")
             raise Exception(f"cannot insert document into spec {spec.name} because {str(e)}")
 
-def arrayfy(spec, ti):
+
+def arrayfy(_spec, ti):
     """
     Gets all the encoded fields and concatenates them into a dataset arrays
     indexed by set index
-    :param spec: spec to be encoded
+    :param _spec: spec to be encoded
     :param ti: task id
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[spec.name+"_encoded"]
-    coll_out = db[spec.name+"_arrayfied"]
+    coll_in = db[_spec.name+"_encoded"]
+    coll_out = db[_spec.name+"_arrayfied"]
     coll_out.delete_many({})  # empty the collection
     coll_out.create_index([("activity_id", -1)])
     for set_index, document in enumerate(coll_in.find()):
         set_npas = []
         data = document['data']
-        keys = spec.fields_names
+        keys = _spec.fields_names
         for k in keys:  # we need to always have a same ordering of the fields!
             if len(data[k]) > 0 and type(data[k][0]) is list:
                 floats = list(map(lambda v: list(map(lambda x: float(x), v)), data[k]))
@@ -316,15 +325,15 @@ def arrayfy(spec, ti):
         coll_out.insert_one({'set_index': set_index, 'npa': set_npa_serialized})
 
 
-def to_npa(spec, ti):
+def to_npa(_spec, ti):
     """
     Airflow task: concatenates all set-indexed arrays into one numpy array dataset
-    :param spec: relation whose data is going to be converted into a dataset
+    :param _spec: relation whose data is going to be converted into a dataset
     :param ti: task id
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[spec.name + "_arrayfied"]
+    coll_in = db[_spec.name + "_arrayfied"]
     coll_out = db['npas']
     coll_out.create_index([("spec", -1)])
     coll_out.create_index([("creation_date", -1)])
@@ -336,27 +345,27 @@ def to_npa(spec, ti):
         set_index_col = np.ones((set_npa.shape[0], 1))*set_index
         spec_npas.append(np.hstack([set_index_col, set_npa]))
     spec_npa = np.vstack(spec_npas)
-    coll_out.delete_many({'spec': spec.name})
+    coll_out.delete_many({'spec': _spec.name})
 
     coll_out.insert_one({
-        'spec': spec.name,
+        'spec': _spec.name,
         'creation_date': utils.strnow_iso(),
-        'npa_file_id': persistency.save_npa(f"{spec.name}", spec_npa),
+        'npa_file_id': persistency.save_npa(f"{_spec.name}", spec_npa),
         'npa_rows': spec_npa.shape[0],
         'npa_cols': spec_npa.shape[1]
     })
 
 
-def to_tsets(spec, ti):
+def to_tsets(_spec, ti):
     """
     Concatenates all set-indexed arrays into split array datasets, one for training
     and the other for validation/test
-    :param spec: relation whose training/validation/test sets are being created
+    :param _spec: relation whose training/validation/test sets are being created
     :param ti: task id
     :return: None
     """
     db = persistency.mongo_db()
-    coll_in = db[spec.name + '_arrayfied']
+    coll_in = db[_spec.name + '_arrayfied']
     set_indices_results = coll_in.find({}, {'set_index': 1})
     set_indices = list(set(map(lambda document: document['set_index'], set_indices_results)))
     train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.90)
@@ -384,12 +393,12 @@ def to_tsets(spec, ti):
     train_npa = np.vstack(train_npas)
     test_npa = np.vstack(test_npas)
 
-    coll_out.delete_many({'spec': spec.name})
+    coll_out.delete_many({'spec': _spec.name})
     coll_out.insert_one({
-        'spec': spec.name,
+        'spec': _spec.name,
         'creation_time': utils.strnow_iso(),
-        'train_npa_file_id': persistency.save_npa(f"{spec.name}_train", train_npa),
-        'test_npa_file_id': persistency.save_npa(f"{spec.name}_test", test_npa),
+        'train_npa_file_id': persistency.save_npa(f"{_spec.name}_train", train_npa),
+        'test_npa_file_id': persistency.save_npa(f"{_spec.name}_test", test_npa),
         'train_npa_rows': train_npa.shape[0],
         'train_npa_cols': train_npa.shape[1],
         'test_npa_rows': test_npa.shape[0],

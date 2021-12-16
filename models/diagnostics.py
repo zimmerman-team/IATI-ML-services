@@ -8,7 +8,8 @@ import hiddenlayer
 
 from common import utils
 
-def barplots(npa,rel=None,type_=None): # FIXME duplicated code
+
+def barplots(npa, rel=None, type_=None):  # FIXME duplicated code
     """
     For each field of the relation it generates a barplot
     with the data of that field found in the glued-together
@@ -23,7 +24,8 @@ def barplots(npa,rel=None,type_=None): # FIXME duplicated code
         have as many columns as the number of fields in the relation
         (hence it's not per-feature information, but some sort of aggregation) ;
         `latent` is not going to split the numpy array
-        # FIXME NAMINGS!! : losses is not a generic enough name, as well as latent, and fields does not convey the per-feature aspect of it
+        # FIXME NAMINGS!! : losses is not a generic enough name, as well as latent,
+        #                   and fields does not convey the per-faeature aspect of it
     :return: the figure
     """
     seaborn.set(rc={'figure.figsize': (27, 9)})
@@ -39,7 +41,6 @@ def barplots(npa,rel=None,type_=None): # FIXME duplicated code
 
     vmin = utils.min_across(sections)
     vmax = utils.max_across(sections)
-    print("vmin",vmin,"vmax",vmax)
     width_ratios = [
                        0.05+float(section.shape[1])/float(npa.shape[1])
                        for section
@@ -50,22 +51,23 @@ def barplots(npa,rel=None,type_=None): # FIXME duplicated code
         gridspec_kw=dict(width_ratios=width_ratios)
     )
 
-    for section_i,section in enumerate(sections):
+    for section_i, section in enumerate(sections):
         ax = seaborn.barplot(
             data=section,
             ax=axs[section_i],
             estimator=np.mean,
-            ci=None,#'sd',
-            #capsize=.2,
+            ci=None,  # 'sd',
+            # capsize=.2,
             color='lightblue'
         )
-        ax.set_ylim(vmin*1.05,vmax*1.05)
+        ax.set_ylim(vmin*1.05, vmax*1.05)
         axs[section_i].set(xlabel=rel.fields[section_i].name)
 
-    #fig.colorbar(axs[len(sections)-1].collections[0], cax=axs[len(sections)])
+    # fig.colorbar(axs[len(sections)-1].collections[0], cax=axs[len(sections)])
     return fig
 
-def heatmaps(npa,rel=None,type_=None):
+
+def heatmaps(npa, rel=None, type_=None):
     # FIXME: a lot of duplication from `barplots`
     seaborn.set(rc={'figure.figsize': (27, 9)})
     if type_ == 'fields':
@@ -80,7 +82,6 @@ def heatmaps(npa,rel=None,type_=None):
 
     vmin = utils.min_across(sections)
     vmax = utils.max_across(sections)
-    print("vmin",vmin,"vmax",vmax)
     width_ratios = [
         0.05+float(section.shape[1])/float(npa.shape[1])
         for section
@@ -91,7 +92,7 @@ def heatmaps(npa,rel=None,type_=None):
         gridspec_kw=dict(width_ratios=width_ratios)
     )
 
-    for section_i,section in enumerate(sections):
+    for section_i, section in enumerate(sections):
         seaborn.heatmap(
             section,
             ax=axs[section_i],
@@ -103,6 +104,7 @@ def heatmaps(npa,rel=None,type_=None):
 
     fig.colorbar(axs[len(sections)-1].collections[0], cax=axs[len(sections)])
     return fig
+
 
 def correlation(data):
     """
@@ -118,6 +120,7 @@ def correlation(data):
     mask = np.triu(np.ones_like(corr, dtype=bool))
     corr_metric = np.mean(np.abs(np.array(corr.fillna(0))))
     return corr, corr_metric, mask
+
 
 def correlation_heatmap(corr, corr_metric, mask, epoch_nr):
     """
@@ -150,7 +153,8 @@ def correlation_heatmap(corr, corr_metric, mask, epoch_nr):
     ax.set(xlabel="epoch "+str(epoch_nr)+" avg abs corr="+str(corr_metric))
     return fig
 
-def log_heatmaps_artifact(name, npa, which_tset,rel=None, type_=None):
+
+def log_heatmaps_artifact(name, npa, which_tset, rel=None, type_=None):
     """
     Plots a heatmap and logs it as a mlflow artifact
     :param name: name of the plot
@@ -162,12 +166,13 @@ def log_heatmaps_artifact(name, npa, which_tset,rel=None, type_=None):
     """
     print(f"log_heatmaps_artifact name:{name} npa.shape="+str(npa.shape))
     fig = heatmaps(npa, rel=rel, type_=type_)
-    filename = tempfile.mktemp(prefix=f"heatmaps_{name}_{type_}_{which_tset}",suffix=".png")
+    filename = tempfile.mktemp(prefix=f"heatmaps_{name}_{type_}_{which_tset}", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
     return filename
 
-def log_barplots_artifact(name, npa, which_tset,rel=None, type_=None):
+
+def log_barplots_artifact(name, npa, which_tset, rel=None, type_=None):
     """
     Makes a barplots plot and logs it as a mlflow artifact
     :param name: name of the barplots
@@ -178,10 +183,11 @@ def log_barplots_artifact(name, npa, which_tset,rel=None, type_=None):
     :return: the plotted image filename
     """
     fig = barplots(npa, rel=rel, type_=type_)
-    filename = tempfile.mktemp(prefix=f"barplots_{name}_{type_}_{which_tset}",suffix=".png")
+    filename = tempfile.mktemp(prefix=f"barplots_{name}_{type_}_{which_tset}", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
     return filename
+
 
 def log_correlation_heatmap_artifact(name, corr, corr_metric, mask, which_tset, epoch_nr):
     """
@@ -196,11 +202,12 @@ def log_correlation_heatmap_artifact(name, corr, corr_metric, mask, which_tset, 
     """
     print(f"creating and logging correlation heatmap for {name} {which_tset} epoch {epoch_nr}..")
     fig = correlation_heatmap(corr, corr_metric, mask, epoch_nr)
-    filename = tempfile.mktemp(prefix=f"correlation_heatmap_{name}_{which_tset}_{epoch_nr:04}_",suffix=".png")
+    filename = tempfile.mktemp(prefix=f"correlation_heatmap_{name}_{which_tset}_{epoch_nr:04}_", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
     print("done creating and logging correlation heatmap")
     return filename
+
 
 def log_net_visualization(model, features):
     """
@@ -214,4 +221,3 @@ def log_net_visualization(model, features):
     filename = tempfile.mktemp(suffix=".png")
     hl_graph.save(filename, format="png")
     mlflow.log_artifact(filename)
-

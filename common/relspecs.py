@@ -21,6 +21,7 @@ sys.path.append(
 from common import persistency, utils, config
 from models import text_model
 
+
 @functools.cache
 def get_codelists():
     """
@@ -32,6 +33,7 @@ def get_codelists():
     for curr in db['codelists'].find({}):
         ret[curr['name']] = curr['codelist']
     return ret
+
 
 class RelsCollection(utils.Collection):
 
@@ -65,6 +67,7 @@ class RelsCollection(utils.Collection):
             in rel.prefixed_fields_names
         ]
         return ret
+
 
 class Spec(object):
     """
@@ -104,6 +107,7 @@ class Spec(object):
             ret[0] = ret[0].astype(np.int32)
         return ret
 
+
     def glue(self, tensor_list):  # FIXME: maybe to some other module?
         """
         given a list of tensor, being the values of the fields,
@@ -137,7 +141,7 @@ class Spec(object):
     def extract_from_field_data(self, v):
         raise Exception("implement in subclass")
 
-    def extract_from_raw_data(self,activity_data):
+    def extract_from_raw_data(self, activity_data):
         """
         given a dictionary with the activity data as returned by IATI.cloud,
         extract the values of all fields that are in the specification.
@@ -221,6 +225,7 @@ class Spec(object):
                 ret.append(field.codelist_name)
         return ret
 
+
 class Rel(Spec):
     """
     relation field that holds a set of items.
@@ -251,6 +256,7 @@ class Rel(Spec):
         v = v[:config.download_max_set_size]
         return v
 
+
 class Activity(Spec):
     """
     Specifies the fields of an activity.
@@ -271,11 +277,12 @@ class Activity(Spec):
         return '(.*)'
 
     def extract_from_field_data(self, v):
-        if type(v) in (list,tuple):
+        if type(v) in (list, tuple):
             # if it's a list, which is unlikely, then just
             # get the first element
             v = v[0]
         return v
+
 
 class AbstractField(abc.ABC):
     def __init__(
@@ -372,7 +379,7 @@ class PositionField(AbstractField):
         for entry in entries:
             groups = re.match('\s*\(\s*(.*)\s*,\s*(.*)\s*\)\s*', entry).groups()
             lat, lon = tuple(groups)
-            t = (float(lat),float(lon))
+            t = (float(lat), float(lon))
             ret.append(t)
 
         # FIXME: code duplication from other fields
@@ -396,6 +403,7 @@ class PositionField(AbstractField):
     @property
     def n_features(self):
         return 2  # 9 is the cardinality of the timetuple
+
 
 class DatetimeField(AbstractField):
 
@@ -439,7 +447,7 @@ class CategoryField(AbstractField):
         self.codelist_name = codelist_name
 
         if 'loss_function' not in kwargs:
-            if(prevent_constant_prediction):
+            if prevent_constant_prediction:
                 prevent_constant_prediction_idx = self.codelist.index(prevent_constant_prediction)
                 siz = len(self.codelist)
                 weight = np.ones(siz)/siz
@@ -460,7 +468,9 @@ class CategoryField(AbstractField):
                 logging.warning("code is None: this shouldn't happen")
                 continue
             elif code not in self.codelist:
-                pass # FIXME: this is way too common: logging.warning(f"code '{code}' not found in the codelist {self.codelist}")
+                # FIXME: this is way too common: logging.warning(f"code '{code}' not found
+                #  in the codelist {self.codelist}")
+                pass
             else:
                 index_one = self.codelist.index(code)
                 ret[index_code, index_one] = 1
@@ -542,6 +552,7 @@ class TextField(AbstractField):
             n_correct += float(datapoint_correct)
         return n_correct/float(x.shape[0])
 
+
 class BooleanField(AbstractField):
     def encode(self, entries, set_size, **kwargs):
         ret = [bool(x) for x in entries]
@@ -561,6 +572,7 @@ class BooleanField(AbstractField):
         correct_ones = np.linalg.norm(x_hat_descaled - x_descaled, axis=1) < 0.5
         correct_ratio = np.mean(correct_ones)
         return correct_ratio
+
 
 rels = RelsCollection([
     Rel("activity_date", [

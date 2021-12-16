@@ -5,13 +5,15 @@ import logging
 import mlflow
 import torch
 
+
 def log(*args):
     """
     module-wide logging function
     """
-    strs = map(str,args)
+    strs = map(str, args)
     msg = "measurements:"+" ".join(strs)
     logging.debug(msg)
+
 
 class PlotType(enum.Enum):
     """
@@ -21,6 +23,7 @@ class PlotType(enum.Enum):
     FIELDS = 'fields'
     LOSSES = 'losses'
     LATENT = 'latent'
+
 
 class MeasurementsCollection(utils.Collection):
     """
@@ -32,7 +35,7 @@ class MeasurementsCollection(utils.Collection):
     def collect(self, lm, which_tset, of_type):
         # measurements that have been utilized in the aggregations
         utilized = set()
-        if type(of_type) not in (tuple,list):
+        if type(of_type) not in (tuple, list):
             of_type = (of_type,)
         for curr_of_type in of_type:
             log(f"collect: now considering type {curr_of_type} among {of_type}")
@@ -58,7 +61,7 @@ class MeasurementsCollection(utils.Collection):
         for curr in utilized:
             curr.clear(which_tset)
 
-    def all_of_type(self,of_type):
+    def all_of_type(self, of_type):
         """
         returns all Measurements of the specified subclass
         """
@@ -88,11 +91,11 @@ class MeasurementsCollection(utils.Collection):
         """
         print("Measurements counts:")
         for curr in self:
-            print(f"\t{curr.name}: ",end='')
+            print(f"\t{curr.name}: ", end='')
             curr.print_counts()
             if curr.dst:
                 for currdst in curr.dst:
-                    print(f"\t\t-> {currdst}: ",end='')
+                    print(f"\t\t-> {currdst}: ", end='')
                     self[currdst].print_counts()
 
     @property
@@ -107,18 +110,21 @@ class MeasurementsCollection(utils.Collection):
                 ret.append(curr)
         return ret
 
+
 # FIXME: namespace for aggregation functions?
 def mae(data):
     """
     Mean average error. An aggregation that can be set in the 'dst' parameter.
     """
-    return np.mean(np.abs(data),axis=0)
+    return np.mean(np.abs(data), axis=0)
+
 
 def var(data):
     """
     Variance. An aggregation that can be set in the 'dst' parameter.
     """
-    return np.var(data,axis=0)
+    return np.var(data, axis=0)
+
 
 def mean(data):
     """
@@ -126,11 +132,13 @@ def mean(data):
     """
     return np.mean(data, axis=0)
 
-def random_sampling(data,amount=100):
+
+def random_sampling(data, amount=100):
     ar = np.arange(data.shape[0])
     rc = np.random.choice(ar, size=amount)
-    ret = data[rc,:]
+    ret = data[rc, :]
     return ret
+
 
 class Measurement(object):
     """
@@ -153,7 +161,7 @@ class Measurement(object):
         for which_tset in utils.Tsets:
             self.clear(which_tset.value)
 
-    def clear(self,which_tset):
+    def clear(self, which_tset):
         """
         Some measures needs to be cleared, for example at the end of an epoch.
         Example: collecting network output for the entire dataset.
@@ -182,8 +190,8 @@ class Measurement(object):
         else:
             chunk_size = f"??{type(chunk)}"
         if self.mlflow_log:
-            mean = np.mean(np.array(chunk))
-            mlflow.log_metric(self.name,mean)
+            _mean = np.mean(np.array(chunk))
+            mlflow.log_metric(self.name, float(_mean))
         log(f"{self} {which_tset} added with chunk {chunk_size}")
         self.data[which_tset].append(chunk)
 
@@ -194,7 +202,7 @@ class Measurement(object):
         chunk = getattr(lm, self.name)
         self.add(chunk, which_tset)
 
-    def vstack(self,which_tset):
+    def vstack(self, which_tset):
         """
         Creates a numpy array from the data that has been collected
         """
@@ -268,11 +276,13 @@ class Measurement(object):
             print(which_tset.value + ":" + tmp+" ", end='')
         print(".")
 
+
 class DatapointMeasurement(Measurement):
     """
     Measurement indexed by datapoint
     """
     pass
+
 
 class BatchMeasurement(Measurement):
     """
@@ -280,11 +290,13 @@ class BatchMeasurement(Measurement):
     """
     pass
 
+
 class EpochMeasurement(Measurement):
     """
     Measurement indexed by epoch nr.
     """
     pass
+
 
 class LastEpochMeasurement(Measurement):
     """

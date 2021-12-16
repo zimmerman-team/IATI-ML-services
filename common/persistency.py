@@ -1,7 +1,6 @@
 import functools
 import pymongo
 import gridfs
-import logging
 
 from common import config
 from common import tsets
@@ -30,16 +29,16 @@ def gridfs_instance():
     db = mongo_db()
     gf = gridfs.GridFS(db)
 
-    def create_index(coll_name,spec):
+    def create_index(coll_name, _spec):
         """
         just a wrapper for mongodb index creation.
         :param coll_name:
-        :param spec:
+        :param _spec:
         :return:
         """
         try:
-            db[coll_name].create_index(spec)
-        except:
+            db[coll_name].create_index(_spec)
+        except pymongo.errors.PyMongoError as e:
             # already existing index
             pass
 
@@ -47,14 +46,14 @@ def gridfs_instance():
         [('filename', 1), ('uploadDate', 1)],
         [('filename', 1)],
         [('uploadDate', 1)]
-        ]:
-        create_index('fs.files',spec)
+    ]:
+        create_index('fs.files', spec)
     for spec in [
         [('files_id', 1), ('n', 1)],
         [('files_id', 1)],
         [('n', 1)],
     ]:
-        create_index('fs.chunks',spec)
+        create_index('fs.chunks', spec)
     return gf
 
 
@@ -118,7 +117,7 @@ def save_npa(filename, npa):
     serialized = utils.serialize(npa)
     f = gf.new_file(
         filename=filename,
-        chunk_size=8*(1024**2) # 8M
+        chunk_size=8*(1024**2)  # 8M
     )
     f.write(serialized)
     f.close()

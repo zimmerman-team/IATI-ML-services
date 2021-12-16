@@ -10,6 +10,7 @@ import pickle
 from common import utils, relspecs, persistency, config
 from models import diagnostics, measurements as ms, models_storage
 
+
 def get_args():
     """
     Simple command-line arguments extraction system
@@ -17,11 +18,12 @@ def get_args():
     """
     args = {}
     for arg in sys.argv:
-        if arg.startswith(("--")):
+        if arg.startswith("--"):
             k = arg.split('=')[0][2:]
             v = arg.split('=')[1]
             args[k] = v
     return args
+
 
 class MeasurementsCallback(pl.callbacks.Callback):
     """
@@ -110,7 +112,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
         :param lm:
         :return:
         """
-        self._epoch_end( 'train', trainer, lm )
+        self._epoch_end('train', trainer, lm)
 
     def on_validation_epoch_end(self, trainer, lm):
         """
@@ -119,7 +121,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
         :param lm:
         :return:
         """
-        self._epoch_end( 'val', trainer, lm )
+        self._epoch_end('val', trainer, lm)
 
     def teardown(self, trainer, lm, stage=None):
         """
@@ -134,7 +136,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
         for m in self.measurements.plottable:
             for which_tset in utils.Tsets:
                 stacked_npa = m.vstack(which_tset.value)
-                print(m.name,which_tset.value)
+                print(m.name, which_tset.value)
                 if len(stacked_npa) == 0:
                     logging.warning(f"{m.name} {which_tset} was empty")
                     continue
@@ -152,15 +154,16 @@ class MeasurementsCallback(pl.callbacks.Callback):
                 )
                 diagnostics.log_barplots_artifact(
                     m.name,
-                    stacked_npa[[-1],:],  # consider only last epoch
+                    stacked_npa[[-1], :],  # consider only last epoch
                     which_tset.value,
                     rel=self.rel,
                     type_=m.plot_type
                 )
 
+
 # FIXME: the run function seems to be a lot of stuff, can
 #   probably fix it with some additional abstraction?
-def run(Model,config_name, dynamic_config={}):
+def run(Model, config_name, dynamic_config={}):
     """
     Entry point to run the training of a model.
     Allows to pass parameters in dynamic_config
@@ -175,9 +178,9 @@ def run(Model,config_name, dynamic_config={}):
     # need to make sure that logs/* and mlruns/* are generated
     # in the correct project root directory, as well as
     # config files are loaded from model_config/
-    project_root_dir= os.path.abspath(os.path.join(
+    project_root_dir = os.path.abspath(os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        '..' # parent directory of models/
+        '..'  # parent directory of models/
     ))
     os.chdir(project_root_dir)
 
@@ -188,7 +191,7 @@ def run(Model,config_name, dynamic_config={}):
     for arg, val in args.items():
         dynamic_config[arg] = val
 
-    log_filename = os.path.join("logs",utils.strnow_compact()+'.log')
+    log_filename = os.path.join("logs", utils.strnow_compact()+'.log')
     logging.basicConfig(filename=log_filename, filemode='w', level=logging.DEBUG)
     model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
     mlflow.set_experiment(model_config['experiment_name'])
@@ -196,7 +199,7 @@ def run(Model,config_name, dynamic_config={}):
     run_name = f"{model_config['config_name']}_{model_config['rel_name']}"
     with mlflow.start_run(run_name=run_name):
         mlflow.log_params(model_config)
-        print("__file__",__file__)
+        print("__file__", __file__)
         mlflow.log_artifact(__file__)
         mlflow.log_artifact(model_config['config_filename'])
         rel = relspecs.rels[model_config['rel_name']]
@@ -206,9 +209,9 @@ def run(Model,config_name, dynamic_config={}):
             with_set_index=Model.with_set_index,
             cap=model_config['cap_dataset']
         )
-        mlflow.log_param('tsets_creation_time',tsets.creation_time)
+        mlflow.log_param('tsets_creation_time', tsets.creation_time)
         for curr in tsets.tsets_names:
-            mlflow.log_param(f"{curr}_datapoints",tsets[curr].shape[0])
+            mlflow.log_param(f"{curr}_datapoints", tsets[curr].shape[0])
 
         #  use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -226,7 +229,7 @@ def run(Model,config_name, dynamic_config={}):
         test_loader = model.make_test_loader(tsets)
         model_write_callback = storage.create_write_callback(model)
         callbacks = [
-            MeasurementsCallback(rel=rel,model=model),
+            MeasurementsCallback(rel=rel, model=model),
             model_write_callback
         ]
         trainer = pl.Trainer(
@@ -238,5 +241,5 @@ def run(Model,config_name, dynamic_config={}):
 
         storage.dump_kwargs(model)
 
-        print("current mlflow run:",mlflow.active_run().info.run_id, " - all done.")
-        #log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))
+        print("current mlflow run:", mlflow.active_run().info.run_id, " - all done.")
+        # log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))

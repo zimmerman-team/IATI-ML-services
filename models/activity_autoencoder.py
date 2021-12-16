@@ -2,11 +2,12 @@ import sys
 import os
 import torch
 import functools
-import np
+import numpy as np
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
-from models import diagnostics, run, measurements as ms, generic_model
+from models import measurements as ms, generic_model
+
 
 # FIXME: maybe make ActivityAutoencoder and ItemAE inherit from the same parent class?
 class ActivityAutoencoder(generic_model.GenericModel):
@@ -32,7 +33,6 @@ class ActivityAutoencoder(generic_model.GenericModel):
         )
         return train_loader
 
-
     def make_test_loader(self, tsets):
         """
         Creates a DataLoader object (torch library) for the validation set.
@@ -47,7 +47,6 @@ class ActivityAutoencoder(generic_model.GenericModel):
             num_workers=4
         )
         return test_loader
-
 
     def make_measurements(self):
         """
@@ -119,7 +118,7 @@ class ActivityAutoencoder(generic_model.GenericModel):
         self.reconstructed = self.decoder.forward(self.code)
         return self.reconstructed
 
-    def _loss(self,batch,x_hats,z):
+    def _loss(self, batch, x_hats, z):
         """
         loss calculation
         :param batch: input data
@@ -151,16 +150,16 @@ class ActivityAutoencoder(generic_model.GenericModel):
 
         loss = functools.reduce(lambda a, b: a + b, losses)
 
-        self.latent_l1_norm = self.kwargs.pop('latent_l1_norm',0)
+        self.latent_l1_norm = self.kwargs.pop('latent_l1_norm', 0)
 
         # applies L1 norm to the latent codes in order to encourage sparsity
-        loss += torch.norm(z,p=1)*self.latent_l1_norm
+        loss += torch.norm(z, p=1)*self.latent_l1_norm
 
         self.losses = [curr.detach().numpy() for curr in losses]
         self.guess_correct = guess_correct
         return loss
 
-    def _step(self,batch,batch_idx,which_tset):
+    def _step(self, batch, batch_idx, which_tset):
         """
         Returns the quantity to be minimized, for every batch.
         :param batch: the data batch
@@ -173,8 +172,8 @@ class ActivityAutoencoder(generic_model.GenericModel):
         z = self.encoder(batch)
         diff = batch - x_hat_glued
         mae = torch.mean(torch.abs(diff))
-        mse = torch.mean((diff) ** 2)
-        loss = self._loss(batch,x_hat_divided,z)
+        mse = torch.mean(diff ** 2)
+        loss = self._loss(batch, x_hat_divided, z)
 
         self.log(f"{which_tset}_loss", loss)
         self.log(f"{which_tset}_mae", mae)

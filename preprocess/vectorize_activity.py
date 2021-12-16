@@ -2,6 +2,7 @@ from common import relspecs, utils
 from models import models_storage
 import numpy as np
 
+
 class Activity(utils.Collection):
     """
     Representation of a IATI activity datapoint

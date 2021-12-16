@@ -1,5 +1,4 @@
 import numpy as np
-import collections
 
 from common import utils
 from common import persistency
@@ -9,6 +8,10 @@ class Tsets(utils.Collection):
     tsets_names = ('train', 'test')
 
     def load_data(self):
+        """
+        loads the data for this tset from mongodb(+gridfs)
+        :return:
+        """
         total_n_datapoints = 0
         for which_tset in self.tsets_names:
             # FIXME: maybe make a Tset object so I can get rid of these underscores
@@ -27,8 +30,7 @@ class Tsets(utils.Collection):
                 orig = self[which_tset].shape[0]
                 tset_fraction = float(orig)/float(total_n_datapoints)
                 tset_cap = int(tset_fraction*self.cap)
-                self[which_tset] = self[which_tset][:tset_cap,:]
-
+                self[which_tset] = self[which_tset][:tset_cap, :]
 
     def __init__(
             self,
@@ -53,7 +55,7 @@ class Tsets(utils.Collection):
                 self[which_tset],
                 with_set_index=self.with_set_index
             )
-            print("divided:",[s.shape for s in sections])
+            print("divided:", [s.shape for s in sections])
             if self.with_set_index is True:
                 # enriches the Tsets object with train_set_index and test_set_index
                 # properties that contain a 1D-vector of set ids - positional, as
@@ -72,8 +74,8 @@ class Tsets(utils.Collection):
 
     def print_shapes(self):
         for which_tset in self.tsets_names:
-            print(which_tset+".shape",self[which_tset].shape)
-            print(which_tset+"_scaled.shape",self[which_tset+"_scaled"].shape)
+            print(which_tset+".shape", self[which_tset].shape)
+            print(which_tset+"_scaled.shape", self[which_tset+"_scaled"].shape)
 
     @property
     def item_dim(self):
@@ -90,7 +92,6 @@ class Tsets(utils.Collection):
         # are presented as ordered, hence the last item should have the
         # last set's id, hence the largest id
         return self[which_tset+"_set_index"][-1]
-
 
     def sets_intervals(self, which_tset):
         """
@@ -128,7 +129,6 @@ class Tsets(utils.Collection):
             # FIXME: is having the trained scaler in the field a good idea??
             field.make_and_fit_scaler(section)
 
-
     def _scale(self, sections, with_set_index):
         """
         Uses the previously-trained scalers to scale the given data,
@@ -150,11 +150,11 @@ class Tsets(utils.Collection):
             assert field.n_features == section.shape[1], \
                 f"mismatch between field n_features and n columns of section: {field.n_features} != {section.shape[1]}"
             # FIXME: is having the trained scaler in the field a good idea??
-            print("scaling field",field,"section.shape:",section.shape)
+            print("scaling field", field, "section.shape:", section.shape)
             section_scaled = field.scaler.transform(section)
-            print('resulting section_scaled.shape:',section_scaled.shape)
+            print('resulting section_scaled.shape:', section_scaled.shape)
             scaled.append(section_scaled)
-        print("scaled sections:",[s.shape for s in scaled])
+        print("scaled sections:", [s.shape for s in scaled])
 
         ret = self.spec.glue(scaled)
         return ret

@@ -6,8 +6,8 @@ import os
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
-from models import diagnostics, run, measurements as ms, generic_model
-from common import utils, relspecs, persistency
+from models import run,  generic_model
+from common import utils
 from models import measurements as ms
 utils.set_np_printoptions()
 
@@ -27,9 +27,9 @@ class ItemAE(generic_model.GenericModel):
         :return: the data loader
         """
         train_loader = torch.utils.data.DataLoader(
-            tsets.train_scaled, # training set needs to be scaled
-            batch_size=self.kwargs['batch_size'], # working with batches
-            shuffle=True, # shuffles datapoints at every epoch
+            tsets.train_scaled,  # training set needs to be scaled
+            batch_size=self.kwargs['batch_size'],  # working with batches
+            shuffle=True,  # shuffles datapoints at every epoch
             num_workers=4,
             pin_memory=False
         )
@@ -43,9 +43,9 @@ class ItemAE(generic_model.GenericModel):
         :return: the data loader
         """
         test_loader = torch.utils.data.DataLoader(
-            tsets.test_scaled, # scaled validation data
-            batch_size=self.kwargs['batch_size'], # uses same batch size as training
-            shuffle=False, # no need to shuffle data when querying the model for validation
+            tsets.test_scaled,  # scaled validation data
+            batch_size=self.kwargs['batch_size'],  # uses same batch size as training
+            shuffle=False,  # no need to shuffle data when querying the model for validation
             num_workers=4
         )
         return test_loader
@@ -103,7 +103,6 @@ class ItemAE(generic_model.GenericModel):
         self.encoder = generic_model.Encoder(**kwargs)
         self.decoder = generic_model.Decoder(**kwargs)
 
-
     def forward(self, features):
         """
         Defines forward autoencoding path of the processing of the data.
@@ -117,7 +116,7 @@ class ItemAE(generic_model.GenericModel):
         self.reconstructed = self.decoder.forward(self.code)
         return self.reconstructed
 
-    def _loss(self,batch,x_hats,z):
+    def _loss(self, batch, x_hats, z):
         """
         loss calculation
         :param batch: input data
@@ -149,16 +148,16 @@ class ItemAE(generic_model.GenericModel):
 
         loss = functools.reduce(lambda a, b: a + b, losses)
 
-        self.latent_l1_norm = self.kwargs.pop('latent_l1_norm',0)
+        self.latent_l1_norm = self.kwargs.pop('latent_l1_norm', 0)
 
         # applies L1 norm to the latent codes in order to encourage sparsity
-        loss += torch.norm(z,p=1)*self.latent_l1_norm
+        loss += torch.norm(z, p=1)*self.latent_l1_norm
 
         self.losses = [curr.detach().numpy() for curr in losses]
         self.guess_correct = guess_correct
         return loss
 
-    def _step(self,batch,batch_idx,which_tset):
+    def _step(self, batch, batch_idx, which_tset):
         """
         Returns the quantity to be minimized, for every batch.
         :param batch: the data batch
@@ -170,8 +169,8 @@ class ItemAE(generic_model.GenericModel):
         z = self.encoder(batch)
         diff = batch - x_hat_glued
         mae = torch.mean(torch.abs(diff))
-        mse = torch.mean((diff) ** 2)
-        loss = self._loss(batch,x_hat_divided,z)
+        mse = torch.mean(diff ** 2)
+        loss = self._loss(batch, x_hat_divided, z)
         self.log(f"{which_tset}_loss", loss)
         self.log(f"{which_tset}_mae", mae)
         self.log(f"{which_tset}_mse", mse)
@@ -205,6 +204,7 @@ class ItemAE(generic_model.GenericModel):
         """
         return self._step(batch, batch_idx, 'val')
 
+
 def main():
     """
     The default behavior of running this script
@@ -213,6 +213,7 @@ def main():
     """
     config_name = sys.argv[1]
     run.run(ItemAE, config_name)
+
 
 if __name__ == "__main__":
     main()

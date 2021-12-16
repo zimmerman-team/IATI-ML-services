@@ -65,7 +65,6 @@ class Collection(dict):
         assert name in self.names, f"{name} not in collection's names"
         return self[name]
 
-
     def __add__(self, addendum):
 
         # new object is going to be returned,
@@ -212,17 +211,17 @@ def load_model_config(config_name, dynamic_config=None):
             'model_config/'))
         filename = os.path.join(directory, config_name+".yaml")
     with open(filename, 'r') as f:
-        ret = yaml.load(f,Loader=yaml.Loader)
+        ret = yaml.load(f, Loader=yaml.Loader)
 
     # default values for missing parameters
-    ret['cap_dataset'] = ret.get('cap_dataset',None)
+    ret['cap_dataset'] = ret.get('cap_dataset', None)
 
     ret['config_name'] = config_name
     ret['config_filename'] = filename
 
     # dynamic config generation will override the yaml file config
     if dynamic_config is not None:
-        for k,v in dynamic_config.items():
+        for k, v in dynamic_config.items():
             logging.info(f"configuration item {k} dynamically set at {v}")
             ret[k] = v
     return ret
@@ -259,6 +258,7 @@ def is_empty(stuff):
         else:
             return False
     raise Exception(f"is_empty: unhandled case for type {type(stuff)}")
+
 
 def debug(*args):
     msg = " ".join([str(a) for a in args])

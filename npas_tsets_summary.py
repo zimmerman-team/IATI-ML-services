@@ -2,6 +2,7 @@ from tabulate import tabulate
 
 from common import persistency, relspecs
 
+
 def main():
     headers = ['spec']
     for t in ('train', 'test'):
@@ -21,6 +22,7 @@ def main():
         table.append(row)
 
     print(tabulate(table, headers=headers))
+
 
 if __name__ == '__main__':
     main()

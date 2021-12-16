@@ -2,32 +2,31 @@ import pytorch_lightning as pl
 import torch
 import os
 import sys
-import pickle
 
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
 from common import config
 
+
 class AEModule(torch.nn.Module):
     """
     Superclass of both Encoder and Decoder, which are very similar components.
     """
 
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         self.kwargs = kwargs
         self.activation_function = getattr(torch.nn, self.kwargs["activation_function"])
         # FIXME: maybe this requires multiple inheritance
         self.rel = kwargs.get('rel', None)
         super().__init__()
 
-
     def activate(self, x):
         return self.activation_function()(x)
 
-
     def depth_range(self):
         return range(self.kwargs["depth"]-2)
+
 
 class Encoder(AEModule):
     """
@@ -35,7 +34,7 @@ class Encoder(AEModule):
     low-dimensional latent code.
     """
 
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.encoder_input_layer = torch.nn.Linear(
             in_features=self.kwargs["item_dim"],
@@ -52,7 +51,6 @@ class Encoder(AEModule):
             in_features=self.kwargs["layers_width"],
             out_features=self.kwargs["latent_dim"]
         )
-
 
     def forward(self, features):
         """
@@ -118,7 +116,6 @@ class Decoder(AEModule):
                 )
             ]
 
-
     def forward(self, code):
         """
         :param code: the compressed low-dimensional latent code
@@ -137,7 +134,6 @@ class Decoder(AEModule):
             reconstructed.append(activation_out)
         reconstructed = self._glue(reconstructed)
         return reconstructed
-
 
     def _glue(self, tensor_list):
         return self.rel.glue(tensor_list)
@@ -168,8 +164,8 @@ class GenericModel(pl.LightningModule):
         """
         return self.__class__.__name__
 
-    #@classmethod FIXME DELME
-    #def name(cls,rel):
+    # @classmethod FIXME DELME
+    # def name(cls,rel):
     #    return f"{cls.__name__}_{rel.name}"
 
     @property
@@ -181,14 +177,13 @@ class GenericModel(pl.LightningModule):
         """
         return f"{self.__class__.__name__}_{self.rel.name}"
 
-    def make_train_loader(self,tsets):
+    def make_train_loader(self, tsets):
         """
         System to provide batches of datapoints for training
         :param tsets:
         :return:
         """
         raise Exception("implement in subclass")
-
 
     def make_test_loader(self, tsets):
         """
@@ -197,7 +192,6 @@ class GenericModel(pl.LightningModule):
         :return:
         """
         raise Exception("implement in subclass")
-
 
     def __init__(self, **kwargs):
         """
@@ -212,7 +206,6 @@ class GenericModel(pl.LightningModule):
         self.kwargs = kwargs
         super().__init__()
 
-
     def configure_optimizers(self):
         """
         method required by Pytorch Lightning
@@ -224,7 +217,6 @@ class GenericModel(pl.LightningModule):
             weight_decay=self.kwargs['weight_decay']
         )
         return optimizer
-
 
     def _divide(self, tensor):  # FIXME: maybe something more OO?
         """
@@ -240,7 +232,6 @@ class GenericModel(pl.LightningModule):
             # the "divided" output will just be a list with a single un-divided tensor
             ret = [tensor]
         return ret
-
 
     def _divide_or_glue(self, stuff):
         """

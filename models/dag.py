@@ -17,6 +17,7 @@ from models import run
 
 config_name = config.models_dag_config_name
 
+
 def in_days(n):
     """
     Get a datetime object representing `n` days ago. By default the time is
@@ -25,15 +26,16 @@ def in_days(n):
     today = timezone.utcnow()
     return today + datetime.timedelta(days=n)
 
-def train_model(rel,ti):
+
+def train_model(_rel, ti):
     """
     task function to train a Deep Set Prediction Network
     on a specific relation.
-    :param rel:
+    :param _rel:
     :param ti:
     :return:
     """
-    dynamic_config = {'rel_name':rel.name}
+    dynamic_config = {'rel_name': _rel.name}
     run.run(
         models.dspn_autoencoder.DSPNAE,
         config_name,
@@ -57,15 +59,16 @@ with DAG(
         tags=['train', 'dspn', 'sets', 'models'],
         default_args=default_args,
         schedule_interval=None,
-        concurrency=2,# maximum two models being trained at the same time
+        concurrency=2,  # maximum two models being trained at the same time
         max_active_runs=1,
         max_active_tasks=2
 ) as dag:
     days_interval = config.models_dag_days_interval
-    for rel_i,rel in enumerate(relspecs.rels):
+    for rel_i, rel in enumerate(relspecs.rels):
 
         # this time the tasks are shell commands
-        train_cmd = f"cd {project_root_dir}; python3 models/dspn_autoencoder.py {config.models_dag_config_name} --rel_name={rel.name}"
+        train_cmd = f"cd {project_root_dir}; python3 models/dspn_autoencoder.py"\
+                    + f" {config.models_dag_config_name} --rel_name={rel.name}"
 
         t_train_model = BashOperator(
             task_id=f"train_dspn_model_{rel.name}",
@@ -75,10 +78,10 @@ with DAG(
             dag=dag
         )
 
-        ### PythonOperator version:
-        #t_train_model = PythonOperator(
+        # PythonOperator version:
+        # t_train_model = PythonOperator(
         #    task_id=f"train_dsp_model_{rel.name}",
         #    python_callable=train_model,
         #    start_date=in_days((rel_i-1)*days_interval),
         #    op_kwargs={'rel':rel}
-        #)
+        # )
