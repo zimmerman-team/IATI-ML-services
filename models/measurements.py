@@ -81,6 +81,11 @@ class MeasurementsCollection(utils.Collection):
         return ret
 
     def print_debug_info(self):
+        """
+        debug function to print to terminal the
+        hierarchy of the metrics
+        :return:
+        """
         print("Measurements counts:")
         for curr in self:
             print(f"\t{curr.name}: ",end='')
@@ -215,6 +220,10 @@ class Measurement(object):
         return self._dst
 
     def __str__(self):
+        """
+        string representation of the Measurement
+        :return:
+        """
         # FIXME: maybe add the dimension sizes over here?
         return f"<Measurement {self.name}>"
 
@@ -249,6 +258,10 @@ class Measurement(object):
             return tmp
 
     def print_counts(self):
+        """
+        prints the collected data's dimension sizes for training and testing sets
+        :return:
+        """
         for which_tset in utils.Tsets:
             d = self.data[which_tset.value]
             tmp = self._recursive_counts_str(d)

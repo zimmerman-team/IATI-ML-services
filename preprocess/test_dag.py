@@ -9,6 +9,11 @@ default_args = {
 }
 
 def test_task(ti):
+    """
+    Just a test task that does nothing.
+    :param ti:
+    :return:
+    """
     return True
 
 with DAG(

@@ -153,10 +153,19 @@ class GenericModel(pl.LightningModule):
     @property
     @classmethod
     def storage(cls):
+        """
+        Every model should have it's own persistent model
+        retrieval mechanism
+        :return:
+        """
         raise Exception("implement in subclass")
 
     @property
     def classname(self):
+        """
+        Returns the specific class of the model
+        :return:
+        """
         return self.__class__.__name__
 
     #@classmethod FIXME DELME
@@ -165,17 +174,40 @@ class GenericModel(pl.LightningModule):
 
     @property
     def name(self):
+        """
+        The name of a model is composed by the name of
+        the algorithm and the name of the source of data
+        :return:
+        """
         return f"{self.__class__.__name__}_{self.rel.name}"
 
     def make_train_loader(self,tsets):
+        """
+        System to provide batches of datapoints for training
+        :param tsets:
+        :return:
+        """
         raise Exception("implement in subclass")
 
 
     def make_test_loader(self, tsets):
+        """
+        System to provide batches of datapoints for testing
+        :param tsets:
+        :return:
+        """
         raise Exception("implement in subclass")
 
 
     def __init__(self, **kwargs):
+        """
+        Constructor of the model.
+        the construction parameters will be stored in the 'kwargs'
+        instance variable for easy retrieval.
+        The model is also built on a specific relation data source
+        ('rel' parameter)
+        :param kwargs:
+        """
         self.rel = kwargs.get('rel', None)
         self.kwargs = kwargs
         super().__init__()

@@ -188,12 +188,31 @@ class ItemAE(generic_model.GenericModel):
         return loss
 
     def training_step(self, batch, batch_idx):
+        """
+        processes a batch instance for training purposes
+        :param batch:
+        :param batch_idx:
+        :return:
+        """
         return self._step(batch, batch_idx, 'train')
 
     def validation_step(self, batch, batch_idx):
+        """
+        processes a batch instance for validation
+        :param batch:
+        :param batch_idx:
+        :return:
+        """
         return self._step(batch, batch_idx, 'val')
 
-
-if __name__ == "__main__":
+def main():
+    """
+    The default behavior of running this script
+    directly is training the ItemAE model.
+    :return:
+    """
     config_name = sys.argv[1]
     run.run(ItemAE, config_name)
+
+if __name__ == "__main__":
+    main()

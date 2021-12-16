@@ -23,6 +23,10 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         os.chdir(project_root_dir)
 
     def load_all_models(self):
+        """
+        loads the trained models for all the relations
+        :return:
+        """
         os.chdir(project_root_dir)
         for rel in relspecs.rels:
             model = self.load(rel)
@@ -50,6 +54,15 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         return checkpoint_callback
 
     def generate_kwargs_filename(self, model):
+        """
+        We need to store the parameters to the constructor as well,
+        which are unfortunately not included in pytorch_lightning's
+        model parameters persistency system.
+        This method is returning the filename of the persisted
+        construction parameters.
+        :param model:
+        :return:
+        """
 
         # using tha version from the last model filename
         # as it is saved before the kwargs dump
@@ -62,11 +75,24 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         return ret
 
     def dump_kwargs(self,model):
+        """
+        dumps the construction parameters of the given model
+        to a persistent file.
+        :param model:
+        :return:
+        """
         kwargs_filename = self.generate_kwargs_filename(model)
         with open(kwargs_filename, 'wb') as f:
             pickle.dump(model.kwargs, f)
 
     def filenames(self,rel,extension):
+        """
+        generic function that returns the names of files containing persisted aspects
+        of a model trained on the data from a specific relation.
+        :param rel:
+        :param extension: file extension
+        :return: a dictionary of filenames indexed on the version of the given aspect
+        """
         filenames_glob = os.path.join(
             "trained_models",
             f"DSPNAE_{rel.name}*.{extension}"
@@ -85,12 +111,29 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         return ret
 
     def kwargs_filenames(self,rel):
+        """
+        Returns all filenames of the persisted construction parameters for models
+        of a given relation.
+        :param rel:
+        :return: a dictionary of filenames indexed on the version of the construction parameters
+        """
         return self.filenames(rel,'kwargs.pickle')
 
     def models_filenames(self,rel):
+        """
+        Returns all filenames of the persisted trained model parameters of models
+        of a given relation.
+        :param rel:
+        :return: a dictionary of filenames indexed on the version of the construction parameters
+        """
         return self.filenames(rel,'ckpt')
 
     def last_version(self, rel):
+        """
+        Finds out the latest version of models trained for the given relation.
+        :param rel:
+        :return:
+        """
         filenames = self.models_filenames(rel)
         versions = filenames.keys()
         if len(versions) == 0:
@@ -100,6 +143,12 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         return last_version
 
     def most_recent_kwargs_filename(self, rel):
+        """
+        returns the most recent filename containing construction parameters
+        for models trained on a given relation.
+        :param rel:
+        :return:
+        """
         last_version = self.last_version(rel)
         if last_version is None:
             # there was no model stored
@@ -110,6 +159,11 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         return filenames[last_version]
 
     def most_recent_model_filename(self, rel):
+        """
+        returns the most recent filename of persisted model paramters of a given relation.
+        :param rel:
+        :return:
+        """
         filenames = self.models_filenames(rel)
         last_version = self.last_version(rel)
         if last_version is None:
@@ -118,6 +172,11 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         return filenames[last_version]
 
     def rel_has_stored_model(self,rel):
+        """
+        returns True if there is a trained model belonging to a specific relation
+        :param rel:
+        :return:
+        """
         kwargs_filename = self.most_recent_kwargs_filename(rel)
         model_filename = self.most_recent_model_filename(rel)
         if None in (kwargs_filename, model_filename):
@@ -153,6 +212,11 @@ class DSPNAEModelsStorage(utils.Collection): # FIXME: classname-parameterized?
         return model
 
 def test():
+    """
+    When this script is run directly from command-line, a test
+    is being performed.
+    :return:
+    """
     ms = DSPNAEModelsStorage()
     ms.load_all_models()
     print("ms",ms)

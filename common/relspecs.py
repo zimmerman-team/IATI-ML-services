@@ -23,6 +23,10 @@ from models import text_model
 
 @functools.cache
 def get_codelists():
+    """
+    returns a codelist from the mongo db
+    :return:
+    """
     db = persistency.mongo_db()
     ret = {}
     for curr in db['codelists'].find({}):
@@ -33,6 +37,11 @@ class RelsCollection(utils.Collection):
 
     @property
     def downloadable(self):
+        """
+        returns the relation specifications, but only
+        those that are marked as downloadable
+        :return:
+        """
         return [
             rel
             for rel
@@ -42,6 +51,12 @@ class RelsCollection(utils.Collection):
 
     @property
     def downloadable_prefixed_fields_names(self):
+        """
+        The fields returned by IATI.cloud have a prefix that is
+        the relation name.
+        This function construct and retrurns those prefixed field names.
+        :return:
+        """
         ret = [
             curr
             for rel
@@ -52,15 +67,36 @@ class RelsCollection(utils.Collection):
         return ret
 
 class Spec(object):
+    """
+    Inherited by Rel and Activity.
+    Represents the specification (field list and types)
+    of a data source.
+    """
     def __init__(self, name, fields, download=False):
+        """
+        :param name: name of the spec
+        :param fields: list of fields objects
+        :param download: boolean
+        """
         self.name = name
         self.fields = fields
         self.download = download
 
     def __str__(self):
+        """
+        compact string representation including fields
+        :return:
+        """
         return f"<S:{self.name}: {self.fields}>"
 
     def divide(self, tensor, with_set_index=False):
+        """
+        given a glued-up tensor, it returns the list of
+        the columns, each belonging to each of the fields.
+        :param tensor:
+        :param with_set_index:
+        :return:
+        """
         ret = []
         for start, end in self.fields_intervals(with_set_index=with_set_index):
             ret.append(tensor[:, start:end])
@@ -69,6 +105,12 @@ class Spec(object):
         return ret
 
     def glue(self, tensor_list):  # FIXME: maybe to some other module?
+        """
+        given a list of tensor, being the values of the fields,
+        returns a glued-up tensor to be used in ML model training (or query).
+        :param tensor_list:
+        :return:
+        """
         if type(tensor_list) is list:
             assert len(tensor_list) > 0
             first = tensor_list[0]
@@ -85,12 +127,23 @@ class Spec(object):
 
     @property
     def extract_field_regex(self):
+        """
+        regular expression to extract a field name from the
+        complete field name from IATI.cloud
+        :return:
+        """
         raise Exception("implement in subclass")
 
     def extract_from_field_data(self, v):
         raise Exception("implement in subclass")
 
     def extract_from_raw_data(self,activity_data):
+        """
+        given a dictionary with the activity data as returned by IATI.cloud,
+        extract the values of all fields that are in the specification.
+        :param activity_data:
+        :return:
+        """
         ret = {}
         for k, v in activity_data.items():
             m = re.match(self.extract_field_regex, k)
@@ -103,22 +156,47 @@ class Spec(object):
 
     @property
     def scalers(self):
+        """
+        returns the scalers (normalizers for example) belonging to
+        each field
+        :return:
+        """
         return [curr.scaler for curr in self.fields]
 
     @property
     def n_fields(self):
+        """
+        returns the number of fields in this specification.
+        :return:
+        """
         return len(self.fields)
 
     @property
     def n_features(self):
+        """
+        returns the number of individual features (as in ML)
+        belonging to this specification.
+        :return:
+        """
         return sum([curr.n_features for curr in self.fields])
 
     @property
     def fields_names(self):
+        """
+        returns the field names of this specification.
+        :return:
+        """
         return [f.name for f in self.fields]
 
 
     def fields_intervals(self, with_set_index=False):
+        """
+        returns the intervals (start and end indexes)
+        for each of the field, aimed at extracting
+        a field column from a glued-up tensor.
+        :param with_set_index:
+        :return:
+        """
         start = 0
         intervals = []
         if with_set_index:
@@ -132,6 +210,11 @@ class Spec(object):
 
     @property
     def codelists_names(self):
+        """
+        returns all the codelist names extracted
+        from the category fields.
+        :return:
+        """
         ret = []
         for field in self.fields:
             if type(field) is CategoryField:
@@ -145,6 +228,10 @@ class Rel(Spec):
 
     @property
     def prefixed_fields_names(self):
+        """
+        returns the complete field names as IATI.cloud's standard
+        :return:
+        """
         return [
             self.name+"_"+curr
             for curr
@@ -153,6 +240,10 @@ class Rel(Spec):
 
     @property
     def extract_field_regex(self):
+        """
+        regex to extract the field name within this rel
+        :return:
+        """
         return f'{self.name}_(.*)'
 
     def extract_from_field_data(self, v):
@@ -170,6 +261,13 @@ class Activity(Spec):
 
     @property
     def extract_field_regex(self):
+        """
+        regex to extract the field name within this rel.
+        In the case of Activity non-relation fields,
+        the field name corresponds to the IATI.cloud
+        field name.
+        :return:
+        """
         return '(.*)'
 
     def extract_from_field_data(self, v):
@@ -192,35 +290,76 @@ class AbstractField(abc.ABC):
         self._scaler = None
 
     def __str__(self):
+        """
+        compact string representation
+        :return:
+        """
         return f"<F:{self.name} n_features:{self.n_features}>"
 
     def __repr__(self):
+        """
+        compact string representation
+        :return:
+        """
         return str(self)
 
     @property
     def n_features(self):
+        """
+        number of features of this field
+        :return:
+        """
         raise Exception("not implemented")
 
     @property
     def output_activation_function(self):
+        """
+        in the decoder, which activation function to use
+        for this field
+        :return:
+        """
         return self._output_activation_function
 
     @property
     def loss_function(self):
+        """
+        the loss function specific for this field.
+        :return:
+        """
         return self._loss_function
 
     def guess_correct(self, x_hat, x_orig):
+        """
+        fraction of correct field value reconstruction guesses
+        :param x_hat:
+        :param x_orig:
+        :return:
+        """
         raise Exception("not implemented")
 
     @property
     def scaler(self):
+        """
+        Field value scaler (for example, normalization)
+        :return:
+        """
         return self._scaler
 
     def make_scaler(self):
+        """
+        Constructor for the field value scaler.
+        The abstract class provides a default.
+        :return:
+        """
         # default scaler
         return sklearn.preprocessing.MinMaxScaler(feature_range=(-1.0, 1.0))
 
     def make_and_fit_scaler(self, data):
+        """
+        creates a scaler fitted from some data.
+        :param data:
+        :return:
+        """
         self._scaler = self.make_scaler()
         self._scaler.fit(data)
         return self._scaler

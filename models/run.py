@@ -11,6 +11,10 @@ from common import utils, relspecs, persistency, config
 from models import diagnostics, measurements as ms, models_storage
 
 def get_args():
+    """
+    Simple command-line arguments extraction system
+    :return:
+    """
     args = {}
     for arg in sys.argv:
         if arg.startswith(("--")):
@@ -20,17 +24,35 @@ def get_args():
     return args
 
 class MeasurementsCallback(pl.callbacks.Callback):
+    """
+    A pytorch_lightning model will use this callback to extract measurements.
+    """
     rel = None
     collected = {}
     # FIXME: this is for the refactoring: measurements = make_measurements()
 
     def __init__(self, *args, **kwargs):
+        """
+        constructor. The arguments need to provide the relation and the model
+        :param args:
+        :param kwargs:
+        """
         self.rel = kwargs.pop('rel')
         self.model = kwargs.pop('model')
         super().__init__(*args, **kwargs)
         self.measurements = self.model.make_measurements()
 
     def on_train_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
+        """
+        Called after a batch has been used for training.
+        :param _:
+        :param lm:
+        :param outputs:
+        :param batch:
+        :param batch_idx:
+        :param dataloader_idx:
+        :return:
+        """
         self.measurements.collect(
             lm,
             utils.Tsets.TRAIN.value,
@@ -39,6 +61,16 @@ class MeasurementsCallback(pl.callbacks.Callback):
         )
 
     def on_validation_batch_end(self, _, lm, outputs, batch, batch_idx, dataloader_idx):
+        """
+        Called after a batch has been used for validation.
+        :param _:
+        :param lm:
+        :param outputs:
+        :param batch:
+        :param batch_idx:
+        :param dataloader_idx:
+        :return:
+        """
         self.measurements.collect(
             lm,
             utils.Tsets.VAL.value,
@@ -47,6 +79,13 @@ class MeasurementsCallback(pl.callbacks.Callback):
         )
 
     def _epoch_end(self, which_tset, trainer, lm):
+        """
+        Run at the end of an epoch, both for training and validation sets.
+        :param which_tset:
+        :param trainer:
+        :param lm:
+        :return:
+        """
         is_last_epoch = lm.current_epoch == trainer.max_epochs - 1
         epoch_nr = lm.current_epoch
 
@@ -65,12 +104,31 @@ class MeasurementsCallback(pl.callbacks.Callback):
             diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_tset, epoch_nr)
 
     def on_train_epoch_end(self, trainer, lm):
+        """
+        Called at the end of a training epoch.
+        :param trainer:
+        :param lm:
+        :return:
+        """
         self._epoch_end( 'train', trainer, lm )
 
     def on_validation_epoch_end(self, trainer, lm):
+        """
+        Called at the end of a validation epoch.
+        :param trainer:
+        :param lm:
+        :return:
+        """
         self._epoch_end( 'val', trainer, lm )
 
     def teardown(self, trainer, lm, stage=None):
+        """
+        Called at the very end of the training.
+        :param trainer:
+        :param lm:
+        :param stage:
+        :return:
+        """
         print("teardown stage", stage)
         self.measurements.print_debug_info()
         for m in self.measurements.plottable:
@@ -103,6 +161,16 @@ class MeasurementsCallback(pl.callbacks.Callback):
 # FIXME: the run function seems to be a lot of stuff, can
 #   probably fix it with some additional abstraction?
 def run(Model,config_name, dynamic_config={}):
+    """
+    Entry point to run the training of a model.
+    Allows to pass parameters in dynamic_config
+    in order to override config settings from a
+    configuration file.
+    :param Model:
+    :param config_name:
+    :param dynamic_config:
+    :return:
+    """
 
     # need to make sure that logs/* and mlruns/* are generated
     # in the correct project root directory, as well as

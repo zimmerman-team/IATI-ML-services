@@ -10,6 +10,11 @@ from common import utils
 
 @functools.cache
 def mongo_db():
+    """
+    returns a connection to the mongodb.
+    It's cached as only one is needed.
+    :return:
+    """
     client = pymongo.MongoClient(config.mongo_uri())
     db = client['learning_sets']
     return db
@@ -17,10 +22,21 @@ def mongo_db():
 
 @functools.cache
 def gridfs_instance():
+    """
+    returns an instance of the interface to GridFS.
+    It's cached as only one is needed.
+    :return:
+    """
     db = mongo_db()
     gf = gridfs.GridFS(db)
 
     def create_index(coll_name,spec):
+        """
+        just a wrapper for mongodb index creation.
+        :param coll_name:
+        :param spec:
+        :return:
+        """
         try:
             db[coll_name].create_index(spec)
         except:
@@ -43,6 +59,12 @@ def gridfs_instance():
 
 
 def load_tsets_document(spec):
+    """
+    Loads a document from the mongo db, containing the
+    training and test sets.
+    :param spec:
+    :return:
+    """
     db = mongo_db()
     coll = db['npas_tsets']
     document = coll.find({'spec': spec.name}).sort('creation_time', pymongo.DESCENDING).limit(1)[0]
@@ -69,6 +91,11 @@ def load_tsets(spec, with_set_index=False, cap=None):
 
 
 def remove_npa(filename):
+    """
+    removes a file containing the numpy array data, from gridfs
+    :param filename:
+    :return:
+    """
     db = mongo_db()
     gf = gridfs_instance()
     files_found = db['fs.files'].find({'filename': filename})
@@ -80,6 +107,12 @@ def remove_npa(filename):
 
 
 def save_npa(filename, npa):
+    """
+    save a file containing the numpy array data, to gridfs
+    :param filename:
+    :param npa:
+    :return:
+    """
     gf = gridfs_instance()
     remove_npa(filename)
     serialized = utils.serialize(npa)
@@ -93,6 +126,12 @@ def save_npa(filename, npa):
 
 
 def get_npa_file_id(filename):
+    """
+    returns the id of a file containing the numpy array dataset,
+    given a filename.
+    :param filename:
+    :return:
+    """
     db = mongo_db()
     found = db['fs.files'].find_one({'filename': filename})
     assert found is not None, f"get_npa_file_id: could not find an entry with filename={filename}"
@@ -100,6 +139,12 @@ def get_npa_file_id(filename):
 
 
 def load_npa(file_id=None, filename=None):
+    """
+    Loads a numpy array containing a dataset, given either a filename or a file_id
+    :param file_id:
+    :param filename:
+    :return:
+    """
     # one and only one of the two arguments needs to be specified
     assert sum([file_id is None, filename is None]) == 1, "load_npa: specify only one of file_id,filename args"
     if filename is not None:

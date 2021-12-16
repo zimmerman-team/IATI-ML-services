@@ -26,13 +26,19 @@ def in_days(n):
     return today + datetime.timedelta(days=n)
 
 def train_model(rel,ti):
+    """
+    task function to train a Deep Set Prediction Network
+    on a specific relation.
+    :param rel:
+    :param ti:
+    :return:
+    """
     dynamic_config = {'rel_name':rel.name}
     run.run(
         models.dspn_autoencoder.DSPNAE,
         config_name,
         dynamic_config=dynamic_config
     )
-
 
 project_root_dir = os.path.abspath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -51,13 +57,14 @@ with DAG(
         tags=['train', 'dspn', 'sets', 'models'],
         default_args=default_args,
         schedule_interval=None,
-        concurrency=2,
+        concurrency=2,# maximum two models being trained at the same time
         max_active_runs=1,
         max_active_tasks=2
 ) as dag:
     days_interval = config.models_dag_days_interval
     for rel_i,rel in enumerate(relspecs.rels):
 
+        # this time the tasks are shell commands
         train_cmd = f"cd {project_root_dir}; python3 models/dspn_autoencoder.py {config.models_dag_config_name} --rel_name={rel.name}"
 
         t_train_model = BashOperator(

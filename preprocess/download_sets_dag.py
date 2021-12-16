@@ -59,6 +59,14 @@ def download(start, ti):
     large_mp.send(ti, data)
 
 def persist_activity_ids(page, ti):
+    """
+    Collects the activity ids from the downloaded page, and
+    stores them in a dedicated collection (activity_ids) in
+    the mongo db.
+    :param page:
+    :param ti:
+    :return:
+    """
     db = persistency.mongo_db()
     coll_out = db['activity_ids']
 
@@ -126,6 +134,11 @@ def parse(page, ti):
     large_mp.send(ti, specs_vals)
 
 def clear_activity_ids(ti):
+    """
+    Removes all previously-collected activities' ids
+    :param ti:
+    :return:
+    """
     db = persistency.mongo_db()
     coll = db['activity_ids']
 
@@ -134,6 +147,13 @@ def clear_activity_ids(ti):
     coll.create_index([("activity_id", -1)])
 
 def clear(spec, ti):
+    """
+    Delete contents of the preliminary persistent storage (to mongodb)
+    of either the non-relation activity field values, or relation fields.
+    :param spec: either Activity or Rel
+    :param ti:
+    :return:
+    """
     db = persistency.mongo_db()
     coll = db[spec.name]
 
