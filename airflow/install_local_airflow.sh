@@ -20,6 +20,8 @@ AIRFLOW_PASSWORD="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_pass
 AIRFLOW_EMAIL="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_email)"
 AIRFLOW_CONCURRENCY="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_concurrency)"
 
+killall airflow
+
 m4 -DAIRFLOW_PG_PASSWORD=$AIRFLOW_PG_PASSWORD psql_commands.m4 |
   sudo su postgres -c "/usr/bin/psql"
 
