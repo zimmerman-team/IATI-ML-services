@@ -39,7 +39,7 @@ def extract_codelists(_specs):
     return ret
 
 
-def download(_start, ti):
+def download(start, ti):
     """
     Airflow task: retrieve activities from back-end
     :param _start: starting search result index of the page (`start` to `start+config.download_page_size`)
@@ -51,7 +51,7 @@ def download(_start, ti):
     params = {
         'q': "*:*",
         'fl': fl,
-        'start': _start,
+        'start': start,
         'rows': config.download_page_size
     }
     logging.info(f"requesting {DATASTORE_ACTIVITY_URL} with {params}")
@@ -61,12 +61,12 @@ def download(_start, ti):
     large_mp.send(ti, data)
 
 
-def persist_activity_ids(_page, ti):
+def persist_activity_ids(page, ti):
     """
     Collects the activity ids from the downloaded page, and
     stores them in a dedicated collection (activity_ids) in
     the mongo db.
-    :param _page:
+    :param page:
     :param ti:
     :return:
     """
@@ -75,7 +75,7 @@ def persist_activity_ids(_page, ti):
 
     # this large message is cleared in parse_*,
     # which is subsequent to persist_activity_data_*
-    data = large_mp.recv(ti, f"download_{_page}")
+    data = large_mp.recv(ti, f"download_{page}")
 
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
@@ -85,15 +85,15 @@ def persist_activity_ids(_page, ti):
         })
 
 
-def parse(_page, ti):
+def parse(page, ti):
     """
     Airflow task: parse downloaded page of activities
-    :param _page: index of the downloaded page to be parsed
+    :param page: index of the downloaded page to be parsed
     :param ti: task id (string)
     :return: None
     """
     specs_vals = defaultdict(lambda: defaultdict(lambda: dict()))
-    data = large_mp.recv(ti, f"download_{_page}")
+    data = large_mp.recv(ti, f"download_{page}")
     for activity in data['response']['docs']:
         activity_id = activity['iati_identifier']
         # logging.info(f"processing activity {activity_id}")
@@ -168,15 +168,15 @@ def clear(spec, ti):
     coll.create_index([("activity_id", -1)])
 
 
-def persist(_page, ti):
+def persist(page, ti):
     """
     Airflow tasks: store previosly parsed page of activities in the mondodb
-    :param _page: index of the downloaded page to be stored
+    :param page: index of the downloaded page to be stored
     :param ti: task id (string)
     :return: None
     """
     db = persistency.mongo_db()
-    data = large_mp.recv(ti, f'parse_{_page}')
+    data = large_mp.recv(ti, f'parse_{page}')
 
     # FIXME: per-spec tasks
     for spec_name, spec_data in data.items():
@@ -193,8 +193,8 @@ def persist(_page, ti):
                 'data': activity_data
             })
 
-    large_mp.clear_recv(ti, f'parse_{_page}')
-    large_mp.clear_recv(ti, f"download_{_page}")
+    large_mp.clear_recv(ti, f'parse_{page}')
+    large_mp.clear_recv(ti, f"download_{page}")
 
 
 def codelists(ti):
@@ -446,40 +446,40 @@ with DAG(
         )
 
     t_persist = {}
-    for page in pages:
-        start = page*config.download_page_size
+    for _page in pages:
+        start = _page*config.download_page_size
         t_download = PythonOperator(
-            task_id=f"download_{page}",
+            task_id=f"download_{_page}",
             python_callable=download,
             start_date=days_ago(2),
             op_kwargs={'start': start}
         )
 
         t_persist_activity_ids = PythonOperator(
-            task_id=f"persist_activity_ids_{page}",
+            task_id=f"persist_activity_ids_{_page}",
             python_callable=persist_activity_ids,
             start_date=days_ago(2),
-            op_kwargs={'page': page}
+            op_kwargs={'page': _page}
         )
 
         t_parse = PythonOperator(
-            task_id=f"parse_{page}",
+            task_id=f"parse_{_page}",
             python_callable=parse,
             start_date=days_ago(2),
-            op_kwargs={'page': page}
+            op_kwargs={'page': _page}
         )
 
-        t_persist[page] = PythonOperator(
-            task_id=f"persist_{page}",
+        t_persist[_page] = PythonOperator(
+            task_id=f"persist_{_page}",
             python_callable=persist,
             start_date=days_ago(2),
-            op_kwargs={'page': page}
+            op_kwargs={'page': _page}
         )
         for _spec in specs:
             t_clear_activity_ids >> t_clear[_spec.name]
             t_clear[_spec.name] >> t_download
         t_download >> t_parse >> t_persist_activity_ids
-        t_persist_activity_ids >> t_persist[page]
+        t_persist_activity_ids >> t_persist[_page]
 
     for _spec in specs:
         t_encode = PythonOperator(
@@ -510,8 +510,8 @@ with DAG(
             op_kwargs={'spec': _spec}
         )
 
-        for page in pages:
-            t_persist[page] >> t_encode
+        for _page in pages:
+            t_persist[_page] >> t_encode
         t_codelists >> t_encode >> t_arrayfy
         t_arrayfy >> t_to_npa
         t_arrayfy >> t_to_tsets
