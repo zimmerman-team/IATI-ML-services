@@ -5,4 +5,6 @@ echo SCRIPT_DIR: $SCRIPT_DIR
 LEARNING_SETS_DIR="$(readlink -f $SCRIPT_DIR/..)"
 echo LEARNING_SETS_DIR: $LEARNING_SETS_DIR
 
-screen -L -Logfile $LEARNING_SETS_DIR/statsd_${TS}.log -S statsd -d -m node statsd/stats.js statsdConfig.js
+screen -X -S statsd quit
+
+screen -L -Logfile $LEARNING_SETS_DIR/logs/statsd_${TS}.log -S statsd -d -m node statsd/stats.js statsdConfig.js
