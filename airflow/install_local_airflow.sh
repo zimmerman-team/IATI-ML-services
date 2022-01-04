@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # exit when any command fails
-set -e
+#set -e
 
 # keep track of the last executed command
 trap 'last_command=$current_command; current_command=$BASH_COMMAND' DEBUG
@@ -20,7 +20,8 @@ AIRFLOW_PASSWORD="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_pass
 AIRFLOW_EMAIL="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_email)"
 AIRFLOW_CONCURRENCY="$(bash $LEARNING_SETS_DIR/config/get_conf_item.sh airflow_concurrency)"
 
-killall airflow
+# exit 0 here prevents a failing killall to interrupt the script
+( killall airflow ; exit 0 )
 
 m4 -DAIRFLOW_PG_PASSWORD=$AIRFLOW_PG_PASSWORD psql_commands.m4 |
   sudo su postgres -c "/usr/bin/psql"
@@ -42,3 +43,6 @@ airflow db init
 
 airflow users create -u $AIRFLOW_USER -e "$AIRFLOW_EMAIL" -r Admin -f $AIRFLOW_USER -l X -p "$AIRFLOW_PASSWORD"
 
+airflow pools set npas_intensive 1 "creation of large npas may require a lot of resources"
+
+pip3 install 'apache-airflow[statsd]'
