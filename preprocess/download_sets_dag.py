@@ -493,14 +493,18 @@ with DAG(
             task_id=f"to_npa_{_spec.name}",
             python_callable=to_npa,
             start_date=days_ago(2),
-            op_kwargs={'spec': _spec}
+            op_kwargs={'spec': _spec},
+            pool="npas_intensive",
+            pool_slots=1
         )
 
         t_to_tsets = PythonOperator(
             task_id=f"to_tsets_{_spec.name}",
             python_callable=to_tsets,
             start_date=days_ago(2),
-            op_kwargs={'spec': _spec}
+            op_kwargs={'spec': _spec},
+            pool="npas_intensive",
+            pool_slots=1
         )
 
         t_arrayfy = PythonOperator(
