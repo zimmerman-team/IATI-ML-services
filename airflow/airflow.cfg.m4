@@ -306,7 +306,7 @@ extra_loggers =
 
 # StatsD (https://github.com/etsy/statsd) integration settings.
 # Enables sending metrics to StatsD.
-statsd_on = False
+statsd_on = True
 statsd_host = localhost
 statsd_port = 8125
 statsd_prefix = airflow
