@@ -1,0 +1,8 @@
+#!/bin/bash
+
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+echo SCRIPT_DIR: $SCRIPT_DIR
+LEARNING_SETS_DIR="$(readlink -f $SCRIPT_DIR/..)"
+echo LEARNING_SETS_DIR: $LEARNING_SETS_DIR
+
+screen -L -Logfile $LEARNING_SETS_DIR/statsd_${TS}.log -S statsd -d -m node statsd/stats.js statsdConfig.js
