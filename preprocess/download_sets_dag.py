@@ -376,7 +376,10 @@ def to_tsets(spec, ti):
     coll_out.create_index([("test_npa_file_id", -1)])
     train_npas = []
     test_npas = []
-    for document in coll_in.find():
+    cursor = coll_in.find()
+    if spec.limit:
+        cursor = cursor.limit(spec.limit)
+    for document in cursor:
         set_npa = utils.deserialize(document['npa'])
         set_index = document['set_index']
         set_index_col = np.ones((set_npa.shape[0], 1))*set_index
