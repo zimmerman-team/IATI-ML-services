@@ -135,7 +135,7 @@ class ItemAE(generic_model.GenericModel):
                 batch_divided,
                 self.rel.fields
         ):
-            loss_fn = field.loss_function \
+            loss_fn = field.loss_function() \
                       or torch.nn.functional.mse_loss
             """
             print("curr_x_hat",curr_x_hat.shape,curr_x_hat)

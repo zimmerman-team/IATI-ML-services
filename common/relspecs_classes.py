@@ -8,6 +8,7 @@ import torch.nn
 import sys
 import os
 import logging
+from collections import defaultdict
 
 sys.path.append(
     os.path.abspath(
@@ -28,7 +29,7 @@ def get_codelists():
     :return:
     """
     db = persistency.mongo_db()
-    ret = {}
+    ret = defaultdict(lambda: list())
     for curr in db['codelists'].find({}):
         ret[curr['name']] = curr['codelist']
     return ret
@@ -295,7 +296,10 @@ class AbstractField(abc.ABC):
     ):
         self.name = name
         self._output_activation_function = output_activation_function
+
+        # WARNING: loss_function needs to be a factory function!
         self._loss_function = loss_function
+
         self._scaler = None
 
     def __str__(self):
@@ -333,6 +337,7 @@ class AbstractField(abc.ABC):
     def loss_function(self):
         """
         the loss function specific for this field.
+        Needs to be instantiated by calling it with ()!
         :return:
         """
         return self._loss_function
@@ -445,18 +450,21 @@ class CategoryField(AbstractField):
 
         prevent_constant_prediction = kwargs.pop('prevent_constant_prediction', None)
 
-        super().__init__(name, **kwargs)
         self.codelist_name = codelist_name
 
         if 'loss_function' not in kwargs:
-            if prevent_constant_prediction:
-                prevent_constant_prediction_idx = self.codelist.index(prevent_constant_prediction)
-                siz = len(self.codelist)
-                weight = np.ones(siz)/siz
-                weight[prevent_constant_prediction_idx] /= 10
-            else:
-                weight = None
-            kwargs['loss_function'] = utils.OneHotCrossEntropyLoss(weight=weight)
+            def _loss_function():
+                if prevent_constant_prediction:
+                    prevent_constant_prediction_idx = self.codelist.index(prevent_constant_prediction)
+                    siz = len(self.codelist)
+                    weight = np.ones(siz)/siz
+                    weight[prevent_constant_prediction_idx] /= 10
+                else:
+                    weight = None
+                return utils.OneHotCrossEntropyLoss(weight=weight)
+            kwargs['loss_function'] = _loss_function
+
+        super().__init__(name, **kwargs)
 
     @property
     def codelist(self):
