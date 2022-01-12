@@ -12,4 +12,4 @@ killall jupyter-notebook
 
 jupyter nbextension enable --py widgetsnbextension
 
-screen -L -Logfile $LEARNING_SETS_DIR/logs/jupyter_${TS}.log -S jupyter -d -m jupyter-notebook .
+screen -L -Logfile $LEARNING_SETS_DIR/logs/jupyter_${TS}.log -S jupyter -d -m jupyter-notebook --allow-root .
