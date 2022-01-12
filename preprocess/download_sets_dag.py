@@ -215,7 +215,7 @@ def codelists(ti):
         for curr in data:
             lst.append(curr['code'])
         coll_out.delete_many({'name': codelist_name})
-        coll_out.insert({
+        coll_out.insert_one({
             'name': codelist_name,
             'codelist': lst
         })
