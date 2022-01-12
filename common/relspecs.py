@@ -8,7 +8,7 @@ sys.path.append(
     )
 )
 
-from relspecs_classes import *
+from common.relspecs_classes import *
 
 rels = RelsCollection([
     Rel("activity_date", [
@@ -108,7 +108,7 @@ rels = RelsCollection([
 activity = Activity("activity",[
     TextField("iati_identifier"),
     CategoryField("default_lang","Language"),
-    CategoryField("default_curency","Currency"),
+    CategoryField("default_currency","Currency"),
     BooleanField("humanitarian"),
     CategoryField("activity_status_code", "ActivityStatus"),
     CategoryField("collaboration_type_code", "CollaborationType"),
