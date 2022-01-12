@@ -7,6 +7,7 @@ VERSION=2.32.1
 wget https://github.com/prometheus/prometheus/releases/download/v${VERSION}/prometheus-${VERSION}.linux-amd64.tar.gz
 #curl -LO url -LO https://github.com/prometheus/prometheus/releases/download/v2.22.0/prometheus-2.22.0.linux-amd64.tar.gz
 tar -xvf prometheus-${VERSION}.linux-amd64.tar.gz
+rm -rvf prometheus-files
 mv prometheus-${VERSION}.linux-amd64 prometheus-files
 
 sudo useradd --no-create-home --shell /bin/false prometheus
