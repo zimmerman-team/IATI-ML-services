@@ -1,4 +1,5 @@
 import mlflow
+import mlflow.pytorch
 import torch
 import pytorch_lightning as pl
 import numpy as np
@@ -190,6 +191,10 @@ def run(Model, config_name, dynamic_config={}):
     args = get_args()
     for arg, val in args.items():
         dynamic_config[arg] = val
+    try:
+        os.mkdir("logs")
+    except FileExistsError:
+        pass
 
     log_filename = os.path.join("logs", utils.strnow_compact()+'.log')
     logging.basicConfig(filename=log_filename, filemode='w', level=logging.DEBUG)
