@@ -197,7 +197,11 @@ def run(Model, config_name, dynamic_config={}):
         pass
 
     log_filename = os.path.join("logs", utils.strnow_compact()+'.log')
-    logging.basicConfig(filename=log_filename, filemode='w', level=logging.DEBUG)
+    logging.basicConfig(
+        filename=log_filename,
+        filemode='w',
+        level=logging.INFO
+    )
     model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
     mlflow.set_experiment(model_config['experiment_name'])
     mlflow.pytorch.autolog()
