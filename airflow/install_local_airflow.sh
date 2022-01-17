@@ -16,8 +16,8 @@ echo LEARNING_SETS_DIR: $LEARNING_SETS_DIR
 apt install -y m4 postgresql python3-pip libpq-dev gnupg
 
 # FIXME: to requirement.txt
-pip install torchvision ipython hiddenlayer matplotlib seaborn apache-airflow psycopg2 numpy sklearn pymongo torch mlflow gensim nltk pytorch_lightning
-
+pip install cython torchvision ipython hiddenlayer matplotlib seaborn apache-airflow psycopg2 numpy sklearn pymongo torch mlflow gensim nltk pytorch_lightning
+pip install git+https://github.com/BenjaminDoran/unidip
 python3 -c "import nltk; nltk.download('punkt')"
 
 wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -
