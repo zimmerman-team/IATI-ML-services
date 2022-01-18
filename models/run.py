@@ -91,6 +91,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
         """
         is_last_epoch = lm.current_epoch == trainer.max_epochs - 1
         epoch_nr = lm.current_epoch
+        mlflow.log_metric("epoch_nr",epoch_nr)
 
         measurements_types = [ms.EpochMeasurement]
         if is_last_epoch:
@@ -200,7 +201,7 @@ def run(Model, config_name, dynamic_config={}):
     logging.basicConfig(
         filename=log_filename,
         filemode='w',
-        level=logging.INFO
+        level=getattr(logging,config.log_level,logging.INFO)
     )
     model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
     mlflow.set_experiment(model_config['experiment_name'])

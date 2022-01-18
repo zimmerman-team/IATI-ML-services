@@ -4,7 +4,7 @@ latent_dim: 4
 activation_function: "ELU"
 depth: 3
 weight_decay: 1.0e-4
-max_epochs: 100
+max_epochs: 5
 batch_size: 2048
 divide_output_layer: True
 latent_l1_norm: 10.0

@@ -59,9 +59,9 @@ with DAG(
         tags=['train', 'dspn', 'sets', 'models'],
         default_args=default_args,
         schedule_interval=None,
-        concurrency=2,  # maximum two models being trained at the same time
+        concurrency=1,  # maximum two models being trained at the same time
         max_active_runs=1,
-        max_active_tasks=2
+        max_active_tasks=1
 ) as dag:
     days_interval = config.models_dag_days_interval
     for rel_i, rel in enumerate(relspecs.rels):
