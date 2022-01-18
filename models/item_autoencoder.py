@@ -186,24 +186,6 @@ class ItemAE(generic_model.GenericModel):
         # PyTorch Lightning will take care of minimization and parameter update
         return loss
 
-    def training_step(self, batch, batch_idx):
-        """
-        processes a batch instance for training purposes
-        :param batch:
-        :param batch_idx:
-        :return:
-        """
-        return self._step(batch, batch_idx, 'train')
-
-    def validation_step(self, batch, batch_idx):
-        """
-        processes a batch instance for validation
-        :param batch:
-        :param batch_idx:
-        :return:
-        """
-        return self._step(batch, batch_idx, 'val')
-
 
 def main():
     """

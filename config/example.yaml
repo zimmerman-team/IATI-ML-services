@@ -1,3 +1,5 @@
+log_level: INFO
+
 # suggestion on how to generate a password:
 # tr -dc A-Za-z0-9 </dev/urandom | head -c 13 ; echo ''
 # https://unix.stackexchange.com/questions/230673/how-to-generate-a-random-string
@@ -26,3 +28,5 @@ models_dag_config_name: dspn_deepnarrow
 models_dag_days_interval: 2
 
 trained_models_dirpath: trained_models/
+
+log_step_elapsed_time: 60

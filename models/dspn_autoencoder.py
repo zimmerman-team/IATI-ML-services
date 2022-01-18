@@ -1,6 +1,7 @@
 import torch
 import sys
 import os
+import logging
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path, os.path.join(path, 'dspn_annotated')]+sys.path
@@ -11,7 +12,6 @@ import dspn.dspn
 from models import diagnostics
 from common import utils, config
 from models import models_storage
-
 
 class DSPNAE(generic_model.GenericModel):
     """
@@ -42,6 +42,7 @@ class DSPNAE(generic_model.GenericModel):
             interval = intervals[0]  # because it's a batch of size 1
             start_item_index, end_item_index = interval[0:2]
             ret = torch.tensor(self.data[start_item_index:end_item_index])
+            logging.debug(f"CollateFn.__call__ ret.shape {ret.shape}")
             return ret
 
     def make_train_loader(self, tsets):
@@ -74,7 +75,7 @@ class DSPNAE(generic_model.GenericModel):
 
     def make_test_loader(self, tsets):
         """
-        Please see description of DeepSetsAutoencoder.make_train_loader(..)
+        Please see description of DSPNAE.make_train_loader(..)
         :param tsets: train/test dataset splits
         :return: the DataLoader
         """
@@ -203,25 +204,6 @@ class DSPNAE(generic_model.GenericModel):
         # self.log(f"{which_tset}_loss", loss)
 
         return loss
-
-    def training_step(self, batch, batch_idx):
-        """
-        processes a batch instance for training
-        :param batch:
-        :param batch_idx:
-        :return:
-        """
-        return self._step(batch, batch_idx, 'train')
-
-    def validation_step(self, batch, batch_idx):
-        """
-        processes a batch instance for validation
-        :param batch:
-        :param batch_idx:
-        :return:
-        """
-        return self._step(batch, batch_idx, 'val')
-
 
 def main():
     """

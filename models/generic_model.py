@@ -2,11 +2,13 @@ import pytorch_lightning as pl
 import torch
 import os
 import sys
+import logging
+import timer
 
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
-from common import config
+from common import config, timer
 
 
 class AEModule(torch.nn.Module):
@@ -145,6 +147,7 @@ class GenericModel(pl.LightningModule):
     """
 
     with_set_index = None  # please set in subclass
+    _timer = timer.Timer
 
     @property
     @classmethod
@@ -250,3 +253,33 @@ class GenericModel(pl.LightningModule):
             divided = self._divide(stuff)
             glued = stuff
         return divided, glued
+
+    def training_step(self, batch, batch_idx):
+        """
+        processes a batch instance for training purposes
+        :param batch:
+        :param batch_idx:
+        :return:
+        """
+
+        logging.debug("training_step batch.shape {batch.shape}")
+        elapsed_time = self._timer.elapsed_time
+        if elapsed_time > config.log_step_elapsed_time:
+            logging.info(f"training_step batch_idx {batch_idx} elapsed_time {elapsed_time}")
+            self._timer.reset()
+        return self._step(batch, batch_idx, 'train')
+
+    def validation_step(self, batch, batch_idx):
+        """
+        processes a batch instance for validation
+        :param batch:
+        :param batch_idx:
+        :return:
+        """
+
+        elapsed_time = self._timer.elapsed_time
+        if elapsed_time > config.log_step_elapsed_time:
+            logging.info(f"validation_step batch_idx {batch_idx} elapsed_time {elapsed_time}")
+            self._timer.reset()
+        return self._step(batch, batch_idx, 'val')
+
