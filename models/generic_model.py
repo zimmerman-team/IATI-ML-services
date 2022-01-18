@@ -3,7 +3,6 @@ import torch
 import os
 import sys
 import logging
-import timer
 
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
