@@ -22,7 +22,7 @@ from common import utils, relspecs, persistency, config
 from preprocess import large_mp
 rels = relspecs.rels.downloadable
 specs = relspecs.specs.downloadable
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=getattr(logging,config.log_level,logging.INFO))
 
 DATASTORE_ACTIVITY_URL = "https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL = "https://datastore.iati.cloud/api/codelists/{}/"
