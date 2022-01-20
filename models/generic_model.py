@@ -146,7 +146,7 @@ class GenericModel(pl.LightningModule):
     """
 
     with_set_index = None  # please set in subclass
-    _timer = timer.Timer
+    _timer = timer.Timer()
 
     @property
     @classmethod
