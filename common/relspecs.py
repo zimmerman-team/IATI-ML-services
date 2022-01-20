@@ -102,7 +102,13 @@ rels = RelsCollection([
         CategoryField("flow_type_code","FlowType"),
         CategoryField("finance_type_code","FinanceType"),
         CategoryField("tied_status_code","TiedStatus")
-    ], download=True, limit=100000)
+    ],
+        download=True,
+
+        # airflow was unable to create very large numpy arrays from the transaction entity
+        #   because it gets a very high dimensionality as there are a large number of fields
+        limit=100000
+        )
 ])
 
 activity = Activity("activity",[
