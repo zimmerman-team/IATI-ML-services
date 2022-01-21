@@ -82,7 +82,7 @@ class DSPNAE(generic_model.GenericModel):
         test_loader = torch.utils.data.DataLoader(
             tsets.sets_intervals('test'),
             shuffle=False,
-            num_workers=4,
+            num_workers=config.data_loader_num_workers,
             collate_fn=self.CollateFn(tsets.test_scaled)
         )
         return test_loader

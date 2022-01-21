@@ -240,7 +240,8 @@ def run(Model, config_name, dynamic_config={}):
         model_write_callback = storage.create_write_callback(model)
         callbacks = [
             MeasurementsCallback(rel=rel, model=model),
-            model_write_callback
+            model_write_callback,
+            pl.callbacks.TQDMProgressBar(refresh_rate=100)
         ]
         trainer = pl.Trainer(
             limit_train_batches=1.0,
