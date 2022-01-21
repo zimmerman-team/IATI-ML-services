@@ -5,6 +5,8 @@ import pickle
 import pytorch_lightning as pl
 import glob
 import re
+import copy
+
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
@@ -82,7 +84,20 @@ class DSPNAEModelsStorage(utils.Collection):  # FIXME: classname-parameterized?
         """
         kwargs_filename = self.generate_kwargs_filename(model)
         with open(kwargs_filename, 'wb') as f:
-            pickle.dump(model.kwargs, f)
+
+            # copy the kwargs in case of unpickable element removal before pickling
+            kwargs = model.kwargs.copy()
+
+            class Pickler(pickle.Pickler):
+                # we need a custom pickler class to remove unpickable objects
+                def persistent_id(self,obj):
+                    if callable(obj):
+                        # functions such as Field.__init__.<locals>._loss_function cannot be pickled
+                        return "unpickable function"
+                    return None
+
+            p = Pickler(f)
+            p.dump(kwargs)
 
     def filenames(self, rel, extension):
         """
