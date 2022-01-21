@@ -139,6 +139,9 @@ def random_sampling(data, amount=100):
     ret = data[rc, :]
     return ret
 
+def len_(data):
+    return np.array(len(data))
+
 
 class Measurement(object):
     """
@@ -191,7 +194,8 @@ class Measurement(object):
             chunk_size = f"??{type(chunk)}"
         if self.mlflow_log:
             _mean = np.mean(np.array(chunk))
-            mlflow.log_metric(self.name, float(_mean))
+
+            mlflow.log_metric(f"{which_tset}_{self.name}", float(_mean))
         log(f"{self} {which_tset} added with chunk {chunk_size}")
         self.data[which_tset].append(chunk)
 

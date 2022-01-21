@@ -26,7 +26,7 @@ class DSPNAE(generic_model.GenericModel):
         return models_storage.DSPNAEModelsStorage()
 
     with_set_index = True
-
+    losses = []
     class CollateFn(object):
         """
         CollateFn is being used to use the start-item-index
@@ -100,6 +100,12 @@ class DSPNAE(generic_model.GenericModel):
                     latent_last_epoch=ms.random_sampling
                 )
             ),
+            ms.BatchMeasurement('batch_loss', dst=dict(
+                loss=ms.mean,
+                len_losses=ms.len_
+            ), mlflow_log=False),
+            ms.EpochMeasurement("loss", plot_type='losses', mlflow_log=True),
+            ms.EpochMeasurement("len_losses", mlflow_log=True),
             ms.LastEpochMeasurement("latent_last_epoch", plot_type='latent'),
         ])
         return ret
@@ -202,7 +208,7 @@ class DSPNAE(generic_model.GenericModel):
 
         # for measurements:
         # self.log(f"{which_tset}_loss", loss)
-
+        self.batch_loss = loss # setting instance variable to be collected by Measurements
         return loss
 
 def main():
