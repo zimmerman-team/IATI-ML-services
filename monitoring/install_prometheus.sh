@@ -37,7 +37,12 @@ scrape_configs:
   - job_name: 'statsd_exporter'
     scrape_interval: 5s
     static_configs:
-      - targets: ['localhost:9102']" | sudo tee /etc/prometheus/prometheus.yml
+      - targets: ['localhost:9102']
+  - job_name: 'mlflow'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:5000']
+      " | sudo tee /etc/prometheus/prometheus.yml
 
 sudo chown prometheus:prometheus /etc/prometheus/prometheus.yml
 
