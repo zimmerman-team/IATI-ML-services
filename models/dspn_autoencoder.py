@@ -53,9 +53,9 @@ class DSPNAE(generic_model.GenericModel):
         items, otherwise items belonging to different sets would end up
         being mixed-up.
         Instead, the input "datapoints" are just information about
-        intervals of datapoints that belong to the same indexIn other .
+        intervals of datapoints that belong to the same index.
         This information is returned by `tset.set_intervals(..)`
-        Expanding on this: each input datapoint contain a start-item-index
+        Expanding on this: each input datapoint contains a start-item-index
         and an end-item-index of items in the actual original dataset (which
         is tsets.train_scaled, or tsets.test_scaled in make_test_loader(..)).
         Subsequently, CollateFn is being used to use the start-item-index
