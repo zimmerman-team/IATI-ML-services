@@ -3,6 +3,7 @@ import numpy as np
 from common import utils
 from common import persistency
 
+import logging
 
 class Tsets(utils.Collection):
     tsets_names = ('train', 'test')
@@ -55,7 +56,7 @@ class Tsets(utils.Collection):
                 self[which_tset],
                 with_set_index=self.with_set_index
             )
-            print("divided:", [s.shape for s in sections])
+            logging.debug("divided:"+str([s.shape for s in sections]))
             if self.with_set_index is True:
                 # enriches the Tsets object with train_set_index and test_set_index
                 # properties that contain a 1D-vector of set ids - positional, as
@@ -74,8 +75,8 @@ class Tsets(utils.Collection):
 
     def print_shapes(self):
         for which_tset in self.tsets_names:
-            print(which_tset+".shape", self[which_tset].shape)
-            print(which_tset+"_scaled.shape", self[which_tset+"_scaled"].shape)
+            logging.debug(which_tset+".shape"+str(self[which_tset].shape))
+            logging.debug(which_tset+"_scaled.shape"+str(self[which_tset+"_scaled"].shape))
 
     @property
     def item_dim(self):
@@ -150,11 +151,11 @@ class Tsets(utils.Collection):
             assert field.n_features == section.shape[1], \
                 f"mismatch between field n_features and n columns of section: {field.n_features} != {section.shape[1]}"
             # FIXME: is having the trained scaler in the field a good idea??
-            print("scaling field", field, "section.shape:", section.shape)
+            logging.debug("scaling field"+str(field)+" section.shape:"+str(section.shape))
             section_scaled = field.scaler.transform(section)
-            print('resulting section_scaled.shape:', section_scaled.shape)
+            logging.debug('resulting section_scaled.shape:'+str(section_scaled.shape))
             scaled.append(section_scaled)
-        print("scaled sections:", [s.shape for s in scaled])
+        logging.debug("scaled sections:"+str([s.shape for s in scaled]))
 
         ret = self.spec.glue(scaled)
         return ret
