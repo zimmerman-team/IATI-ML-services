@@ -10,7 +10,7 @@ import dspn
 import dspn.model
 import dspn.dspn
 from models import diagnostics
-from common import utils, config
+from common import utils, config, chunking_dataset
 from models import models_storage
 
 class DSPNAE(generic_model.GenericModel):
@@ -64,9 +64,18 @@ class DSPNAE(generic_model.GenericModel):
         :param tsets: train/test dataset splits
         :return: the DataLoader
         """
-        train_loader = torch.utils.data.DataLoader(
-            tsets.sets_intervals('train'),
+        all_intervals = tsets.sets_intervals('train')
+        # NOTE: shuffling is performed in the ChunkingDataset instead of the DataLoader
+        #   because the ChunkingDataset is presented as iterable and cannot be indexed
+        #   directly
+        chunking_intervals = chunking_dataset.ChunkingDataset(
+            all_intervals,
             shuffle=True,
+            subset_len=self.kwargs.get('epoch_chunk_len',1000)
+        )
+        train_loader = torch.utils.data.DataLoader(
+            chunking_intervals,
+            shuffle=False,
             num_workers=config.data_loader_num_workers,
             pin_memory=False,
             collate_fn=self.CollateFn(tsets.train_scaled)
@@ -79,6 +88,12 @@ class DSPNAE(generic_model.GenericModel):
         :param tsets: train/test dataset splits
         :return: the DataLoader
         """
+        all_intervals = tsets.sets_intervals('test')
+        chunking_intervals = chunking_dataset.ChunkingDataset(
+            all_intervals,
+            shuffle=False,
+            subset_len=self.kwargs.get('epoch_chunk_len',1000)
+        )
         test_loader = torch.utils.data.DataLoader(
             tsets.sets_intervals('test'),
             shuffle=False,

@@ -23,7 +23,9 @@ download_page_size: 1000
 download_max_pages: 3
 download_max_set_size: 50
 
-data_loader_num_workers: 4
+# data_loader_num_workers must be set to 0 to allow epoch chunking
+data_loader_num_workers: 0
+
 models_dag_config_name: dspn_deepnarrow
 models_dag_days_interval: 2
 

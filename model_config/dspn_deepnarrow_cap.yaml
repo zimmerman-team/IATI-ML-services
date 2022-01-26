@@ -12,3 +12,4 @@ max_set_size: 50
 dspn_iter: 8
 dspn_lr: 800
 cap_dataset: 300
+epoch_chunk_len: 1000
