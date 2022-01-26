@@ -3,8 +3,14 @@ import sys
 import yaml
 import socket
 
-conf_dict = None  # will be filled by load()
+_conf_dict = None  # will be filled by load()
 
+def entries_names():
+    """
+    :return: the list of names of the config attributes that are set
+    """
+    global _conf_dict
+    return list(_conf_dict.keys())
 
 def mongo_uri():
     """
@@ -21,15 +27,24 @@ def vm_uri():
     """
     return f"{vm_user}@{vm_host}"
 
+def set_entry(name, val):
+    """
+    :param name: string name of the entry
+    :param val: value of the entry
+    :return: None
+    """
+    global _conf_dict
+    setattr(sys.modules[__name__], name, val)
+    _conf_dict[name] = val
 
 def populate():
     """
     populates the attributes of the config module with the config elements
     """
-    global conf_dict
-    for curr in conf_dict:
-        val = conf_dict[curr]
-        setattr(sys.modules[__name__], curr, val)
+    global _conf_dict
+    for curr in _conf_dict:
+        val = _conf_dict[curr]
+        set_entry(curr, val)
 
 
 def load():
@@ -38,7 +53,7 @@ def load():
     This will allow to have several configuration files for the different
     hostnames the code is deployed to.
     """
-    global conf_dict
+    global _conf_dict
     dirpath = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/../config")
     hostname = socket.gethostname()
     filename = os.path.join(dirpath, f'{hostname}.yaml')
@@ -46,7 +61,7 @@ def load():
         raise FileNotFoundError(f"cannot find {filename}")
     print(f"loading {filename}.. ", end="")
     f = open(filename, 'r')
-    conf_dict = yaml.load(f, Loader=yaml.Loader)
+    _conf_dict = yaml.load(f, Loader=yaml.Loader)
     print("done.")
 
 

@@ -162,6 +162,22 @@ class MeasurementsCallback(pl.callbacks.Callback):
                     type_=m.plot_type
                 )
 
+def setup_logging():
+
+    # setting log lever for stdout
+    logging.basicConfig( level=getattr(logging,config.log_level,logging.INFO) )
+
+    # the logs will also end up in a file
+    log_filename = os.path.join("logs", utils.strnow_compact()+'.log')
+    logging.basicConfig(
+        filename=log_filename,
+        filemode='w',
+        level=getattr(logging,config.log_level,logging.INFO)
+    )
+    #print("logging level",logging.getLevelName(logging.getLogger().level))
+    logging.debug("test DEBUG message")
+    logging.info("test INFO message")
+    logging.warning("test WARNING message")
 
 # FIXME: the run function seems to be a lot of stuff, can
 #   probably fix it with some additional abstraction?
@@ -192,17 +208,16 @@ def run(Model, config_name, dynamic_config={}):
     args = get_args()
     for arg, val in args.items():
         dynamic_config[arg] = val
+        if arg in config.entries_names():
+            # config file entries will be overriden by command-line entries
+            config.set_entry(arg,val)
+
     try:
         os.mkdir("logs")
     except FileExistsError:
         pass
 
-    log_filename = os.path.join("logs", utils.strnow_compact()+'.log')
-    logging.basicConfig(
-        filename=log_filename,
-        filemode='w',
-        level=getattr(logging,config.log_level,logging.INFO)
-    )
+    setup_logging()
     model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
     mlflow.set_experiment(model_config['experiment_name'])
     mlflow.pytorch.autolog()
@@ -246,7 +261,8 @@ def run(Model, config_name, dynamic_config={}):
         trainer = pl.Trainer(
             limit_train_batches=1.0,
             callbacks=callbacks,
-            max_epochs=model_config['max_epochs']
+            max_epochs=model_config['max_epochs'],
+            precision=16 # mixed precision training will improve performances
         )
         trainer.fit(model, train_loader, test_loader)
 
