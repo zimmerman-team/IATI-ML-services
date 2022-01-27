@@ -9,11 +9,11 @@ class ChunkingDataset(torch.utils.data.IterableDataset):
 
     def __init__(self, data, shuffle=False, subset_len=None):
         logging.debug(f"ChunkingDataset __init__ shuffle {shuffle}, subset_len {subset_len}")
-        self.all_data = data
+        self.all_data = list(data)
         self.n_calls = 0
         self.shuffle = shuffle
         assert subset_len is not None
-        self.subset_len = subset_len
+        self.subset_len = int(subset_len) # forcing int cast because cmdline arg may enter as string
         self.subset = []
 
     def __iter__(self):
