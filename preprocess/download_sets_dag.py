@@ -373,7 +373,7 @@ def to_tsets(spec, ti):
     coll_in = db[spec.name + '_arrayfied']
     set_indices_results = coll_in.find({}, {'set_index': 1})
     set_indices = list(set(map(lambda document: document['set_index'], set_indices_results)))
-    train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=0.90)
+    train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=config.train_fraction)
     train_indices = set(train_indices)
     test_indices = set(test_indices)
     coll_out = db['npas_tsets']

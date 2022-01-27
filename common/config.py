@@ -6,7 +6,9 @@ import socket
 # some configuration options may have default values, which are going to be eventually
 # replaced by respective entries in the config file.
 defaults = dict(
-    models_dag_training_tasks_concurrency=1
+    models_dag_training_tasks_concurrency=1,
+    train_fraction=0.9,
+    tame_tqdm=True
 )
 
 _conf_dict = defaults.copy() # entries may be replaced by load()
@@ -42,6 +44,9 @@ def set_entry(name, val):
     global _conf_dict
     setattr(sys.modules[__name__], name, val)
     _conf_dict[name] = val
+    if name == "train_fraction":
+        test_fraction = 1.0 - val
+        set_entry("test_fraction",test_fraction)
 
 def populate():
     """
@@ -68,7 +73,8 @@ def load():
     print(f"loading {filename}.. ", end="")
     f = open(filename, 'r')
     yaml_conf = yaml.load(f, Loader=yaml.Loader)
-    _conf_dict.update(yaml_conf)
+    for k,v in yaml_conf.items():
+        set_entry(k,v)
     print("done.")
 
 

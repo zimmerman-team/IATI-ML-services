@@ -89,13 +89,17 @@ class DSPNAE(generic_model.GenericModel):
         :return: the DataLoader
         """
         all_intervals = tsets.sets_intervals('test')
+        train_chunk_len = self.kwargs.get('epoch_chunk_len', 1000)
+        test_chunk_len = int(float(train_chunk_len) * config.test_fraction)
+        print("config.test_fraction",config.test_fraction)
+        print("test_chunk_len",test_chunk_len)
         chunking_intervals = chunking_dataset.ChunkingDataset(
             all_intervals,
             shuffle=False,
-            subset_len=self.kwargs.get('epoch_chunk_len',1000)
+            subset_len=test_chunk_len
         )
         test_loader = torch.utils.data.DataLoader(
-            tsets.sets_intervals('test'),
+            chunking_intervals,
             shuffle=False,
             num_workers=config.data_loader_num_workers,
             collate_fn=self.CollateFn(tsets.test_scaled)
