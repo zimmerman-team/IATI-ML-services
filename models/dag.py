@@ -57,9 +57,9 @@ def make_dag(dag_name, config_name):
             tags=['train', 'dspn', 'sets', 'models'],
             default_args=default_args,
             schedule_interval=None,
-            concurrency=1,  # maximum two models being trained at the same time
+            concurrency=config.models_dag_training_tasks_concurrency,  # maximum two models being trained at the same time
             max_active_runs=1,
-            max_active_tasks=1
+            max_active_tasks=config.models_dag_training_tasks_concurrency
     ) as dag:
         days_interval = config.models_dag_days_interval
         for rel_i, rel in enumerate(relspecs.rels):

@@ -3,7 +3,13 @@ import sys
 import yaml
 import socket
 
-_conf_dict = None  # will be filled by load()
+# some configuration options may have default values, which are going to be eventually
+# replaced by respective entries in the config file.
+defaults = dict(
+    models_dag_training_tasks_concurrency=1
+)
+
+_conf_dict = defaults.copy() # entries may be replaced by load()
 
 def entries_names():
     """
@@ -61,7 +67,8 @@ def load():
         raise FileNotFoundError(f"cannot find {filename}")
     print(f"loading {filename}.. ", end="")
     f = open(filename, 'r')
-    _conf_dict = yaml.load(f, Loader=yaml.Loader)
+    yaml_conf = yaml.load(f, Loader=yaml.Loader)
+    _conf_dict.update(yaml_conf)
     print("done.")
 
 
