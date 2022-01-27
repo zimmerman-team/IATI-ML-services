@@ -32,3 +32,14 @@ models_dag_days_interval: 2
 trained_models_dirpath: trained_models/
 
 log_step_elapsed_time: 60
+
+# seems that one model being trained is using 4 CPU cores,
+#   hence concurrency of 2 allows all of the 8 cores to be used
+models_dag_training_tasks_concurrency: 2
+
+# fraction of datapoints that go in a training test
+# as opposed to a test set fraction, which ends up being 1.0-train_fraction
+train_fraction: 0.9
+
+# produce less tqdm logs
+tame_tqdm: True
