@@ -9,9 +9,12 @@ echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/a
 sudo apt-get update
 sudo apt-get -y install grafana crudini etckeeper
 
-crudini --set /etc/grafana/grafana.ini server http_port 3000
+sudo crudini --set /etc/grafana/grafana.ini server http_port 3000
 
 # limit service access to localhost
-crudini --set /etc/grafana/grafana.ini server http_addr 127.0.0.1
+sudo crudini --set /etc/grafana/grafana.ini server http_addr 127.0.0.1
 
 sudo systemctl enable grafana-server.service
+sudo service grafana-server stop
+sleep 1
+sudo service grafana-server start
