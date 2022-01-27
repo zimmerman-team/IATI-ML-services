@@ -261,7 +261,7 @@ class GenericModel(pl.LightningModule):
         :return:
         """
 
-        logging.debug("training_step batch.shape {batch.shape}")
+        logging.debug(f"training_step batch.shape {batch.shape}")
         elapsed_time = self._timer.elapsed_time
         if elapsed_time > config.log_step_elapsed_time:
             logging.debug(f"training_step batch_idx {batch_idx} elapsed_time {elapsed_time}")
