@@ -264,7 +264,7 @@ class GenericModel(pl.LightningModule):
         logging.debug("training_step batch.shape {batch.shape}")
         elapsed_time = self._timer.elapsed_time
         if elapsed_time > config.log_step_elapsed_time:
-            logging.info(f"training_step batch_idx {batch_idx} elapsed_time {elapsed_time}")
+            logging.debug(f"training_step batch_idx {batch_idx} elapsed_time {elapsed_time}")
             self._timer.reset()
         return self._step(batch, batch_idx, 'train')
 
@@ -278,7 +278,7 @@ class GenericModel(pl.LightningModule):
 
         elapsed_time = self._timer.elapsed_time
         if elapsed_time > config.log_step_elapsed_time:
-            logging.info(f"validation_step batch_idx {batch_idx} elapsed_time {elapsed_time}")
+            logging.debug(f"validation_step batch_idx {batch_idx} elapsed_time {elapsed_time}")
             self._timer.reset()
         return self._step(batch, batch_idx, 'val')
 
