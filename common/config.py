@@ -25,6 +25,8 @@ def mongo_uri():
     connection URI, constructed from config file values
     :return:
     """
+    # NOTE: these apparently missing module-wide variables are actually
+    # set dynamically via populate()/set_entry(..)
     return f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_db}"
 
 

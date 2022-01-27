@@ -9,7 +9,7 @@ class ChunkingDataset(torch.utils.data.IterableDataset):
 
     def __init__(self, data, shuffle=False, subset_len=None):
         logging.debug(f"ChunkingDataset __init__ shuffle {shuffle}, subset_len {subset_len}")
-        self.all_data = list(data)
+        self.all_data = list(data) # FIXME: maybe an iterator implementation is memory saving
         self.n_calls = 0
         self.shuffle = shuffle
         assert subset_len is not None

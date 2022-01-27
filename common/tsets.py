@@ -80,7 +80,7 @@ class Tsets(utils.Collection):
 
     @property
     def item_dim(self):
-        return self.train.shape[1]
+        return self.train.shape[1] # because rows = items and cols = features
 
     def n_sets(self, which_tset):
         """

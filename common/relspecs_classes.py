@@ -392,12 +392,13 @@ class PositionField(AbstractField):
         # FIXME: code duplication from other fields
         short_of = set_size - len(entries)
         if short_of > 0:
-            for i in range(short_of):
+            for _ in range(short_of):
                 tmp = [0] * self.n_features
                 ret.append(tmp)
         return ret
 
     def guess_correct(self, x_hat, x):
+        # FIXME: this was copied from DatetimeField, check that it matches PositionField purpose
         # using only the first 3 values of the timetuple as they refer to Y/M/D
         x_hat_descaled = self.scaler.inverse_transform(x_hat)
         x_descaled = self.scaler.inverse_transform(x)
@@ -409,7 +410,7 @@ class PositionField(AbstractField):
 
     @property
     def n_features(self):
-        return 2  # 9 is the cardinality of the timetuple
+        return 2 # latitude and longitude
 
 
 class DatetimeField(AbstractField):

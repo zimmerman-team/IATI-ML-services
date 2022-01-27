@@ -1,5 +1,7 @@
 import sys
 import os
+
+# FIXME: find a way around this sys path fix, maybe with __init__.py
 sys.path.append(
     os.path.abspath(
         os.path.dirname(
@@ -118,7 +120,7 @@ activity = Activity("activity",[
     BooleanField("humanitarian"),
     CategoryField("activity_status_code", "ActivityStatus"),
     CategoryField("collaboration_type_code", "CollaborationType"),
-    #FIXME this field: "hierarchy"
+    #FIXME this field needs to be properly mapped: "hierarchy"
     CategoryField("default_flow_type", "FlowType"),
     CategoryField("default_finance_type_code", "FinanceType"),
     CategoryField("default_tied_status_code","TiedStatus")
