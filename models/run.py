@@ -224,7 +224,7 @@ def run(Model, config_name, dynamic_config={}):
     run_name = f"{model_config['config_name']}_{model_config['rel_name']}"
     with mlflow.start_run(run_name=run_name):
         mlflow.log_params(model_config)
-        print("__file__", __file__)
+        logging.debug("__file__", __file__)
         mlflow.log_artifact(__file__)
         mlflow.log_artifact(model_config['config_filename'])
         rel = relspecs.rels[model_config['rel_name']]
@@ -255,9 +255,10 @@ def run(Model, config_name, dynamic_config={}):
         model_write_callback = storage.create_write_callback(model)
         callbacks = [
             MeasurementsCallback(rel=rel, model=model),
-            model_write_callback,
-            pl.callbacks.TQDMProgressBar(refresh_rate=100)
+            model_write_callback
         ]
+        if config.tame_tqdm:
+            callbacks.append(pl.callbacks.TQDMProgressBar(refresh_rate=100))
         trainer = pl.Trainer(
             limit_train_batches=1.0,
             callbacks=callbacks,
