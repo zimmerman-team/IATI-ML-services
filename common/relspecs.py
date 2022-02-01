@@ -1,6 +1,10 @@
 import sys
 import os
 
+"""
+Contains the specification of the field mappings for IATI activity
+"""
+
 # FIXME: find a way around this sys path fix, maybe with __init__.py
 sys.path.append(
     os.path.abspath(
@@ -12,6 +16,9 @@ sys.path.append(
 
 from common.relspecs_classes import *
 
+"""
+the specification for all relation fields is in the `rels` public module variable
+"""
 rels = RelsCollection([
     Rel("activity_date", [
         CategoryField("type","ActivityDateType"),
@@ -108,11 +115,15 @@ rels = RelsCollection([
         download=True,
 
         # airflow was unable to create very large numpy arrays from the transaction entity
-        #   because it gets a very high dimensionality as there are a large number of fields
+        #   because it gets a very high dimensionality as there are a large number of fields.
+        #   Hence we limit the amount of datapoints to the following amount.
         limit=100000
         )
 ])
 
+"""
+the specification for an activity excluding relation fields is in the `activity` public module variable
+"""
 activity = Activity("activity",[
     TextField("iati_identifier"),
     CategoryField("default_lang","Language"),
@@ -126,4 +137,7 @@ activity = Activity("activity",[
     CategoryField("default_tied_status_code","TiedStatus")
 ], download=True)
 
+"""
+`spec` is a public list containing relation field specification and activity (excluding relation fields) specification
+"""
 specs = rels + [activity]

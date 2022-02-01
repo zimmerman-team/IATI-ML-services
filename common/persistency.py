@@ -24,7 +24,7 @@ def gridfs_instance():
     """
     returns an instance of the interface to GridFS.
     It's cached as only one is needed.
-    :return:
+    :return: the gridfs.GridFS instance
     """
     db = mongo_db()
     gf = gridfs.GridFS(db)
@@ -32,9 +32,9 @@ def gridfs_instance():
     def create_index(coll_name, _spec):
         """
         just a wrapper for mongodb index creation.
-        :param coll_name:
-        :param _spec:
-        :return:
+        :param coll_name: name of the mongodb collection
+        :param _spec: the relspecs_classes.Spec instance
+        :return: None
         """
         try:
             db[coll_name].create_index(_spec)
@@ -61,8 +61,8 @@ def load_tsets_document(spec):
     """
     Loads a document from the mongo db, containing the
     training and test sets.
-    :param spec:
-    :return:
+    :param spec: the relspecs_classes.Spec instance
+    :return: mongodb document of the last tsets for this spec
     """
     db = mongo_db()
     coll = db['npas_tsets']
@@ -92,8 +92,8 @@ def load_tsets(spec, with_set_index=False, cap=None):
 def remove_npa(filename):
     """
     removes a file containing the numpy array data, from gridfs
-    :param filename:
-    :return:
+    :param filename: name of the file to be deleted
+    :return: None
     """
     db = mongo_db()
     gf = gridfs_instance()
@@ -108,16 +108,17 @@ def remove_npa(filename):
 def save_npa(filename, npa):
     """
     save a file containing the numpy array data, to gridfs
-    :param filename:
-    :param npa:
-    :return:
+    :param filename: name of the file where the npa will be saved`
+    :param npa: npa containing a dataset
+    :return: the id of the newly-created file
     """
     gf = gridfs_instance()
     remove_npa(filename)
     serialized = utils.serialize(npa)
+    chunk_size = 8 * (1024 ** 2)  # 8M
     f = gf.new_file(
         filename=filename,
-        chunk_size=8*(1024**2)  # 8M
+        chunk_size=chunk_size
     )
     f.write(serialized)
     f.close()
@@ -128,8 +129,8 @@ def get_npa_file_id(filename):
     """
     returns the id of a file containing the numpy array dataset,
     given a filename.
-    :param filename:
-    :return:
+    :param filename: filename associated to the npa
+    :return: the id of the searched file
     """
     db = mongo_db()
     found = db['fs.files'].find_one({'filename': filename})
@@ -140,8 +141,8 @@ def get_npa_file_id(filename):
 def load_npa(file_id=None, filename=None):
     """
     Loads a numpy array containing a dataset, given either a filename or a file_id
-    :param file_id:
-    :param filename:
+    :param file_id: optional, id of the file containing the npa
+    :param filename: optional, name of the file containing the npa
     :return:
     """
     # one and only one of the two arguments needs to be specified

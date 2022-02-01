@@ -6,17 +6,31 @@ import random
 import logging
 
 class ChunkingDataset(torch.utils.data.IterableDataset):
+    """
+    Enables splitting the entire dataset sweep into multiple epochs
+    """
 
     def __init__(self, data, shuffle=False, subset_len=None):
+        """
+        :param data: list-like dataset
+        :param shuffle: by using this dataset type, the shuffling has to be done within the dataset instead of the data loader
+        :param subset_len: length of each chunk
+        """
         logging.debug(f"ChunkingDataset __init__ shuffle {shuffle}, subset_len {subset_len}")
         self.all_data = list(data) # FIXME: maybe an iterator implementation is memory saving
-        self.n_calls = 0
-        self.shuffle = shuffle
+        self.n_calls = 0 # used to calculate the current epoch's dataset chunk's indexes
+        self.shuffle = shuffle # shuffles the datapoints within the chunk
         assert subset_len is not None
         self.subset_len = int(subset_len) # forcing int cast because cmdline arg may enter as string
         self.subset = []
 
     def __iter__(self):
+        """
+        This dataset type is iterable instead of being indexable.
+        This provides some disadvantages, for example the data loader will not be able to
+        shuffle the dataset, and this needs to be performed within the dataset (see shuffle init parameter)
+        :return:
+        """
         all_data_len = len(self.all_data)
         logging.debug(f"ChunkingDataset __iter__ id {id(self)}, all_data_len {all_data_len}, subset_len {self.subset_len}")
 
@@ -34,15 +48,20 @@ class ChunkingDataset(torch.utils.data.IterableDataset):
         self.n_calls += 1
         return iter(self.subset)
 
-def command_line_test():
-
+def _command_line_test():
+    """
+    called if the python module is run directly.
+    Simply showcases the basic functioning of ChunkingDataset
+    """
     logging.basicConfig( level=logging.DEBUG )
     def make_dataset():
+        # a dataset of size 30 and a subset_len of 15 are enough to show how
+        # ChunkingDataset splits the dataset sweeps into two epochs
         dataset = ChunkingDataset(range(30), shuffle=True, subset_len=15)
         return dataset
 
     def run_epochs(X):
-        for e in range(7):
+        for e in range(7): # 7 is a number of epochs
             print("epoch", e, ":")
             i=0
             for x in X:
@@ -64,4 +83,4 @@ def command_line_test():
     print("done.")
 
 if __name__ == '__main__':
-    command_line_test()
+    _command_line_test()
