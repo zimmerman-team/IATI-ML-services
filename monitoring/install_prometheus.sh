@@ -38,10 +38,14 @@ scrape_configs:
     scrape_interval: 5s
     static_configs:
       - targets: ['localhost:9102']
-  - job_name: 'mlflow'
+  - job_name: 'mlflow_requests'
     scrape_interval: 5s
     static_configs:
       - targets: ['localhost:5000']
+  - job_name: 'mlflow_metrics'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:5500']
       " | sudo tee /etc/prometheus/prometheus.yml
 
 sudo chown prometheus:prometheus /etc/prometheus/prometheus.yml
@@ -59,7 +63,8 @@ ExecStart=/usr/local/bin/prometheus \
     --config.file /etc/prometheus/prometheus.yml \
     --storage.tsdb.path /var/lib/prometheus/ \
     --web.console.templates=/etc/prometheus/consoles \
-    --web.console.libraries=/etc/prometheus/console_libraries
+    --web.console.libraries=/etc/prometheus/console_libraries \
+    --web.listen-address=\"127.0.0.1:9090\"
 
 [Install]
 WantedBy=multi-user.target" | sudo tee /etc/systemd/system/prometheus.service
