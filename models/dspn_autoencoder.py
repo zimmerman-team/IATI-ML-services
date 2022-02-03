@@ -71,7 +71,8 @@ class DSPNAE(generic_model.GenericModel):
         chunking_intervals = chunking_dataset.ChunkingDataset(
             all_intervals,
             shuffle=True,
-            subset_len=self.kwargs.get('epoch_chunk_len',1000)
+            chunk_len=self.kwargs.get('epoch_chunk_len',1000),
+            log_mlflow=True # do the mlflow logging for the training set
         )
         train_loader = torch.utils.data.DataLoader(
             chunking_intervals,
@@ -96,7 +97,8 @@ class DSPNAE(generic_model.GenericModel):
         chunking_intervals = chunking_dataset.ChunkingDataset(
             all_intervals,
             shuffle=False,
-            subset_len=test_chunk_len
+            chunk_len=test_chunk_len,
+            log_mlflow=False # don't do mlflow logging test/validation chunking
         )
         test_loader = torch.utils.data.DataLoader(
             chunking_intervals,
@@ -208,7 +210,6 @@ class DSPNAE(generic_model.GenericModel):
         # copied from dspn.train.main.run()
         (progress, masks, evals, gradn) = self(target_set,target_mask)
 
-        target_set,target_mask = self._make_target(batch)
         # utils.debug("target_set.shape",target_set.shape)
         # if using mask as feature, concat mask feature into progress
         target_set_with_mask = torch.cat(
