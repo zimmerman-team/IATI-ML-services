@@ -12,3 +12,5 @@ max_set_size: 50
 dspn_iter: 8
 dspn_lr: 800
 epoch_chunk_len: 2000
+optimizer: SGD
+learning_rate: 1e-2

@@ -213,9 +213,10 @@ class GenericModel(pl.LightningModule):
         method required by Pytorch Lightning
         :return: the optimizer function used to minimize the loss function
         """
-        optimizer = torch.optim.Adam(
+        optimizer_class = getattr(torch.optim, self.kwargs.get('optimizer','Adam'))
+        optimizer = optimizer_class(
             self.parameters(),
-            lr=1e-3,
+            lr=float(self.kwargs.get('learning_rate',1e-3)),
             weight_decay=self.kwargs['weight_decay']
         )
         return optimizer

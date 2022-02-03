@@ -224,7 +224,7 @@ def run(Model, config_name, dynamic_config={}):
     run_name = f"{model_config['config_name']}_{model_config['rel_name']}"
     with mlflow.start_run(run_name=run_name):
         mlflow.log_params(model_config)
-        logging.debug("__file__", __file__)
+        logging.debug(f"__file__ {__file__}")
         mlflow.log_artifact(__file__)
         mlflow.log_artifact(model_config['config_filename'])
         rel = relspecs.rels[model_config['rel_name']]
