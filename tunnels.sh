@@ -7,7 +7,7 @@ TUNNEL_IP=127.0.2.1
 TUNNEL_HOSTNAME=tunnel
 
 # lists of ports on the remote machine that are going to be mapped locally
-PORTS="8080 9090 9125 9102 3000 5000 8888"
+PORTS="8080 9090 9125 9102 3000 5000 5500 8888"
 
 VM_URI=$(bash config/vm_uri.sh)
 
