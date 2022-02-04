@@ -8,7 +8,7 @@ import os
 import sys
 import argparse
 import pickle
-from common import utils, relspecs, persistency, config
+from common import utils, relspecs, persistency, config, timer
 from models import diagnostics, measurements as ms, models_storage
 
 
@@ -32,6 +32,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
     """
     rel = None
     collected = {}
+    _train_epoch_timer = timer.Timer()
     # FIXME: this is for the refactoring: measurements = make_measurements()
 
     def __init__(self, *args, **kwargs):
@@ -107,6 +108,17 @@ class MeasurementsCallback(pl.callbacks.Callback):
             mlflow.log_metric(f"{which_tset}_latent_corr_metric", corr_metric)
             diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_tset, epoch_nr)
 
+
+    def on_train_epoch_start(self, trainer, lm):
+        """
+        Called at the beginning of a training epoch.
+        Used just to reset the training epoch timer
+        :param trainer:
+        :param lm:
+        :return:
+        """
+        self._train_epoch_timer.reset()
+
     def on_train_epoch_end(self, trainer, lm):
         """
         Called at the end of a training epoch.
@@ -115,6 +127,8 @@ class MeasurementsCallback(pl.callbacks.Callback):
         :return:
         """
         self._epoch_end('train', trainer, lm)
+        elapsed_time = self._train_epoch_timer.elapsed_time
+        mlflow.log_metric("train_epoch_elapsed_time",elapsed_time)
 
     def on_validation_epoch_end(self, trainer, lm):
         """
@@ -263,7 +277,8 @@ def run(Model, config_name, dynamic_config={}):
             limit_train_batches=1.0,
             callbacks=callbacks,
             max_epochs=model_config['max_epochs'],
-            precision=16 # mixed precision training will improve performances
+            precision=16, # mixed precision training will improve performances
+            gradient_clip_val=model_config['gradient_clip_val']
         )
         trainer.fit(model, train_loader, test_loader)
 

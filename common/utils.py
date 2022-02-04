@@ -215,7 +215,7 @@ def load_model_config(config_name, dynamic_config=None):
 
     # default values for missing parameters
     ret['cap_dataset'] = ret.get('cap_dataset', None)
-
+    ret['gradient_clip_val'] = 1000
     ret['config_name'] = config_name
     ret['config_filename'] = filename
 
