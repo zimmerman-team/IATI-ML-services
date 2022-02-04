@@ -14,6 +14,37 @@ app = flask.Flask(__name__)
 # if a metric has been updated in the last 30 minutes, then a run is detected as "running"
 RUNNING_DETECTION_TIMEDELTA = 60 * 30
 
+# add additional Exponentially Weighted Moving Average (EWMA) metrics on those fields:
+EWMA_ALPHA = 0.001 # weight of current metric observation vs (1-alpha)*previous_ewma
+
+# following: the metrics that need an EWMA
+EWMA_FIELDS = ['train_loss','val_loss']
+ewma_info = OrderedDict( ) # indexed by run_id containing OrderedDicts of ewma fields
+
+def process_ewma(run_id, run_metrics):
+    """
+    For some metrics, calculate the exponentially weighted moving average
+    :param run_metrics:
+    :return: the ewma prometheus metrics to be exposed
+    """
+    # FIXME: code smells bad
+    ret = OrderedDict()
+    if run_id not in ewma_info:
+        ewma_info[run_id] = OrderedDict()
+        for metric_name in EWMA_FIELDS:
+            if metric_name not in ewma_info[run_id]:
+                ewma_info[run_id][metric_name] = None
+
+    for metric_name, metric_stuff in run_metrics.items():
+        metric_value = metric_stuff['value']
+        if metric_name in ewma_info[run_id]:
+            if ewma_info[run_id][metric_name] is None:
+                # EWMA needs to start from a value
+                ewma_info[run_id][metric_name] = float(metric_value)
+            ewma_info[run_id][metric_name] = EWMA_ALPHA * float(metric_value) + (1.0-EWMA_ALPHA) * ewma_info[run_id][metric_name]
+            ret[metric_name+"_ewma"] = ewma_info[run_id][metric_name]
+    return ret
+
 def log(*args):
     msg = " ".join(map(str,args))
     logging.debug(msg)
@@ -71,6 +102,8 @@ def collect_metrics():
         for run in mlflow.list_run_infos(experiment.experiment_id):
             directory = extract_run_directory(run)
             run_metrics, running = collect_metrics_from_run_directory(directory)
+            ewma_metrics = process_ewma(run.run_id, run_metrics)
+            run_metrics.update(ewma_metrics)
             run_info_metrics = OrderedDict(
                 start_time=run.start_time,
                 end_time=run.end_time
