@@ -10,7 +10,7 @@ fi
 ls $PREFIX* |
     while read BEFORE; do
         AFTER=$(echo $BEFORE | sed "s/^\([^0-9]*\)\([0-9]*\)\(.*\)$/\1\2.png/g"); 
-        mv -f $BEFORE $AFTER;
+        cp -fv $BEFORE $AFTER;
     done
 
 ffmpeg \
