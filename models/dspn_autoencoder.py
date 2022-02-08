@@ -1,7 +1,9 @@
 import torch
+import torch.nn as nn
 import sys
 import os
 import logging
+import torch.multiprocessing as mp
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path, os.path.join(path, 'dspn_annotated')]+sys.path
@@ -11,7 +13,46 @@ import dspn.model
 import dspn.dspn
 from models import diagnostics
 from common import utils, config, chunking_dataset
-from models import models_storage
+from models import models_storage, generic_model
+
+class MyFSEncoder(generic_model.AEModule):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        logging.debug("MyFSEncoder kwargs:"+str(kwargs))
+        super().__init__(**kwargs)
+        input_channels = kwargs['item_dim']
+        output_channels = kwargs['latent_dim']
+        dim = kwargs['layers_width']
+        # here `dim` is hidden_dim in the caller,
+        # and output_channels is latent_dim;
+        # input_channels is set_channels
+        # (see build_net(..))
+
+        layers = [
+            # 1-sized convolutions (Network-in-Network)
+            # Conv1d's 1st and 2nd args are in_channels and out_channels
+            # 3rd argument (set at value 1): kernel size
+            nn.Conv1d(input_channels + 1, dim, 1),
+            self.activation_function(),
+        ]
+        for i in self.depth_range():
+            layers += [
+                nn.Conv1d(dim, dim, 1),
+                self.activation_function()
+            ]
+        layers.append( nn.Conv1d(dim, output_channels, 1) )
+        self.conv = nn.Sequential( *layers )
+
+        self.pool = dspn.model.FSPool(output_channels, 20, relaxed=False)
+
+    def forward(self, x, mask=None):
+        # in the caller, `x` is `current_set`
+        mask = mask.unsqueeze(1)
+        x = torch.cat([x, mask], dim=1)  # include mask as part of set
+        x = self.conv(x) # output topology is probably set_size x latent_dim
+        x = x / x.size(2)  # normalise so that activations aren't too high with big sets
+        x, _ = self.pool(x)
+        return x
 
 class DSPNAE(generic_model.GenericModel):
     """
@@ -140,11 +181,8 @@ class DSPNAE(generic_model.GenericModel):
         super().__init__(**kwargs)
         assert 'max_set_size' in self.kwargs, "must set max_set_size for this model"
         self.max_set_size = self.kwargs['max_set_size']
-        self.encoder = dspn.model.FSEncoder(
-            kwargs['item_dim'],
-            kwargs['latent_dim'],
-            kwargs['layers_width']
-        )
+        self.hungarian_loss_thread_pool = mp.Pool(4)
+        self.encoder = MyFSEncoder(**kwargs)
         self.decoder = dspn.dspn.DSPN(
             self.encoder,
             kwargs['item_dim'],
@@ -221,9 +259,13 @@ class DSPNAE(generic_model.GenericModel):
             for p, m in zip(progress, masks)
         ]
 
-        set_loss = dspn.utils.chamfer_loss(
-            torch.stack(progress), target_set_with_mask.unsqueeze(0)
-        )
+        #set_loss = dspn.utils.chamfer_loss(
+        #    torch.stack(progress), target_set_with_mask.unsqueeze(0)
+        #)
+
+        set_loss = dspn.utils.hungarian_loss(
+            progress[-1], target_set_with_mask, thread_pool=self.hungarian_loss_thread_pool
+        ).unsqueeze(0)
         loss = set_loss.mean()
 
         # for measurements:
