@@ -1,17 +1,18 @@
 experiment_name: dspn_first
-layers_width: 96
-latent_dim: 8
-activation_function: "ELU"
-depth: 3
+layers_width: 192
+latent_dim: 20
+activation_function: ELU
+depth: 4
 weight_decay: 1.0e-6
 max_epochs: 2000
 batch_size: 2048
 divide_output_layer: True
 latent_l1_norm: 10.0
-max_set_size: 50
-dspn_iter: 10
+max_set_size: 25
+dspn_iter: 8
 dspn_lr: 800
-epoch_chunk_len: 500
+# cap_dataset: 30000
+epoch_chunk_len: 250
 optimizer: Adam
-learning_rate: 1e-5
-gradient_clip_val: 10000
+learning_rate: 5e-3
+gradient_clip_val: 1000000

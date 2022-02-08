@@ -2,7 +2,7 @@ experiment_name: dspn_first
 layers_width: 48
 latent_dim: 4
 activation_function: "ELU"
-depth: 3
+depth: 15
 weight_decay: 1.0e-6
 max_epochs: 1500
 batch_size: 2048
