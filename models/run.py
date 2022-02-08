@@ -142,9 +142,10 @@ class MeasurementsCallback(pl.callbacks.Callback):
     def teardown(self, trainer, lm, stage=None):
         """
         Called at the very end of the training.
-        :param trainer:
-        :param lm:
-        :param stage:
+        Finally plots the evolution of certain metrics into an image file which is logged as artifact.
+        :param trainer: unused parameter
+        :param lm: also unused parameter
+        :param stage: either 'fit' or 'test'
         :return:
         """
         print("teardown stage", stage)
@@ -233,6 +234,7 @@ def run(Model, config_name, dynamic_config={}):
 
     setup_logging()
     model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
+    logging.debug("model_config: "+str(model_config))
     mlflow.set_experiment(model_config['experiment_name'])
     mlflow.pytorch.autolog()
     run_name = f"{model_config['config_name']}_{model_config['rel_name']}"

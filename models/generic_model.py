@@ -206,6 +206,7 @@ class GenericModel(pl.LightningModule):
         """
         self.rel = kwargs.get('rel', None)
         self.kwargs = kwargs # model config (hyper)parameters typically end up here
+        logging.debug("generic_model kwargs: "+str(kwargs))
         super().__init__()
 
     def configure_optimizers(self):
