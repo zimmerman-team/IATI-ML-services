@@ -148,6 +148,10 @@ class Measurement(object):
     Every Measurement may be a data source for other Measurements which
     are specified with the `dst` parameter, which effectively enables
     the creation of a dependency graph.
+    :name: (string) name of the measurement
+    :dst: dictionary indexed by desination metric names and having their production function as value
+    :plot_type: how these measures need to be plotted
+    :mlflow_log: should whatever is the measure be averaged and logged as metric via mlflow?
     """
     def __init__(
             self,
@@ -193,9 +197,8 @@ class Measurement(object):
         else:
             chunk_size = f"??{type(chunk)}"
         if self.mlflow_log:
-            _mean = np.mean(np.array(chunk))
-
-            mlflow.log_metric(f"{which_tset}_{self.name}", float(_mean))
+            _mean = float(np.mean(np.array(chunk)))
+            mlflow.log_metric(f"{which_tset}_{self.name}", _mean)
         log(f"{self} {which_tset} added with chunk {chunk_size}")
         self.data[which_tset].append(chunk)
 
@@ -203,7 +206,7 @@ class Measurement(object):
         """
         Collects a measurement from the LightningModel
         """
-        chunk = getattr(lm, self.name)
+        chunk = getattr(lm, self.name, None)
         self.add(chunk, which_tset)
 
     def vstack(self, which_tset):
