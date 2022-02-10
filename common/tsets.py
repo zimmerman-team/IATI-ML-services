@@ -46,9 +46,16 @@ class Tsets(utils.Collection):
         self.load_data()
 
         for which_tset in self.tsets_names:
+
+            # IMPORTANT: The input data is always considered as having the first column
+            # having the set index. What `.with_set_index` does is to remove it from further
+            # consideration in the Tsets
+            self[which_tset + "_without_set_index"] = self[which_tset][:, 1:]
+
             if self.with_set_index is False:
                 # removes the set_index column from the glued-up tensor
-                self[which_tset] = self[which_tset][:, 1:]
+                self[which_tset] = self[which_tset+"_without_set_index"]
+
 
             # makes a list of tensors, each of which contains the data of a field of
             # the relation
@@ -71,7 +78,10 @@ class Tsets(utils.Collection):
 
             # WARNING: this relies on the fact that the training
             # set is going to be processed before the others
-            self[which_tset+"_scaled"] = self._scale(sections, self.with_set_index)
+            (
+                self[which_tset+"_scaled"],
+                self[which_tset+"_scaled_without_set_index"]
+            ) = self._scale(sections, self.with_set_index)
 
     def print_shapes(self):
         for which_tset in self.tsets_names:
@@ -80,7 +90,7 @@ class Tsets(utils.Collection):
 
     @property
     def item_dim(self):
-        return self.train.shape[1] # because rows = items and cols = features
+        return self.train_without_set_index.shape[1] # because rows = items and cols = features
 
     def n_sets(self, which_tset):
         """
@@ -157,5 +167,6 @@ class Tsets(utils.Collection):
             scaled.append(section_scaled)
         logging.debug("scaled sections:"+str([s.shape for s in scaled]))
 
-        ret = self.spec.glue(scaled)
-        return ret
+        ret = utils.glue(scaled)
+        ret_without_set_index = utils.glue(scaled[1:]) # exclude first section, which is the set index
+        return ret,ret_without_set_index
