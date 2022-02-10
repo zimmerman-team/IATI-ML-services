@@ -3,16 +3,17 @@ layers_width: 192
 latent_dim: 20
 activation_function: ELU
 depth: 4
-weight_decay: 1.0e-6
+weight_decay: 1.0e-5
 max_epochs: 2000
 batch_size: 2048
 divide_output_layer: True
 latent_l1_norm: 10.0
 max_set_size: 25
-dspn_iter: 8
-dspn_lr: 800
+dspn_iter: 15
+dspn_lr: 0.1
 # cap_dataset: 30000
-epoch_chunk_len: 250
+epoch_chunk_len: 50
 optimizer: Adam
-learning_rate: 5e-3
-gradient_clip_val: 1000000
+learning_rate: 5e-2
+gradient_clip_val: 10000
+dspn_loss_fn: mse_loss
