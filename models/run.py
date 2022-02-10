@@ -151,31 +151,35 @@ class MeasurementsCallback(pl.callbacks.Callback):
         print("teardown stage", stage)
         self.measurements.print_debug_info()
         for m in self.measurements.plottable:
-            for which_tset in utils.Tsets:
-                stacked_npa = m.vstack(which_tset.value)
-                print(m.name, which_tset.value)
-                if len(stacked_npa) == 0:
-                    logging.warning(f"{m.name} {which_tset} was empty")
-                    continue
-                utils.log_npa_artifact(
-                    stacked_npa,
-                    prefix=f"{m.name}_{which_tset.value}",
-                    suffix=".bin"
-                )
-                diagnostics.log_heatmaps_artifact(
-                    m.name,
-                    stacked_npa,
-                    which_tset.value,
-                    rel=self.rel,
-                    type_=m.plot_type
-                )
-                diagnostics.log_barplots_artifact(
-                    m.name,
-                    stacked_npa[[-1], :],  # consider only last epoch
-                    which_tset.value,
-                    rel=self.rel,
-                    type_=m.plot_type
-                )
+            if m.plot_type in ['field', 'losses', 'latent']:  # FIXME: refactor this
+                for which_tset in utils.Tsets:
+                    stacked_npa = m.vstack(which_tset.value)
+                    print(m.name, which_tset.value)
+                    if len(stacked_npa) == 0:
+                        logging.warning(f"{m.name} {which_tset} was empty")
+                        continue
+                    utils.log_npa_artifact(
+                        stacked_npa,
+                        prefix=f"{m.name}_{which_tset.value}",
+                        suffix=".bin"
+                    )
+                    diagnostics.log_heatmaps_artifact(
+                        m.name,
+                        stacked_npa,
+                        which_tset.value,
+                        rel=self.rel,
+                        type_=m.plot_type
+                    )
+                    diagnostics.log_barplots_artifact(
+                        m.name,
+                        stacked_npa[[-1], :],  # consider only last epoch
+                        which_tset.value,
+                        rel=self.rel,
+                        type_=m.plot_type
+                    )
+            else: # FIXME: refactor those ifs, there has to be a better way
+                pass
+
 
 def setup_logging():
 
