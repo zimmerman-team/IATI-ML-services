@@ -218,6 +218,7 @@ def load_model_config(config_name, dynamic_config=None):
     ret['gradient_clip_val'] = 1000
     ret['config_name'] = config_name
     ret['config_filename'] = filename
+    ret['dspn_loss_fn'] = "smooth_l1"
 
     # dynamic config generation will override the yaml file config
     if dynamic_config is not None:
@@ -263,3 +264,24 @@ def is_empty(stuff):
 def debug(*args):
     msg = " ".join([str(a) for a in args])
     logging.debug(msg)
+
+def glue(tensor_list):
+    """
+    given a list of tensor, being the values of the fields,
+    returns a glued-up tensor to be used in ML model training (or query).
+    :param tensor_list:
+    :return:
+    """
+    if type(tensor_list) is list:
+        assert len(tensor_list) > 0
+        first = tensor_list[0]
+        if type(first) is torch.Tensor:
+            ret = torch.hstack(tensor_list)
+        elif type(first) is np.ndarray:
+            ret = np.hstack(tensor_list)
+        else:
+            raise Exception("elements in the list must be either numpy arrays or torch tensors")
+    else:
+        # possibly already glued?
+        ret = tensor_list
+    return ret

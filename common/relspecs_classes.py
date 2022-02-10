@@ -110,28 +110,6 @@ class Spec(object):
             ret[0] = ret[0].astype(np.int32)
         return ret
 
-
-    def glue(self, tensor_list):  # FIXME: maybe to some other module?
-        """
-        given a list of tensor, being the values of the fields,
-        returns a glued-up tensor to be used in ML model training (or query).
-        :param tensor_list:
-        :return:
-        """
-        if type(tensor_list) is list:
-            assert len(tensor_list) > 0
-            first = tensor_list[0]
-            if type(first) is torch.Tensor:
-                ret = torch.hstack(tensor_list)
-            elif type(first) is np.ndarray:
-                ret = np.hstack(tensor_list)
-            else:
-                raise Exception("elements in the list must be either numpy arrays or torch tensors")
-        else:
-            # possibly already glued?
-            ret = tensor_list
-        return ret
-
     @property
     def extract_field_regex(self):
         """
