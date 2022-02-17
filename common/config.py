@@ -8,7 +8,8 @@ import socket
 defaults = dict(
     models_dag_training_tasks_concurrency=1,
     train_fraction=0.9,
-    tame_tqdm=True
+    tame_tqdm=True,
+    trained_models_dirpath='trained_models/'
 )
 
 _conf_dict = defaults.copy() # entries may be replaced by load()
