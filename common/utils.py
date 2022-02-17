@@ -2,10 +2,11 @@ from bson.binary import Binary
 import pickle
 import zlib
 import numpy as np
-import tempfile
 import mlflow
 import urllib
 import os
+import shutil
+import tempfile
 import glob
 import torch
 import enum
@@ -285,3 +286,9 @@ def glue(tensor_list):
         # possibly already glued?
         ret = tensor_list
     return ret
+
+def soft_remove(filename):
+    basename = os.path.basename(filename)
+    new_filename = tempfile.mktemp() + basename
+    # move the file out of the way to the temporary directory
+    shutil.move(filename, new_filename)
