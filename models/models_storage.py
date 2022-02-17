@@ -1,5 +1,7 @@
 import logging
 import os
+import shutil
+import tempfile
 import sys
 import pickle
 import pytorch_lightning as pl
@@ -13,14 +15,14 @@ sys.path.insert(0, project_root_dir)
 from common import utils, relspecs, config
 from models import dspn_autoencoder
 
-
-class DSPNAEModelsStorage(utils.Collection):  # FIXME: classname-parameterized?
+class ModelsStorage(utils.Collection):
     """
     We need to store the DSPNAE models somewhere and to recall them
     easily. This class offers a straightforward interface to load
     the models.
     """
-    def __init__(self):
+    def __init__(self, model_module_name):
+        self.model_module_name = model_module_name
         os.chdir(project_root_dir)
 
     def load_all_models(self):
@@ -44,13 +46,20 @@ class DSPNAEModelsStorage(utils.Collection):  # FIXME: classname-parameterized?
             parameter in the pytorch_lightning Trainer
         """
         model_filename = model.name
+        print("model_filename",model_filename)
+        print("config.trained_models_dirpath",config.trained_models_dirpath)
+        if not os.path.exists(config.trained_models_dirpath):
+            os.mkdir(config.trained_models_dirpath)
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            monitor="train_loss",
+            monitor=None,#"train_loss",
             dirpath=config.trained_models_dirpath,
             filename=model_filename,
             save_top_k=1,
             save_last=False,
             mode="min",
+            verbose=True,
+            save_on_train_epoch_end=True,
+            every_n_epochs=1
         )
         return checkpoint_callback
 
@@ -68,6 +77,8 @@ class DSPNAEModelsStorage(utils.Collection):  # FIXME: classname-parameterized?
         # using tha version from the last model filename
         # as it is saved before the kwargs dump
         version = self.last_version(model.rel)
+        if version is None:
+            version = "UNKNOWN_VERSION"
 
         ret = os.path.join(
             config.trained_models_dirpath,
@@ -83,6 +94,11 @@ class DSPNAEModelsStorage(utils.Collection):  # FIXME: classname-parameterized?
         :return:
         """
         kwargs_filename = self.generate_kwargs_filename(model)
+
+        if os.path.isfile(kwargs_filename):
+            # do not fully remove the file but save it to a temporary directory for eventual debugging
+            utils.soft_remove(kwargs_filename)
+
         with open(kwargs_filename, 'wb') as f:
 
             # copy the kwargs in case of unpickable element removal before pickling
@@ -108,8 +124,8 @@ class DSPNAEModelsStorage(utils.Collection):  # FIXME: classname-parameterized?
         :return: a dictionary of filenames indexed on the version of the given aspect
         """
         filenames_glob = os.path.join(
-            "trained_models",
-            f"DSPNAE_{rel.name}*.{extension}"
+            config.trained_models_dirpath,
+            f"{self.model_module_name}__{rel.name}*.{extension}" # two dashes to be able to split model name and rel_name
         )
         ret = {}
         filenames = glob.glob(filenames_glob)
@@ -232,7 +248,7 @@ def test():
     is being performed.
     :return:
     """
-    ms = DSPNAEModelsStorage()
+    ms = ModelsStorage(model_module_name="dspn_autoencoder")
     ms.load_all_models()
     print("ms", ms)
     print("done.")
