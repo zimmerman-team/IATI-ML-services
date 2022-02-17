@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import sys
 import os
 import logging
+import math
 import torch.multiprocessing as mp
 import numpy as np
 
@@ -18,15 +19,17 @@ from models import diagnostics
 from common import utils, config, chunking_dataset
 from models import models_storage, generic_model
 
-
-def my_hungarian_loss(predictions, targets, thread_pool):
+def my_hungarian_loss(predictions, targets, thread_pool=None):
     # predictions and targets shape :: (n, c, s)
     predictions, targets = dspn.utils.outer(predictions, targets)
     # squared_error shape :: (n, s, s)
     squared_error = F.smooth_l1_loss(predictions, targets.expand_as(predictions), reduction="none").mean(1)
 
     squared_error_np = squared_error.detach().cpu().numpy()
-    indices = thread_pool.map(dspn.utils.hungarian_loss_per_sample, squared_error_np)
+    if thread_pool is None:
+        indices = [dspn.utils.hungarian_loss_per_sample(squared_error_np[0])]
+    else:
+        indices = thread_pool.map(dspn.utils.hungarian_loss_per_sample, squared_error_np)
     losses = [
         sample[row_idx, col_idx].mean()
         for sample, (row_idx, col_idx) in zip(squared_error, indices)
@@ -256,9 +259,7 @@ class DSPNAE(generic_model.GenericModel):
         """
         all_intervals = tsets.sets_intervals('test')
         train_chunk_len = self.kwargs.get('epoch_chunk_len', 1000)
-        test_chunk_len = int(float(train_chunk_len) * config.test_fraction)
-        print("config.test_fraction",config.test_fraction)
-        print("test_chunk_len",test_chunk_len)
+        test_chunk_len = int(math.ceil(float(train_chunk_len) * config.test_fraction))
         chunking_intervals = chunking_dataset.ChunkingDataset(
             all_intervals,
             shuffle=False,
@@ -324,9 +325,10 @@ class DSPNAE(generic_model.GenericModel):
         :param kwargs:
         """
         super().__init__(**kwargs)
+
         assert 'max_set_size' in self.kwargs, "must set max_set_size for this model"
         self.max_set_size = self.kwargs['max_set_size']
-        self.hungarian_loss_thread_pool = mp.Pool(4)
+        self._make_hungarian_loss_thread_pool()
         self.encoder = MyFSEncoder(**kwargs)
 
         dspn_loss_fn = getattr(torch.nn.functional,kwargs.get('dspn_loss_fn','smooth_l1')+"_loss")
@@ -339,6 +341,31 @@ class DSPNAE(generic_model.GenericModel):
             float(kwargs['dspn_lr']),  # inner learning rate
             dspn_loss_fn
         )
+
+    def _make_hungarian_loss_thread_pool(self):
+        self.hungarian_loss_thread_pool = mp.Pool(4)
+
+    def __getstate__(self):
+        """
+        called upon pickling (when persisting the model)
+        :param self:
+        :return:
+        """
+        state = self.__dict__.copy()
+        # pool objects cannot be passed between processes or pickled
+        state['hungarian_loss_thread_pool'] = None
+        return state
+
+    def __setstate__(self, state):
+        """
+        called upon unpickling
+        :param self:
+        :param state:
+        :return:
+        """
+        self.__dict__.update(state)
+        # the pool objects need to be re-created
+        self._make_hungarian_loss_thread_pool()
 
     def _make_target(self, loaded_set):
         """
@@ -389,6 +416,7 @@ class DSPNAE(generic_model.GenericModel):
         :param which_tset: 'train' or 'test'
         :return:
         """
+
         # utils.debug("batch.size",batch.size())
         # "batch" dimensionality: (set_size, item_dims)
         target_set,target_mask = self._make_target(batch)
