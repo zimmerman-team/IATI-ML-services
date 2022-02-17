@@ -177,17 +177,10 @@ class MyDSPN(nn.Module):
 
         return intermediate_sets, intermediate_masks, repr_losses, grad_norms
 
-class DSPNAE(generic_model.GenericModel):
+class Model(generic_model.GenericModel):
     """
-    DSPNAE is an acronym for Deep Set Prediction Network AutoEncoder
+    Deep Set Prediction Network AutoEncoder
     """
-
-    @classmethod
-    def storage(cls):
-        """
-        :return: stored model retrieval system for DSPN AutoEncoders
-        """
-        return models_storage.DSPNAEModelsStorage()
 
     with_set_index = True
     losses = []
@@ -482,7 +475,7 @@ def main():
     :return:
     """
     config_name = sys.argv[1]
-    run.run(DSPNAE, config_name)
+    run.run(Model, config_name)
 
 
 if __name__ == "__main__":

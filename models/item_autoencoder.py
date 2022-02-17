@@ -12,7 +12,7 @@ from models import measurements as ms
 utils.set_np_printoptions()
 
 
-class ItemAE(generic_model.GenericModel):
+class Model(generic_model.GenericModel):
     """
     Represents the Item-based AutoEncoder (baseline model)
     """
@@ -193,8 +193,9 @@ def main():
     directly is training the ItemAE model.
     :return:
     """
+    # FIXME: this part seems to be duplicated across all model modules
     config_name = sys.argv[1]
-    run.run(ItemAE, config_name)
+    run.run(Model, config_name)
 
 
 if __name__ == "__main__":

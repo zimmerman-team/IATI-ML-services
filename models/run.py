@@ -107,6 +107,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
             corr, corr_metric, mask = diagnostics.correlation(z)
             mlflow.log_metric(f"{which_tset}_latent_corr_metric", corr_metric)
             diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_tset, epoch_nr)
+        logging.debug(f"_epoch_end {which_tset}")
 
 
     def on_train_epoch_start(self, trainer, lm):
@@ -269,10 +270,9 @@ def run(Model, config_name, dynamic_config={}):
             item_dim=tsets.item_dim,
             **model_config
         ).to(device)
-        storage = model.storage()
         train_loader = model.make_train_loader(tsets)
         test_loader = model.make_test_loader(tsets)
-        model_write_callback = storage.create_write_callback(model)
+        model_write_callback = model.storage.create_write_callback(model)
         callbacks = [
             MeasurementsCallback(rel=rel, model=model),
             model_write_callback
@@ -284,11 +284,12 @@ def run(Model, config_name, dynamic_config={}):
             callbacks=callbacks,
             max_epochs=model_config['max_epochs'],
             precision=16, # mixed precision training will improve performances
-            gradient_clip_val=model_config['gradient_clip_val']
+            gradient_clip_val=model_config['gradient_clip_val'],
+            #enable_checkpointing=True
         )
         trainer.fit(model, train_loader, test_loader)
 
-        storage.dump_kwargs(model)
+        model.storage.dump_kwargs(model)
 
         print("current mlflow run:", mlflow.active_run().info.run_id, " - all done.")
         # log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))

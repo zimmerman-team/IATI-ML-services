@@ -10,7 +10,7 @@ from models import measurements as ms, generic_model
 
 
 # FIXME: maybe make ActivityAutoencoder and ItemAE inherit from the same parent class?
-class ActivityAutoencoder(generic_model.GenericModel):
+class Model(generic_model.GenericModel):
     """
     Trains a model using fixed-length datapoints constructed
     from encoded fields, including relation fields.

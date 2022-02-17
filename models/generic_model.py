@@ -3,12 +3,14 @@ import torch
 import os
 import sys
 import logging
+import inspect
 
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
 from common import config, timer
-
+from models import models_storage
+from functools import cached_property
 
 class AEModule(torch.nn.Module):
     """
@@ -148,15 +150,23 @@ class GenericModel(pl.LightningModule):
     with_set_index = None  # please set in subclass
     _timer = timer.Timer()
 
-    @property
-    @classmethod
-    def storage(cls):
+    @cached_property
+    def storage(self):
         """
-        Every model should have it's own persistent model
-        retrieval mechanism
+        model persistance
+        :return: stored model retrieval system
+        """
+        return models_storage.ModelsStorage(self.modulename)
+
+    @property
+    def modulename(self):
+        """
+        Name of the module in which the concrete class is located
         :return:
         """
-        raise Exception("implement in subclass")
+        module_filename = inspect.getfile(self.__class__)
+        ret = inspect.getmodulename(module_filename)
+        return ret
 
     @property
     def classname(self):
@@ -165,6 +175,8 @@ class GenericModel(pl.LightningModule):
         :return:
         """
         return self.__class__.__name__
+
+
 
     # @classmethod FIXME DELME
     # def name(cls,rel):
@@ -177,7 +189,10 @@ class GenericModel(pl.LightningModule):
         the algorithm and the name of the source of data
         :return:
         """
-        return f"{self.__class__.__name__}_{self.rel.name}"
+
+        # double underscores are useful to distinguish the modulename part from the rel.name part
+        # as those strings can themselves contain single underscores
+        return f"{self.modulename}__{self.rel.name}"
 
     def make_train_loader(self, tsets):
         """

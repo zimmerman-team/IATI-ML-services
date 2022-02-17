@@ -13,7 +13,7 @@ project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/
 sys.path.insert(0, project_root_dir)
 
 from common import utils, relspecs, config
-from models import dspn_autoencoder
+import models
 
 class ModelsStorage(utils.Collection):
     """
@@ -21,8 +21,9 @@ class ModelsStorage(utils.Collection):
     easily. This class offers a straightforward interface to load
     the models.
     """
-    def __init__(self, model_module_name):
-        self.model_module_name = model_module_name
+    def __init__(self, model_modulename):
+        self.model_modulename = model_modulename
+        self.model_module = getattr(models, self.model_modulename)
         os.chdir(project_root_dir)
 
     def load_all_models(self):
@@ -125,7 +126,7 @@ class ModelsStorage(utils.Collection):
         """
         filenames_glob = os.path.join(
             config.trained_models_dirpath,
-            f"{self.model_module_name}__{rel.name}*.{extension}" # two dashes to be able to split model name and rel_name
+            f"{self.model_modulename}__{rel.name}*.{extension}" # two dashes to be able to split model name and rel_name
         )
         ret = {}
         filenames = glob.glob(filenames_glob)
@@ -237,7 +238,7 @@ class ModelsStorage(utils.Collection):
         logging.info(f"loading {model_filename}..")
 
         # FIXME: kwargs provided twice?
-        model = dspn_autoencoder.DSPNAE(**kwargs)
+        model = self.model_module.Model(**kwargs)
         model.load_from_checkpoint(model_filename, **kwargs)
         return model
 
@@ -248,7 +249,10 @@ def test():
     is being performed.
     :return:
     """
-    ms = ModelsStorage(model_module_name="dspn_autoencoder")
+    if len(sys.argv < 2):
+        logging.error('need to have a command line argument (model_modulename)')
+        sys.exit(-1)
+    ms = ModelsStorage(model_modulename=sys.argv[1])
     ms.load_all_models()
     print("ms", ms)
     print("done.")
