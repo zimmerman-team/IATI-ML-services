@@ -150,21 +150,18 @@ class GenericModel(pl.LightningModule):
     with_set_index = None  # please set in subclass
     _timer = timer.Timer()
 
-    @cached_property
-    def storage(self):
-        """
-        model persistance
-        :return: stored model retrieval system
-        """
-        return models_storage.ModelsStorage(self.modulename)
-
     @property
     def modulename(self):
         """
         Name of the module in which the concrete class is located
         :return:
         """
-        module_filename = inspect.getfile(self.__class__)
+        try:
+            module_filename = inspect.getfile(self.__class__)
+        except TypeError:
+            # in case of the obscure *** TypeError: <class '__main__.Model'> is a built-in class
+            # presumably raised when running directly the model module via command-line python
+            module_filename = sys.argv[0]
         ret = inspect.getmodulename(module_filename)
         return ret
 
@@ -222,6 +219,10 @@ class GenericModel(pl.LightningModule):
         self.rel = kwargs.get('rel', None)
         self.kwargs = kwargs # model config (hyper)parameters typically end up here
         logging.debug("generic_model kwargs: "+str(kwargs))
+
+        # stored model retrieval system
+        self.storage = models_storage.ModelsStorage(self.modulename)
+
         super().__init__()
 
     def configure_optimizers(self):
