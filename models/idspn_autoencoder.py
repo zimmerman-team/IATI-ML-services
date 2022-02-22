@@ -32,7 +32,6 @@ class Model(deepset_generic.DeepSetGeneric):
         return ret
 
     def make_net(self, conf):
-        self.batch_loss = loss # setting instance variable to be collected by Measurements
         pool = "fs"
         input_enc_kwargs = dict(
             d_in=conf['item_dim'] + 1, # +1 because mask
