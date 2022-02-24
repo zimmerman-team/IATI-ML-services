@@ -187,6 +187,7 @@ class Measurement(object):
         """
         Adds some data to the collected
         """
+        assert chunk is not None, "cannot add None measurements "+str(self)
         if type(chunk) is np.ndarray:
             chunk_size = chunk.shape
         elif type(chunk) is list:
