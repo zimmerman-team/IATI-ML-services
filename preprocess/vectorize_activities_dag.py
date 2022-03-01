@@ -11,7 +11,7 @@ import collections
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 
-from common import relspecs, persistency, utils
+from common import relspecs, persistency, utils, config
 from preprocess import vectorize_activity
 
 default_args = {
@@ -47,6 +47,9 @@ def collect(ti):
 
     # open all necessary collections
     coll_sets = {}
+
+    # this data was previously downloaded by a different airflow DAG and task
+    # (download__sets_dag.py/persist)
     coll_activity = db['activity_data']
     coll_out = db['activity_data_encoded']
     for rel in rels:
@@ -77,7 +80,7 @@ def vectorize(ti):
     db = persistency.mongo_db()
     coll_in = db['activity_data_encoded']
     coll_out = db['activity_vectors']
-    activity_vectorizer = vectorize_activity.ActivityVectorizer()
+    activity_vectorizer = vectorize_activity.ActivityVectorizer(config.model_modulename)
     for input_document in coll_in.find({}):
         activity_vector = activity_vectorizer.process(input_document)
         activity_vector_serialized = utils.serialize(activity_vector)

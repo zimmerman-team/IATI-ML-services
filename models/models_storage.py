@@ -15,6 +15,33 @@ sys.path.insert(0, project_root_dir)
 from common import utils, relspecs, config
 import models
 
+from collections import namedtuple
+
+# Simple class representing a record in our database.
+MemoRecord = namedtuple("MemoRecord", "key, task")
+
+class KwargsPickler(pickle.Pickler):
+    # we need a custom pickler class to remove unpickable objects
+    def persistent_id(self, obj):
+        if callable(obj):
+            # functions such as Field.__init__.<locals>._loss_function cannot be pickled
+            return ("unpickable function",None)
+        if issubclass(type(obj), relspecs.Spec):
+            # the Spec types may have machine-learning (torch) functions, that cannot be pickled.
+            # so their name is being stored instead
+            return ("Spec",obj.name)
+        return None
+
+class KwargsUnpickler(pickle.Unpickler):
+    def persistent_load(self, pid):
+        type_, key = pid
+        if type_ == "unpicklable function":
+            return None
+        elif type_ == "Spec":
+            # only the name of the spec was stored, so retrieve it from the collection
+            return relspecs.specs[key]
+        pickle.UnpicklingError(f"unsupported persistent object {pid}")
+
 class ModelsStorage(utils.Collection):
     """
     We need to store the DSPNAE models somewhere and to recall them
@@ -105,15 +132,7 @@ class ModelsStorage(utils.Collection):
             # copy the kwargs in case of unpickable element removal before pickling
             kwargs = model.kwargs.copy()
 
-            class Pickler(pickle.Pickler):
-                # we need a custom pickler class to remove unpickable objects
-                def persistent_id(self,obj):
-                    if callable(obj):
-                        # functions such as Field.__init__.<locals>._loss_function cannot be pickled
-                        return "unpickable function"
-                    return None
-
-            p = Pickler(f)
+            p = KwargsPickler(f)
             p.dump(kwargs)
 
     def filenames(self, rel, extension):
@@ -227,7 +246,8 @@ class ModelsStorage(utils.Collection):
 
         kwargs_filename = self.most_recent_kwargs_filename(rel)
         with open(kwargs_filename, 'rb') as f:
-            kwargs = pickle.load(f)
+            unpickler = KwargsUnpickler(f)
+            kwargs = unpickler.load()
 
         model_filename = self.most_recent_model_filename(rel)
         if model_filename is None or not os.path.exists(model_filename):

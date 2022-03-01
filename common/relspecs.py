@@ -19,7 +19,7 @@ from common.relspecs_classes import *
 """
 the specification for all relation fields is in the `rels` public module variable
 """
-rels = RelsCollection([
+rels = SpecsCollection([
     Rel("activity_date", [
         CategoryField("type","ActivityDateType"),
         DatetimeField("iso_date")

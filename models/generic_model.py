@@ -151,18 +151,22 @@ class GenericModel(pl.LightningModule):
     _timer = timer.Timer()
 
     @property
+    def source_filename(self):
+        try:
+            filename = inspect.getfile(self.__class__)
+        except TypeError:
+            # in case of the obscure *** TypeError: <class '__main__.Model'> is a built-in class
+            # presumably raised when running directly the model module via command-line python
+            filename = sys.argv[0]
+        return filename
+
+    @property
     def modulename(self):
         """
         Name of the module in which the concrete class is located
         :return:
         """
-        try:
-            module_filename = inspect.getfile(self.__class__)
-        except TypeError:
-            # in case of the obscure *** TypeError: <class '__main__.Model'> is a built-in class
-            # presumably raised when running directly the model module via command-line python
-            module_filename = sys.argv[0]
-        ret = inspect.getmodulename(module_filename)
+        ret = inspect.getmodulename(self.source_filename)
         return ret
 
     @property
@@ -189,7 +193,10 @@ class GenericModel(pl.LightningModule):
 
         # double underscores are useful to distinguish the modulename part from the rel.name part
         # as those strings can themselves contain single underscores
-        return f"{self.modulename}__{self.rel.name}"
+        ret = f"{self.modulename}__{self.rel.name}"
+        if 'model_name_suffix' in self.kwargs:
+            ret += f"_{self.kwargs['model_name_suffix']}"
+        return ret
 
     def make_train_loader(self, tsets):
         """

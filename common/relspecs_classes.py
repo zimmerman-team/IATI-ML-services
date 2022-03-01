@@ -35,20 +35,20 @@ def get_codelists():
     return ret
 
 
-class RelsCollection(utils.Collection):
+class SpecsCollection(utils.Collection):
 
     @property
     def downloadable(self):
         """
-        returns the relation specifications, but only
+        returns the specifications, but only
         those that are marked as downloadable
         :return:
         """
         return [
-            rel
-            for rel
+            spec
+            for spec
             in self
-            if rel.download is True
+            if spec.download is True
         ]
 
     @property
@@ -61,10 +61,10 @@ class RelsCollection(utils.Collection):
         """
         ret = [
             curr
-            for rel
+            for spec
             in self.downloadable
             for curr
-            in rel.prefixed_fields_names
+            in spec.prefixed_fields_names
         ]
         return ret
 

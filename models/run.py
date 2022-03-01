@@ -270,6 +270,9 @@ def run(Model, config_name, dynamic_config={}):
             item_dim=tsets.item_dim,
             **model_config
         ).to(device)
+        mlflow.log_artifact(model.source_filename)
+        mlflow.log_param("source_filename",model.source_filename)
+        mlflow.log_param("modulename",model.modulename)
         train_loader = model.make_train_loader(tsets)
         test_loader = model.make_test_loader(tsets)
         model_write_callback = model.storage.create_write_callback(model)
@@ -293,3 +296,6 @@ def run(Model, config_name, dynamic_config={}):
 
         print("current mlflow run:", mlflow.active_run().info.run_id, " - all done.")
         # log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))
+
+        # return the model to the caller so that it can eventually be used for other purposes
+        return model
