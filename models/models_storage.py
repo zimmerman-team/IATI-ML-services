@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 import glob
 import re
 import copy
+import logging
 
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
@@ -60,8 +61,10 @@ class ModelsStorage(utils.Collection):
         """
         os.chdir(project_root_dir)
         for rel in relspecs.rels:
+            logging.info(f"loading model for {rel}..")
             model = self.load(rel)
             self[rel.name] = model
+            logging.info(f"loading model for {rel} done.")
 
     def create_write_callback(self, model):
         """
@@ -245,11 +248,13 @@ class ModelsStorage(utils.Collection):
             return
 
         kwargs_filename = self.most_recent_kwargs_filename(rel)
+        logging.info(f"kwarg filename {kwargs_filename}")
         with open(kwargs_filename, 'rb') as f:
             unpickler = KwargsUnpickler(f)
             kwargs = unpickler.load()
 
         model_filename = self.most_recent_model_filename(rel)
+        logging.info(f"model filename {model_filename}")
         if model_filename is None or not os.path.exists(model_filename):
             logging.warning(f"could not find model saved in {model_filename}")
             return

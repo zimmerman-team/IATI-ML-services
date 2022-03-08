@@ -1,3 +1,5 @@
+import logging
+import sys
 from bson.binary import Binary
 import pickle
 import zlib
@@ -13,10 +15,10 @@ import enum
 import yaml
 import collections
 import datetime
-import logging
 import copy
 from sklearn.base import BaseEstimator, TransformerMixin
 
+from . import config
 
 class Collection(dict):
     """
@@ -292,3 +294,88 @@ def soft_remove(filename):
     new_filename = tempfile.mktemp() + basename
     # move the file out of the way to the temporary directory
     shutil.move(filename, new_filename)
+
+
+def setup_logging():
+    log_level_nr = getattr(logging,config.log_level,logging.INFO)
+    # setting log lever for stdout
+    logging.basicConfig( level=log_level_nr)
+
+    # the logs will also end up in a file
+    log_filename = os.path.join(os.getcwd(),"logs", strnow_compact()+'.log')
+    logging.basicConfig(
+        filename=log_filename,
+        filemode='w',
+        level=log_level_nr
+    )
+    print("logging level desired (nr):",log_level_nr,
+          " - obtained:",logging.getLevelName(logging.getLogger().level),
+          " - also onto file:",log_filename
+          )
+    logging.debug("test DEBUG message")
+    logging.info("test INFO message")
+    logging.warning("test WARNING message")
+
+def get_args():
+    """
+    Simple command-line arguments extraction system
+    :return:
+    """
+    args = {}
+    for arg in sys.argv:
+        if arg.startswith("--"):
+            k = arg.split('=')[0][2:]
+            v = arg.split('=')[1]
+            args[k] = v
+    return args
+
+def setup_main(dynamic_config={}):
+    # need to make sure that logs/* and mlruns/* are generated
+    # in the correct project root directory, as well as
+    # config files are loaded from model_config/
+    project_root_dir = os.path.abspath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '..'  # parent directory of models/ or common/
+    ))
+    os.chdir(project_root_dir)
+
+    # gets args from command line that end up in the model run's configuration
+    # and overrides the eventual given dynamic_config with the passed arguments
+    # as in --rel_name=activity_date for example
+    args = get_args()
+    for arg, val in args.items():
+        dynamic_config[arg] = val
+        if arg in config.entries_names():
+            # config file entries will be overriden by command-line entries
+            config.set_entry(arg,val)
+
+    try:
+        os.mkdir("logs")
+    except FileExistsError:
+        pass
+
+    setup_logging()
+
+
+def create_set_npa(spec,data):
+    """
+    FIXME: move to some other module?
+    :param spec:
+    :param data:
+    :return:
+    """
+    set_npas = []
+    keys = spec.fields_names
+    for k in keys:  # we need to always have a same ordering of the fields!
+        if len(data[k]) > 0 and type(data[k][0]) is list:
+            floats = list(map(lambda v: list(map(lambda x: float(x), v)), data[k]))
+        else:  # not something that is dummified: simple numerical value field
+            floats = list(map(lambda x: [float(x)], data[k]))
+        field_npa = np.array(floats)
+        set_npas.append(field_npa)
+    if len(set(map(lambda curr: curr.shape[0], set_npas))) > 1:
+        logging.info("keys:" + str(keys))
+        logging.info("set_npas shapes:" + str([curr.shape for curr in set_npas]))
+    set_npa = np.hstack(set_npas)
+    return set_npa
+

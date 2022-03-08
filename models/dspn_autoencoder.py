@@ -251,7 +251,11 @@ class Model(deepset_generic.DeepSetGeneric):
         )
 
     def _make_hungarian_loss_thread_pool(self):
-        self.hungarian_loss_thread_pool = mp.Pool(4)
+        try:
+            self.hungarian_loss_thread_pool = mp.Pool(4)
+        except AssertionError as e:
+            logging.warning("multiprocessing is not allowed within Airflow tasks, returning None instead of mp.Pool")
+            return None
 
     def __getstate__(self):
         """

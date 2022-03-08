@@ -307,22 +307,13 @@ def arrayfy(spec, ti):
     coll_out.delete_many({})  # empty the collection
     coll_out.create_index([("activity_id", -1)])
     for set_index, document in enumerate(coll_in.find()):
-        set_npas = []
         data = document['data']
-        keys = spec.fields_names
-        for k in keys:  # we need to always have a same ordering of the fields!
-            if len(data[k]) > 0 and type(data[k][0]) is list:
-                floats = list(map(lambda v: list(map(lambda x: float(x), v)), data[k]))
-            else:  # not something that is dummified: simple numerical value field
-                floats = list(map(lambda x: [float(x)], data[k]))
-            field_npa = np.array(floats)
-            set_npas.append(field_npa)
-        if len(set(map(lambda curr: curr.shape[0], set_npas))) > 1:
-            logging.info("keys:" + str(keys))
-            logging.info("set_npas shapes:"+str([curr.shape for curr in set_npas]))
-        set_npa = np.hstack(set_npas)
+        set_npa = utils.create_set_npa(spec, data)
         set_npa_serialized = utils.serialize(set_npa)
-        coll_out.insert_one({'set_index': set_index, 'npa': set_npa_serialized})
+        coll_out.insert_one({
+            'set_index': set_index,
+            'npa': set_npa_serialized
+        })
 
 
 def to_npa(spec, ti):

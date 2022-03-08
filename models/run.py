@@ -12,19 +12,6 @@ from common import utils, relspecs, persistency, config, timer
 from models import diagnostics, measurements as ms, models_storage
 
 
-def get_args():
-    """
-    Simple command-line arguments extraction system
-    :return:
-    """
-    args = {}
-    for arg in sys.argv:
-        if arg.startswith("--"):
-            k = arg.split('=')[0][2:]
-            v = arg.split('=')[1]
-            args[k] = v
-    return args
-
 
 class MeasurementsCallback(pl.callbacks.Callback):
     """
@@ -182,22 +169,6 @@ class MeasurementsCallback(pl.callbacks.Callback):
                 pass
 
 
-def setup_logging():
-
-    # setting log lever for stdout
-    logging.basicConfig( level=getattr(logging,config.log_level,logging.INFO) )
-
-    # the logs will also end up in a file
-    log_filename = os.path.join("logs", utils.strnow_compact()+'.log')
-    logging.basicConfig(
-        filename=log_filename,
-        filemode='w',
-        level=getattr(logging,config.log_level,logging.INFO)
-    )
-    #print("logging level",logging.getLevelName(logging.getLogger().level))
-    logging.debug("test DEBUG message")
-    logging.info("test INFO message")
-    logging.warning("test WARNING message")
 
 # FIXME: the run function seems to be a lot of stuff, can
 #   probably fix it with some additional abstraction?
@@ -213,31 +184,8 @@ def run(Model, config_name, dynamic_config={}):
     :return:
     """
 
-    # need to make sure that logs/* and mlruns/* are generated
-    # in the correct project root directory, as well as
-    # config files are loaded from model_config/
-    project_root_dir = os.path.abspath(os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        '..'  # parent directory of models/
-    ))
-    os.chdir(project_root_dir)
+    utils.setup_main(dynamic_config=dynamic_config)
 
-    # gets args from command line that end up in the model run's configuration
-    # and overrides the eventual given dynamic_config with the passed arguments
-    # as in --rel_name=activity_date for example
-    args = get_args()
-    for arg, val in args.items():
-        dynamic_config[arg] = val
-        if arg in config.entries_names():
-            # config file entries will be overriden by command-line entries
-            config.set_entry(arg,val)
-
-    try:
-        os.mkdir("logs")
-    except FileExistsError:
-        pass
-
-    setup_logging()
     model_config = utils.load_model_config(config_name, dynamic_config=dynamic_config)
     logging.debug("model_config: "+str(model_config))
     mlflow.set_experiment(model_config['experiment_name'])
