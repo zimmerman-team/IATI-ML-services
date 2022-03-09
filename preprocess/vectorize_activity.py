@@ -2,6 +2,7 @@ from common import relspecs, utils
 from models import models_storage
 import numpy as np
 import logging
+import torch
 
 
 class ActivityData(utils.Collection):
@@ -29,14 +30,21 @@ class ActivityVectorizer(object):
 
         vectorized_fields = []
         for spec_name, encoded_set in activity_sets.items():
-            encoded_set_npa = np.array(encoded_set)
-            logging.info(f"encoded_set_npa.shape {encoded_set_npa.shape}")
+            if encoded_set is None:
+                # no input  data for this model
+                # FIXME: more object-oriented way to create this?
+                vectorized_field = np.zeros((1,model.kwargs['latent_dim']))
+            else:
+                encoded_set_npa = utils.create_set_npa(relspecs.specs[spec_name],encoded_set)
+                logging.debug(f"encoded_set_npa.shape {encoded_set_npa.shape}")
 
-            # query the model of a set
-            print(f"encoded_set_npa {encoded_set_npa}")
-            vectorized_field = self.model_storage[spec_name].encoder(encoded_set_npa)
+                model = self.model_storage[spec_name]
+                target_set, target_mask = model._make_target(torch.Tensor(encoded_set_npa))
+                vectorized_field_torch = model.encoder(target_set, mask=target_mask)
+                vectorized_field = vectorized_field_torch.detach().numpy()
 
             vectorized_fields.append(vectorized_field)
         vectorized_fields.append(activity_fixed_length_fields_npa)
         ret = np.hstack(vectorized_fields)
+        logging.debug(f"ActivityVectorizer.process ret.shape {ret.shape}")
         return ret

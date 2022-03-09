@@ -366,6 +366,8 @@ def create_set_npa(spec,data):
     """
     set_npas = []
     keys = spec.fields_names
+    if data is None:
+        data = dict(**{k:[] for k in keys}) # FIXME: inefficient to create this for every None?
     for k in keys:  # we need to always have a same ordering of the fields!
         if len(data[k]) > 0 and type(data[k][0]) is list:
             floats = list(map(lambda v: list(map(lambda x: float(x), v)), data[k]))

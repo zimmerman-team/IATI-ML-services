@@ -61,10 +61,9 @@ class ModelsStorage(utils.Collection):
         """
         os.chdir(project_root_dir)
         for rel in relspecs.rels:
-            logging.info(f"loading model for {rel}..")
+            logging.debug(f"loading model for {rel}..")
             model = self.load(rel)
             self[rel.name] = model
-            logging.info(f"loading model for {rel} done.")
 
     def create_write_callback(self, model):
         """

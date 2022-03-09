@@ -28,8 +28,8 @@ def clear(ti):
     :return:
     """
     db = persistency.mongo_db()
-    db['activity_data_encoded'].delete_many({})
-    db['activity_data_encoded'].create_index([("activity_id", -1)])
+    db['activity_encoded_sets'].delete_many({})
+    db['activity_encoded_sets'].create_index([("activity_id", -1)])
     db['activity_vectors'].delete_many({})
     db['activity_vectors'].create_index([("activity_id", -1)])
 
@@ -61,7 +61,12 @@ def collect(ti):
         activity_id = activity_ids_doc['activity_id']
         for rel in rels:
             # get the data from a specific rel
-            encoded_sets[rel.name] = coll_sets[rel.name].find_one({'activity_id': activity_id})
+            doc = coll_sets[rel.name].find_one({'activity_id': activity_id})
+            if doc is not None:
+                encoded_sets[rel.name] = doc['data']
+            else:
+                # eventually this will have to cause the use of an empty set numpy array
+                encoded_sets[rel.name] = None
         new_document = {
             'activity_id': activity_id,
             'encoded_sets': encoded_sets
@@ -83,8 +88,11 @@ def vectorize(ti):
     coll_in_fixed_length_fields = db['activity_encoded']
     coll_out = db['activity_vectors']
     activity_vectorizer = vectorize_activity.ActivityVectorizer(config.model_modulename)
-    for activity_sets in coll_in_sets.find({}):
-        activity_fixed_length_fields = coll_in_fixed_length_fields.find_one({'activity_id':activity_sets['activity_id']})
+    for activity_sets_document in coll_in_sets.find({}):
+        activity_sets = activity_sets_document['encoded_sets']
+        activity_fixed_length_fields = coll_in_fixed_length_fields.find_one({
+            'activity_id':activity_sets_document['activity_id']
+        })
         if activity_fixed_length_fields is None:
             # no fixed-length fields data for this activity. Skip it.
             continue
@@ -94,10 +102,10 @@ def vectorize(ti):
             activity_fixed_length_fields['data']
         )
         activity_vector = activity_vectorizer.process(activity_sets, activity_fixed_length_fields_npa)
-        logging.debug(f"activity_vector {activity_vector}")
+        #logging.debug(f"activity_vector {activity_vector}")
         activity_vector_serialized = utils.serialize(activity_vector)
         new_document = {
-            'activity_id': activity_sets['activity_id'],
+            'activity_id': activity_sets_document['activity_id'],
             'activity_vector': activity_vector_serialized
         }
         coll_out.insert_one(new_document)
