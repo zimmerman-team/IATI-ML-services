@@ -1,5 +1,4 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.utils import timezone
 from airflow.utils.dates import days_ago
@@ -15,7 +14,6 @@ import models
 import models.dspn_autoencoder
 
 from common import relspecs, config
-from models import run
 
 def all_modelnames():
     ret = []
@@ -33,21 +31,6 @@ def in_days(n):
     return today + datetime.timedelta(days=n)
 
 
-def train_model(_rel, config_name, ti):
-    """
-    task function to train a Deep Set Prediction Network
-    on a specific relation.
-    :param _rel:
-    :param ti:
-    :return:
-    """
-    dynamic_config = {'rel_name': _rel.name}
-    run.run(
-        models.dspn_autoencoder.DSPNAE,
-        config_name,
-        dynamic_config=dynamic_config
-    )
-
 project_root_dir = os.path.abspath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     '..'  # parent directory of models/
@@ -62,7 +45,7 @@ default_args = {
 def make_dag(dag_name, config_name, modelname):
     with DAG(
             dag_name,
-            description=f'trains {modelname} models',
+            description=f'trains {modelname} models to be trained on relation sets',
             tags=['train', 'dspn', 'sets', 'models'],
             default_args=default_args,
             schedule_interval=None,
@@ -70,7 +53,10 @@ def make_dag(dag_name, config_name, modelname):
             max_active_runs=1,
             max_active_tasks=config.models_dag_training_tasks_concurrency
     ) as dag:
+
+        # FIXME: clarify the purpos of this variable
         days_interval = config.models_dag_days_interval
+
         for rel_i, rel in enumerate(relspecs.rels):
 
             # this time the tasks are shell commands
@@ -85,16 +71,9 @@ def make_dag(dag_name, config_name, modelname):
                 dag=dag
             )
 
-        # PythonOperator version:
-        # t_train_model = PythonOperator(
-        #    task_id=f"train_dsp_model_{rel.name}",
-        #    python_callable=train_model,
-        #    start_date=in_days((rel_i-1)*days_interval),
-        #    op_kwargs={'rel':rel,'config_name':config_name}
-        # )
     return dag
 
 thismodule = sys.modules[__name__]
 for modelname in all_modelnames():
-    train_models_dag = make_dag('train_models_dag_'+modelname,config.models_dag_config_name, modelname)
+    train_models_dag = make_dag(f"train_models_dag_{modelname}",config.models_dag_config_name, modelname)
     setattr(thismodule, "train_models_dag_"+modelname, train_models_dag)
