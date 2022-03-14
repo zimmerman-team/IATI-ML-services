@@ -30,15 +30,14 @@ class ActivityVectorizer(object):
 
         vectorized_fields = []
         for spec_name, encoded_set in activity_sets.items():
+            model = self.model_storage[spec_name]
             if encoded_set is None:
                 # no input  data for this model
-                # FIXME: more object-oriented way to create this?
-                vectorized_field = np.zeros((1,model.kwargs['latent_dim']))
+                vectorized_field = model.default_z_npa_for_missing_inputs
             else:
                 encoded_set_npa = utils.create_set_npa(relspecs.specs[spec_name],encoded_set)
                 logging.debug(f"encoded_set_npa.shape {encoded_set_npa.shape}")
 
-                model = self.model_storage[spec_name]
                 target_set, target_mask = model._make_target(torch.Tensor(encoded_set_npa))
                 vectorized_field_torch = model.encoder(target_set, mask=target_mask)
                 vectorized_field = vectorized_field_torch.detach().numpy()
