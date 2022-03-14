@@ -17,7 +17,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
     """
     A pytorch_lightning model will use this callback to extract measurements.
     """
-    rel = None
+    spec = None
     collected = {}
     _train_epoch_timer = timer.Timer()
     # FIXME: this is for the refactoring: measurements = make_measurements()
@@ -28,7 +28,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
         :param args:
         :param kwargs:
         """
-        self.rel = kwargs.pop('rel')
+        self.spec = kwargs.pop('spec')
         self.model = kwargs.pop('model')
         super().__init__(*args, **kwargs)
         self.measurements = self.model.make_measurements()
@@ -155,14 +155,14 @@ class MeasurementsCallback(pl.callbacks.Callback):
                         m.name,
                         stacked_npa,
                         which_tset.value,
-                        rel=self.rel,
+                        spec=self.spec,
                         type_=m.plot_type
                     )
                     diagnostics.log_barplots_artifact(
                         m.name,
                         stacked_npa[[-1], :],  # consider only last epoch
                         which_tset.value,
-                        rel=self.rel,
+                        spec=self.spec,
                         type_=m.plot_type
                     )
             else: # FIXME: refactor those ifs, there has to be a better way
@@ -190,16 +190,16 @@ def run(Model, config_name, dynamic_config={}):
     logging.debug("model_config: "+str(model_config))
     mlflow.set_experiment(model_config['experiment_name'])
     mlflow.pytorch.autolog()
-    run_name = f"{model_config['config_name']}_{model_config['rel_name']}"
+    run_name = f"{model_config['config_name']}_{model_config['spec_name']}"
     with mlflow.start_run(run_name=run_name):
         mlflow.log_params(model_config)
         logging.debug(f"__file__ {__file__}")
         mlflow.log_artifact(__file__)
         mlflow.log_artifact(model_config['config_filename'])
-        rel = relspecs.rels[model_config['rel_name']]
+        spec = relspecs.specs[model_config['spec_name']]
 
         tsets = persistency.load_tsets(
-            rel,
+            spec,
             with_set_index=Model.with_set_index,
             cap=model_config['cap_dataset']
         )
@@ -214,7 +214,7 @@ def run(Model, config_name, dynamic_config={}):
         # load it to the specified device, either gpu or cpu
         model = Model(
             input_shape=tsets.item_dim,
-            rel=rel,
+            spec=spec,
             item_dim=tsets.item_dim,
             **model_config
         ).to(device)
@@ -225,7 +225,7 @@ def run(Model, config_name, dynamic_config={}):
         test_loader = model.make_test_loader(tsets)
         model_write_callback = model.storage.create_write_callback(model)
         callbacks = [
-            MeasurementsCallback(rel=rel, model=model),
+            MeasurementsCallback(spec=spec, model=model),
             model_write_callback
         ]
         if config.tame_tqdm:
