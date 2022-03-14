@@ -85,23 +85,23 @@ def vectorize(ti):
     """
     db = persistency.mongo_db()
     coll_in_sets = db['activity_encoded_sets']
-    coll_in_fixed_length_fields = db['activity_encoded']
+    coll_in_activity_without_rels = db['activity_encoded']
     coll_out = db['activity_vectors']
     activity_vectorizer = vectorize_activity.ActivityVectorizer(config.model_modulename)
     for activity_sets_document in coll_in_sets.find({}):
         activity_sets = activity_sets_document['encoded_sets']
-        activity_fixed_length_fields = coll_in_fixed_length_fields.find_one({
+        activity_without_rels_fields = coll_in_activity_without_rels.find_one({
             'activity_id':activity_sets_document['activity_id']
         })
-        if activity_fixed_length_fields is None:
+        if activity_without_rels_fields is None:
             # no fixed-length fields data for this activity. Skip it.
             continue
 
-        activity_fixed_length_fields_npa = utils.create_set_npa(
-            relspecs.activity,
-            activity_fixed_length_fields['data']
+        activity_without_rels_fields_npa = utils.create_set_npa(
+            relspecs.activity_without_rels,
+            activity_without_rels_fields['data']
         )
-        activity_vector = activity_vectorizer.process(activity_sets, activity_fixed_length_fields_npa)
+        activity_vector = activity_vectorizer.process(activity_sets, activity_without_rels_fields_npa)
         #logging.debug(f"activity_vector {activity_vector}")
         activity_vector_serialized = utils.serialize(activity_vector)
         new_document = {
