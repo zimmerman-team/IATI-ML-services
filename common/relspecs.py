@@ -124,7 +124,7 @@ rels = SpecsCollection([
 """
 the specification for an activity excluding relation fields is in the `activity` public module variable
 """
-activity = Activity("activity",[
+activity_without_rels = Activity("activity_without_rels",[
     TextField("iati_identifier"),
     CategoryField("default_lang","Language"),
     CategoryField("default_currency","Currency"),
@@ -137,7 +137,30 @@ activity = Activity("activity",[
     CategoryField("default_tied_status_code","TiedStatus")
 ], download=True)
 
+def latent_rels(latent_dim):
+    """
+    fields that represent all the compressed representations of all rels.
+    This has to be a function instead of just a static list because the
+    creation is parammeterized by the latent dimensionality of the
+    compressed latent-codes for the sets.
+    :param latent_dim:
+    :return:
+    """
+    fields = [
+        LatentField(rel.name,latent_dim)
+        for rel
+        in rels
+    ]
+    ret = Spec(fields)
+    return ret
+
+def activity_with_rels(latent_dim):
+    latent_rels_spec = latent_rels(latent_dim)
+    fields = activity_without_rels.fields + latent_rels_spec.fields
+    ret = Activity("activity_with_rels", fields)
+    return ret
+
 """
-`spec` is a public list containing relation field specification and activity (excluding relation fields) specification
+`specs is a public list containing relation field specification and activity (excluding relation fields) specification
 """
-specs = rels + [activity]
+specs = rels + [activity_without_rels]
