@@ -9,19 +9,18 @@ import hiddenlayer
 from common import utils
 
 
-def barplots(npa, rel=None, type_=None):  # FIXME duplicated code
+def barplots(npa,spec=None, type_=None):  # FIXME duplicated code
     """
-    For each field of the relation it generates a barplot
-    with the data of that field found in the glued-together
-    numpy array.
+    For each field generates a barplot with the data of that field
+    found in the glued-together numpy array.
     The result is a figure in which many plots are shown
     and they have a common y-axis scale.
-    :param npa: the glued-together numpy array of relation data
-    :param rel: the relation
+    :param npa: the glued-together numpy array of the dataset
+    :param spec: specification of the data
     :param type_: the type of plot. Can be: `fields` if the `npa`
         data array represents glued-together fields with per-feature
         information ; `losses` in which provided data is supposed to
-        have as many columns as the number of fields in the relation
+        have as many columns as the number of fields in the data
         (hence it's not per-feature information, but some sort of aggregation) ;
         `latent` is not going to split the numpy array
         # FIXME NAMINGS!! : losses is not a generic enough name, as well as latent,
@@ -30,8 +29,8 @@ def barplots(npa, rel=None, type_=None):  # FIXME duplicated code
     """
     seaborn.set(rc={'figure.figsize': (27, 9)})
     if type_ == 'fields':
-        assert rel is not None
-        sections = rel.divide(npa)
+        assert spec is not None
+        sections = spec.divide(npa)
     elif type_ == 'losses':
         sections = np.hsplit(npa, npa.shape[1])
     elif type_ == 'latent':
@@ -61,18 +60,18 @@ def barplots(npa, rel=None, type_=None):  # FIXME duplicated code
             color='lightblue'
         )
         ax.set_ylim(vmin*1.05, vmax*1.05)
-        axs[section_i].set(xlabel=rel.fields[section_i].name)
+        axs[section_i].set(xlabel=spec.fields[section_i].name)
 
     # fig.colorbar(axs[len(sections)-1].collections[0], cax=axs[len(sections)])
     return fig
 
 
-def heatmaps(npa, rel=None, type_=None):
+def heatmaps(npa, spec=None, type_=None):
     # FIXME: a lot of duplication from `barplots`
     seaborn.set(rc={'figure.figsize': (27, 9)})
     if type_ == 'fields':
-        assert rel is not None
-        sections = rel.divide(npa)
+        assert spec is not None
+        sections = spec.divide(npa)
     elif type_ == 'losses':
         sections = np.hsplit(npa, npa.shape[1])
     elif type_ == 'latent':
@@ -100,7 +99,7 @@ def heatmaps(npa, rel=None, type_=None):
             vmin=vmin,
             vmax=vmax
         )
-        axs[section_i].set(xlabel=rel.fields[section_i].name)
+        axs[section_i].set(xlabel=spec.fields[section_i].name)
 
     fig.colorbar(axs[len(sections)-1].collections[0], cax=axs[len(sections)])
     return fig
@@ -154,35 +153,35 @@ def correlation_heatmap(corr, corr_metric, mask, epoch_nr):
     return fig
 
 
-def log_heatmaps_artifact(name, npa, which_tset, rel=None, type_=None):
+def log_heatmaps_artifact(name, npa, which_tset, spec=None, type_=None):
     """
     Plots a heatmap and logs it as a mlflow artifact
     :param name: name of the plot
     :param npa: numpy array of data
     :param which_tset: is this the training set or the validation/test set?
-    :param rel: the relation the data data is about
+    :param spec: specifications of the data
     :param type_: type of plotting # FIXME: expand
     :return:
     """
     print(f"log_heatmaps_artifact name:{name} npa.shape="+str(npa.shape))
-    fig = heatmaps(npa, rel=rel, type_=type_)
+    fig = heatmaps(npa, spec=spec, type_=type_)
     filename = tempfile.mktemp(prefix=f"heatmaps_{name}_{type_}_{which_tset}", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
     return filename
 
 
-def log_barplots_artifact(name, npa, which_tset, rel=None, type_=None):
+def log_barplots_artifact(name, npa, which_tset, spec=None, type_=None):
     """
     Makes a barplots plot and logs it as a mlflow artifact
     :param name: name of the barplots
     :param npa: numpy array of data
     :param which_tset: is this the training set or the validation/test set?
-    :param rel: the relation this data is about
+    :param spec: specifications of the data
     :param type_: type of plotting # FIXME: expand
     :return: the plotted image filename
     """
-    fig = barplots(npa, rel=rel, type_=type_)
+    fig = barplots(npa, spec=spec, type_=type_)
     filename = tempfile.mktemp(prefix=f"barplots_{name}_{type_}_{which_tset}", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
