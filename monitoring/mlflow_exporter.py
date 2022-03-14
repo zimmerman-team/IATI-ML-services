@@ -19,7 +19,9 @@ EWMA_ALPHA = 0.001 # weight of current metric observation vs (1-alpha)*previous_
 
 # following: the metrics that need an EWMA
 EWMA_FIELDS = ['train_loss','val_loss']
-ewma_info = OrderedDict( ) # indexed by run_id containing OrderedDicts of ewma fields
+
+# indexed by run_id containing OrderedDicts of ewma fields
+ewma_info = OrderedDict( )
 
 def process_ewma(run_id, run_metrics):
     """
@@ -27,22 +29,28 @@ def process_ewma(run_id, run_metrics):
     :param run_metrics:
     :return: the ewma prometheus metrics to be exposed
     """
-    # FIXME: code smells bad
     ret = OrderedDict()
+
+    # create structure skeleton if dicts' keys are missing
     if run_id not in ewma_info:
         ewma_info[run_id] = OrderedDict()
         for metric_name in EWMA_FIELDS:
             if metric_name not in ewma_info[run_id]:
                 ewma_info[run_id][metric_name] = None
 
+    # do the EWMA calculation
     for metric_name, metric_stuff in run_metrics.items():
         metric_value = metric_stuff['value']
         if metric_name in ewma_info[run_id]:
             if ewma_info[run_id][metric_name] is None:
                 # EWMA needs to start from a value
                 ewma_info[run_id][metric_name] = float(metric_value)
-            ewma_info[run_id][metric_name] = EWMA_ALPHA * float(metric_value) + (1.0-EWMA_ALPHA) * ewma_info[run_id][metric_name]
+            ewma_info[run_id][metric_name] = \
+                EWMA_ALPHA * float(metric_value) \
+                + (1.0-EWMA_ALPHA) * ewma_info[run_id][metric_name]
             ret[metric_name+"_ewma"] = ewma_info[run_id][metric_name]
+
+    # only contains *_ewma fields
     return ret
 
 def log(*args):
