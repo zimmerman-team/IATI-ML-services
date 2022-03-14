@@ -4,6 +4,7 @@ import os
 import sys
 import logging
 import inspect
+import numpy as np
 
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
@@ -21,7 +22,7 @@ class AEModule(torch.nn.Module):
         self.kwargs = kwargs
         self.activation_function = getattr(torch.nn, self.kwargs["activation_function"])
         # FIXME: maybe this requires multiple inheritance
-        self.rel = kwargs.get('rel', None)
+        self.spec = kwargs.get('spec', None)
         super().__init__()
 
     def activate(self, x):
@@ -106,7 +107,7 @@ class Decoder(AEModule):
                     )
                 )
                 for field
-                in self.rel.fields
+                in self.spec.fields
             ]
         else:
             self.output_layers = [
@@ -139,7 +140,7 @@ class Decoder(AEModule):
         return reconstructed
 
     def _glue(self, tensor_list):
-        return self.rel.glue(tensor_list)
+        return self.spec.glue(tensor_list)
 
 
 class GenericModel(pl.LightningModule):
@@ -177,12 +178,6 @@ class GenericModel(pl.LightningModule):
         """
         return self.__class__.__name__
 
-
-
-    # @classmethod FIXME DELME
-    # def name(cls,rel):
-    #    return f"{cls.__name__}_{rel.name}"
-
     @property
     def name(self):
         """
@@ -191,9 +186,9 @@ class GenericModel(pl.LightningModule):
         :return:
         """
 
-        # double underscores are useful to distinguish the modulename part from the rel.name part
+        # double underscores are useful to distinguish the modulename part from the spec.name part
         # as those strings can themselves contain single underscores
-        ret = f"{self.modulename}__{self.rel.name}"
+        ret = f"{self.modulename}__{self.spec.name}"
         if 'model_name_suffix' in self.kwargs:
             ret += f"_{self.kwargs['model_name_suffix']}"
         return ret
@@ -220,10 +215,10 @@ class GenericModel(pl.LightningModule):
         the construction parameters will be stored in the 'kwargs'
         instance variable for easy retrieval.
         The model is also built on a specific relation data source
-        ('rel' parameter)
+        ('spec' parameter)
         :param kwargs:
         """
-        self.rel = kwargs.get('rel', None)
+        self.spec = kwargs.get('spec', None)
         self.kwargs = kwargs # model config (hyper)parameters typically end up here
         logging.debug("generic_model kwargs: "+str(kwargs))
 
@@ -254,7 +249,7 @@ class GenericModel(pl.LightningModule):
         """
         if self.kwargs['divide_output_layer']:
             # actually do the division
-            ret = self.rel.divide(tensor)
+            ret = self.spec.divide(tensor)
         else:
             # the "divided" output will just be a list with a single un-divided tensor
             ret = [tensor]
@@ -307,3 +302,13 @@ class GenericModel(pl.LightningModule):
             self._timer.reset()
         return self._step(batch, batch_idx, 'val')
 
+    @property
+    def default_z_npa_for_missing_inputs(self):
+        """
+        This is the fallback value that z is assumed to have if the network is not queried, as,
+        for example the input is an empty set.
+        :return: the default fallback value for z
+        """
+        # FIXME: batch size?
+        ret = np.zeros((1, self.kwargs['latent_dim']))
+        return ret
