@@ -309,6 +309,7 @@ def arrayfy(spec, ti):
         data = document['data']
         set_npa = utils.create_set_npa(spec, data)
         set_npa_serialized = utils.serialize(set_npa)
+        # FIXME: rename `set_index` with something more generic to account for simple datapoint indexes
         coll_out.insert_one({
             'set_index': set_index,
             'npa': set_npa_serialized
@@ -336,9 +337,13 @@ def to_npa(spec, ti):
 
     for document in cursor:
         set_npa = utils.deserialize(document['npa'])
+
+        # put the set index as first column in the numpy array
         set_index = document['set_index']
         set_index_col = np.ones((set_npa.shape[0], 1))*set_index
+
         spec_npas.append(np.hstack([set_index_col, set_npa]))
+
     spec_npa = np.vstack(spec_npas)
     coll_out.delete_many({'spec': spec.name})
 
@@ -383,6 +388,8 @@ def to_tsets(spec, ti):
 
         # NOTE: there will be a set_index even for relspecs.Activity
         #       data, even if they are not sets!
+        #       This set_index is actually just a progressive datapoint index within
+        #       its mongodb collection
         npa = np.hstack([set_index_col, set_npa])
 
         if set_index in train_indices:
