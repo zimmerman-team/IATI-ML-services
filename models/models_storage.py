@@ -54,6 +54,13 @@ class ModelsStorage(utils.Collection):
         self.model_module = getattr(models, self.model_modulename)
         os.chdir(project_root_dir)
 
+    def get_rel_latent_dim(self):
+        # FIXME: hacky?
+        # Also: @property does not work in utils.Collection. FIXME?
+        first_rel_name, first_model = next(iter(self.items()))
+        ret = first_model.kwargs['latent_dim']
+        return ret
+
     def load_all_models(self):
         """
         loads the trained models for all the relations

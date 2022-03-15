@@ -26,6 +26,10 @@ class ActivityVectorizer(object):
         # too costly to load them for every activity
         self.model_storage.load_all_models()
 
+    @property
+    def rel_latent_dim(self):
+        return self.model_storage.get_rel_latent_dim()
+
     def process(self, activity_sets, activity_fixed_length_fields_npa):
 
         vectorized_fields = []

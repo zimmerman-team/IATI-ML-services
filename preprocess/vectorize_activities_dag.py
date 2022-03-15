@@ -3,6 +3,7 @@ import sys
 import os
 import collections
 import logging
+import sklearn
 
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
@@ -10,7 +11,7 @@ path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 
 from common import relspecs, persistency, utils, config
-from preprocess import vectorize_activity
+from preprocess import vectorize_activity, download_sets_dag
 
 default_args = {
     'retries': 2,
@@ -19,6 +20,8 @@ default_args = {
 }
 
 rels = relspecs.rels.downloadable
+
+activity_vectorizer = vectorize_activity.ActivityVectorizer(config.model_modulename)
 
 
 def clear(ti):
@@ -83,12 +86,12 @@ def vectorize(ti):
     :param ti:
     :return:
     """
+    global activity_vectorizer
     db = persistency.mongo_db()
     coll_in_sets = db['activity_encoded_sets']
     coll_in_activity_without_rels = db['activity_encoded']
-    coll_out = db['activity_vectors']
-    activity_vectorizer = vectorize_activity.ActivityVectorizer(config.model_modulename)
-    for activity_sets_document in coll_in_sets.find({}):
+    coll_out = db['activity_with_rels_arrayfied']
+    for datapoint_index, activity_sets_document in enumerate(coll_in_sets.find({})):
         activity_sets = activity_sets_document['encoded_sets']
         activity_without_rels_fields = coll_in_activity_without_rels.find_one({
             'activity_id':activity_sets_document['activity_id']
@@ -106,9 +109,11 @@ def vectorize(ti):
         activity_vector_serialized = utils.serialize(activity_vector)
         new_document = {
             'activity_id': activity_sets_document['activity_id'],
-            'activity_vector': activity_vector_serialized
+            'npa': activity_vector_serialized,
+            'set_index': datapoint_index #FIXME: rename this backward-compatibility `set_index`
         }
         coll_out.insert_one(new_document)
+
 
 def setup_dag():
     # putting airflow imports inside this function
@@ -116,6 +121,9 @@ def setup_dag():
     from airflow import DAG
     from airflow.operators.python import PythonOperator
     from airflow.utils.dates import days_ago
+
+    global activity_vectorizer
+
     with DAG(
             'vectorize_activies',
             description='Vectorize activities',
@@ -139,10 +147,20 @@ def setup_dag():
         t_vectorize = PythonOperator(
             task_id="vectorize",
             python_callable=vectorize,
-            start_date=days_ago(2)
+            start_date=days_ago(2),
+            pool="npas_intensive",
+            pool_slots=1
         )
 
-        t_clear >> t_collect >> t_vectorize
+        t_to_tsets = PythonOperator(
+            task_id="to_tsets",
+            python_callable=download_sets_dag.to_tsets, # FIXME: move to_tsets to something more common?
+            start_date=days_ago(2),
+            op_kwargs={'spec': relspecs.activity_with_rels(activity_vectorizer.rel_latent_dim) },
+            pool="npas_intensive",
+            pool_slots=1
+        )
+        t_clear >> t_collect >> t_vectorize >> t_to_tsets
 
     thismodule = sys.modules[__name__]
     setattr(thismodule, "dag", dag)
