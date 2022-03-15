@@ -15,7 +15,7 @@ import dspn
 import dspn.model
 import dspn.dspn
 import dspn.utils
-from common import utils, config, chunking_dataset
+from common import utils, config, chunking_dataset, relspecs
 
 def my_hungarian_loss(predictions, targets, thread_pool=None):
     # predictions and targets shape :: (n, c, s)
@@ -181,6 +181,7 @@ class Model(deepset_generic.DeepSetGeneric):
     """
 
     losses = []
+
 
     def make_measurements(self):
         """

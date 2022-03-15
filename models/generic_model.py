@@ -151,6 +151,16 @@ class GenericModel(pl.LightningModule):
     with_set_index = None  # please set in subclass
     _timer = timer.Timer()
 
+    @classmethod
+    def get_spec_from_model_config(cls, model_config):
+        """
+        this class method is called because according to the type of model
+        it will require different kind of data.
+        :param model_config:
+        :return:
+        """
+        raise Exception("classmethod `get_spec_from_model_config` needs to be implemented in subclass")
+
     @property
     def source_filename(self):
         try:
