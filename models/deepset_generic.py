@@ -3,7 +3,7 @@ import logging
 import math
 
 from models import generic_model
-from common import chunking_dataset, config
+from common import chunking_dataset, config, relspecs
 
 class DeepSetGeneric(generic_model.GenericModel):
     with_set_index = True
@@ -35,6 +35,11 @@ class DeepSetGeneric(generic_model.GenericModel):
             ret = torch.tensor(set_data)
             logging.debug(f"CollateFn.__call__ ret.shape {ret.shape}")
             return ret
+
+    @classmethod
+    def get_spec_from_model_config(cls, model_config):
+        spec = relspecs.specs[model_config['spec_name']]
+        return spec
 
     def make_train_loader(self, tsets):
         """

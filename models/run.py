@@ -196,7 +196,10 @@ def run(Model, config_name, dynamic_config={}):
         logging.debug(f"__file__ {__file__}")
         mlflow.log_artifact(__file__)
         mlflow.log_artifact(model_config['config_filename'])
-        spec = relspecs.specs[model_config['spec_name']]
+
+        # the following class method is called because according to the type of model
+        # it will require different kind of data.
+        spec = Model.get_spec_from_model_config(model_config)
 
         tsets = persistency.load_tsets(
             spec,
