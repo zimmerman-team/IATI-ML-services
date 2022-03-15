@@ -137,7 +137,7 @@ activity_without_rels = Activity("activity_without_rels",[
     CategoryField("default_tied_status_code","TiedStatus")
 ], download=True)
 
-def latent_rels(latent_dim):
+def _latent_rels(latent_dim):
     """
     fields that represent all the compressed representations of all rels.
     This has to be a function instead of just a static list because the
@@ -151,11 +151,11 @@ def latent_rels(latent_dim):
         for rel
         in rels
     ]
-    ret = Spec(fields)
+    ret = Spec('latent_rels',fields)
     return ret
 
 def activity_with_rels(latent_dim):
-    latent_rels_spec = latent_rels(latent_dim)
+    latent_rels_spec = _latent_rels(latent_dim)
     fields = activity_without_rels.fields + latent_rels_spec.fields
     ret = Activity("activity_with_rels", fields)
     return ret
