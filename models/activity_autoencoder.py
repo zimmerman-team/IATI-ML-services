@@ -6,8 +6,8 @@ import numpy as np
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
-from models import measurements as ms, generic_model
-
+from models import measurements as ms, generic_model, run
+from common import relspecs
 
 # FIXME: maybe make ActivityAutoencoder and ItemAE inherit from the same parent class?
 class Model(generic_model.GenericModel):
@@ -16,6 +16,12 @@ class Model(generic_model.GenericModel):
     from encoded fields, including relation fields.
     """
     with_set_index = False
+
+    @classmethod
+    def get_spec_from_model_config(cls, model_config):
+        # FIXME: maybe should infer set_latent_code_dim from the data stored in the mongodb?
+        set_latent_code_dim = model_config['set_latent_code_dim']
+        return relspecs.activity_with_rels(set_latent_code_dim)
 
     def make_train_loader(self, tsets):
         """
@@ -188,3 +194,16 @@ class Model(generic_model.GenericModel):
         self.diff_reduced = np.mean(np.abs(self.diff), axis=0)
 
         return loss
+
+def main():
+    """
+    The default behavior for launching this script directly
+    is the training of an Activity AutoEncoder
+    :return:
+    """
+    config_name = sys.argv[1]
+    run.run(Model, config_name)
+
+
+if __name__ == "__main__":
+    main()
