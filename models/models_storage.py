@@ -113,7 +113,7 @@ class ModelsStorage(utils.Collection):
 
         # using tha version from the last model filename
         # as it is saved before the kwargs dump
-        version = self.last_version(model.rel)
+        version = self.last_version(model.spec)
         if version is None:
             version = "UNKNOWN_VERSION"
 
