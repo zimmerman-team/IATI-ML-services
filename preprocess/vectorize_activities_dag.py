@@ -80,7 +80,7 @@ def collect(ti):
 def vectorize(ti):
     """
     takes all relation sets belonging to an activity and generates
-    their latent code using the respective previously-trained Set AutoEncoder models
+    their latent code using the respective previously-trained Deep Set AutoEncoder models
     (this aspect is actually implemented in ActivityVectorizer).
     Also, these codes are being stored in an ad-hoc collection.
     :param ti:
@@ -102,7 +102,7 @@ def vectorize(ti):
 
         activity_without_rels_fields_npa = utils.create_set_npa(
             relspecs.activity_without_rels,
-            activity_without_rels_fields['data']
+            activity_without_rels_fields['data'] # FIXME: rename in 'npa' as my convention?
         )
         activity_vector = activity_vectorizer.process(activity_sets, activity_without_rels_fields_npa)
         #logging.debug(f"activity_vector {activity_vector}")

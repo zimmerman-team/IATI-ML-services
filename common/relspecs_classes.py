@@ -110,6 +110,17 @@ class Spec(object):
             ret[0] = ret[0].astype(np.int32)
         return ret
 
+    def glue(self, tensor_list):
+        # FIXME: not sure if this implementation is correct
+        # also, there is a _glue in GenericModel. What's the deal with that?
+        if type(tensor_list[0]) is np.ndarray:
+            # use numpy
+            ret = np.hstack(tensor_list)
+        else:
+            # pytorch
+            ret = torch.hstack(tensor_list)
+        return ret
+
     @property
     def extract_field_regex(self):
         """
@@ -270,7 +281,7 @@ class AbstractField(abc.ABC):
             self,
             name,
             output_activation_function=None,
-            loss_function=None
+            loss_function=(lambda : None)
     ):
         self.name = name
         self._output_activation_function = output_activation_function

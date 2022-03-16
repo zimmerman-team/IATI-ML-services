@@ -1,6 +1,7 @@
 experiment_name: activity_autoencoder_first
 layers_width: 100
 latent_dim: 20
+sets_latent_dim: 4
 activation_function: "ELU"
 depth: 3
 weight_decay: 1.0e-6

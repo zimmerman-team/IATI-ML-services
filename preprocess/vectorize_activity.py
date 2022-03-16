@@ -33,6 +33,10 @@ class ActivityVectorizer(object):
     def process(self, activity_sets, activity_fixed_length_fields_npa):
 
         vectorized_fields = []
+
+        # the fixed-length "normal" fields come first
+        vectorized_fields.append(activity_fixed_length_fields_npa)
+
         for spec_name, encoded_set in activity_sets.items():
             model = self.model_storage[spec_name]
             if encoded_set is None:
@@ -40,14 +44,13 @@ class ActivityVectorizer(object):
                 vectorized_field = model.default_z_npa_for_missing_inputs
             else:
                 encoded_set_npa = utils.create_set_npa(relspecs.specs[spec_name],encoded_set)
-                logging.debug(f"encoded_set_npa.shape {encoded_set_npa.shape}")
 
                 target_set, target_mask = model._make_target(torch.Tensor(encoded_set_npa))
                 vectorized_field_torch = model.encoder(target_set, mask=target_mask)
                 vectorized_field = vectorized_field_torch.detach().numpy()
+                #logging.warning(f"encoded_set_npa.shape for {spec_name} : {encoded_set_npa.shape} - vectorized_field.shape {vectorized_field.shape}")
 
             vectorized_fields.append(vectorized_field)
-        vectorized_fields.append(activity_fixed_length_fields_npa)
         ret = np.hstack(vectorized_fields)
         logging.debug(f"ActivityVectorizer.process ret.shape {ret.shape}")
         return ret

@@ -19,9 +19,9 @@ class Model(generic_model.GenericModel):
 
     @classmethod
     def get_spec_from_model_config(cls, model_config):
-        # FIXME: maybe should infer set_latent_code_dim from the data stored in the mongodb?
-        set_latent_code_dim = model_config['set_latent_code_dim']
-        return relspecs.activity_with_rels(set_latent_code_dim)
+        # FIXME: maybe should infer sets_latent_dim from the data stored in the mongodb?
+        sets_latent_dim = model_config['sets_latent_dim']
+        return relspecs.activity_with_rels(sets_latent_dim)
 
     def make_train_loader(self, tsets):
         """
@@ -105,9 +105,6 @@ class Model(generic_model.GenericModel):
         """
         super().__init__(**kwargs)
 
-        # list of relspecs.*Field objects
-        self.fields = kwargs['fields']
-
         self.encoder = generic_model.Encoder(**kwargs)
         self.decoder = generic_model.Decoder(**kwargs)
 
@@ -120,8 +117,8 @@ class Model(generic_model.GenericModel):
         :param features: input data
         :return: the reconstructed input data
         """
-        self.code = self.encoder.forward(features)
-        self.reconstructed = self.decoder.forward(self.code)
+        self.code = self.encoder(features)
+        self.reconstructed = self.decoder(self.code)
         return self.reconstructed
 
     def _loss(self, batch, x_hats, z):
@@ -141,7 +138,7 @@ class Model(generic_model.GenericModel):
                 self.decoder.output_layers,
                 x_hats,
                 batch_divided,
-                self.fields
+                self.spec.fields
         ):
             loss_fn = field.loss_function() \
                       or torch.nn.functional.mse_loss
@@ -149,6 +146,9 @@ class Model(generic_model.GenericModel):
             print("curr_x_hat",curr_x_hat.shape,curr_x_hat)
             print("batch_div",batch_div.shape,batch_div)
             print("loss_fn",loss_fn)
+            print("stuff",curr_x_hat,batch_div)
+            print("types",type(curr_x_hat),type(batch_div))
+            print("sizes",curr_x_hat.size,batch_div.size)
             """
             curr_loss = loss_fn(curr_x_hat, batch_div)
             guess_correct.append(field.guess_correct(curr_x_hat.detach().numpy(), batch_div.detach().numpy()))
