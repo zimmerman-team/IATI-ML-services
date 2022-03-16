@@ -190,7 +190,7 @@ class Model(generic_model.GenericModel):
         # that will ultimately lead to logged metrics on mlflow
         self.diff = diff.detach().numpy()
         self.x_hat = x_hat_glued.detach().numpy()
-        self.z = z.detach().numpy()
+        self.z = z.detach().float().numpy()
         self.diff_reduced = np.mean(np.abs(self.diff), axis=0)
 
         return loss

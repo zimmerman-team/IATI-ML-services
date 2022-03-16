@@ -548,14 +548,17 @@ class LatentField(AbstractField):
         sign_x_hat = np.sign(x_hat)
         same_sign = sign_x * sign_x_hat
         ratio = same_sign * (np.abs(x_hat) / ( np.abs(x) + 1e-5 ))
-        discrepancies = np.abs(1.0 - ratio)
+        per_feature_discrepancies = np.abs(1.0 - ratio)
+
+        # mantain rows, collapse columns
+        discrepancies = np.mean(per_feature_discrepancies,axis=1)
 
         # 10% discrepancy is used for identifying a correct vs a
         correct_ones = (discrepancies < 0.1)
 
         # fraction of correct guesses is calculated by the sum of correct divided by
         # the total cardinality of the input tensor
-        ret = np.sum(float(correct_ones))/float(len(correct_ones))
+        ret = np.sum(correct_ones/float(len(correct_ones)))
 
         return ret
 
