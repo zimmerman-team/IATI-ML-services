@@ -125,7 +125,7 @@ def setup_dag():
     global activity_vectorizer
 
     with DAG(
-            'vectorize_activies',
+            'vectorize_activities',
             description='Vectorize activities',
             tags=['vectorize', 'preprocess', 'activities'],
             default_args=default_args,

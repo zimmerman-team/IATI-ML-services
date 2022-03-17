@@ -8,7 +8,7 @@ from common import utils
 
 # FIXME: rename module in dataset_persistency ?
 
-@functools.cache
+#@functools.cache
 def mongo_db():
     """
     returns a connection to the mongodb.
