@@ -126,8 +126,8 @@ def set_np_printoptions():
     )
 
 
-def inspect_tset(tset):
-    print(tset[0:2])
+def inspect_split(split):
+    print(split[0:2])
 
 
 def dump_npa(npa, prefix="", suffix=""):

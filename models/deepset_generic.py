@@ -50,7 +50,7 @@ class DeepSetGeneric(generic_model.GenericModel):
         being mixed-up.
         Instead, the input "datapoints" are just information about
         intervals of datapoints that belong to the same index.
-        This information is returned by `tset.set_intervals(..)`
+        This information is returned by `split.set_intervals(..)`
         Expanding on this: each input datapoint contains a start-item-index
         and an end-item-index of items in the actual original dataset (which
         is splits.train_scaled, or splits.test_scaled in make_test_loader(..)).

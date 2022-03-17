@@ -32,7 +32,7 @@ class MeasurementsCollection(utils.Collection):
     stored in a LightningModel, as well as to trigger aggregation operations
     within the Collected Measurements.
     """
-    def collect(self, lm, which_tset, of_type):
+    def collect(self, lm, which_split, of_type):
         # measurements that have been utilized in the aggregations
         utilized = set()
         if type(of_type) not in (tuple, list):
@@ -44,13 +44,13 @@ class MeasurementsCollection(utils.Collection):
                 log(f"processing {curr} - its src is {src}")
                 if len(src) == 0:
                     log(f"look for data origin for {curr.name} in the Lightning Model")
-                    curr.add_from_lm(lm, which_tset)
+                    curr.add_from_lm(lm, which_split)
                 else:
                     for name, aggregation_fn in src.items():
                         # aggregate the specified source measurements
                         log(f"aggregating {name}->{curr.name} with {aggregation_fn}..")
-                        tmp = self[name].aggregate(which_tset, aggregation_fn)
-                        curr.add(tmp, which_tset)
+                        tmp = self[name].aggregate(which_split, aggregation_fn)
+                        curr.add(tmp, which_split)
                         utilized.add(self[name])
 
         # empty all the measurements that have been utilized in this moment
@@ -59,7 +59,7 @@ class MeasurementsCollection(utils.Collection):
         # possible FIXME: an event-based system?
         log(f"now clearing {utilized}")
         for curr in utilized:
-            curr.clear(which_tset)
+            curr.clear(which_split)
 
     def all_of_type(self, of_type):
         """
@@ -168,22 +168,22 @@ class Measurement(object):
         for which_split in splits.splits_names:
             self.clear(which_split.value)
 
-    def clear(self, which_tset):
+    def clear(self, which_split):
         """
         Some measures needs to be cleared, for example at the end of an epoch.
         Example: collecting network output for the entire dataset.
         Can easily clog the memory if it's not regularly emptied
         """
-        log(f"clearing {self.name} {which_tset}..")
-        self.data[which_tset] = []
+        log(f"clearing {self.name} {which_split}..")
+        self.data[which_split] = []
 
-    def set(self, which_tset, data):
+    def set(self, which_split, data):
         """
         Replace entirely the data collected
         """
-        self.data[which_tset] = data
+        self.data[which_split] = data
 
-    def add(self, chunk, which_tset):
+    def add(self, chunk, which_split):
         """
         Adds some data to the collected
         """
@@ -199,22 +199,22 @@ class Measurement(object):
             chunk_size = f"??{type(chunk)}"
         if self.mlflow_log:
             _mean = float(np.mean(np.array(chunk)))
-            mlflow.log_metric(f"{which_tset}_{self.name}", _mean)
-        log(f"{self} {which_tset} added with chunk {chunk_size}")
-        self.data[which_tset].append(chunk)
+            mlflow.log_metric(f"{which_split}_{self.name}", _mean)
+        log(f"{self} {which_split} added with chunk {chunk_size}")
+        self.data[which_split].append(chunk)
 
-    def add_from_lm(self, lm, which_tset):
+    def add_from_lm(self, lm, which_split):
         """
         Collects a measurement from the LightningModel
         """
         chunk = getattr(lm, self.name, None)
-        self.add(chunk, which_tset)
+        self.add(chunk, which_split)
 
-    def vstack(self, which_tset):
+    def vstack(self, which_split):
         """
         Creates a numpy array from the data that has been collected
         """
-        data = self.data[which_tset]
+        data = self.data[which_split]
         if len(data) == 0:
             return np.array([[]])
         else:
@@ -243,21 +243,21 @@ class Measurement(object):
         # FIXME: maybe add the dimension sizes over here?
         return f"<Measurement {self.name}>"
 
-    def aggregate(self, which_tset, aggregation_fn):
+    def aggregate(self, which_split, aggregation_fn):
         """
         Applies an aggregation function to the data collected in this Measurement
         """
-        stacked = self.vstack(which_tset)
-        log(f"{self} aggregating with {aggregation_fn} on {which_tset} (shape {stacked.shape})..")
+        stacked = self.vstack(which_split)
+        log(f"{self} aggregating with {aggregation_fn} on {which_split} (shape {stacked.shape})..")
         ret = aggregation_fn(stacked)
         log(f"done aggregating; the result has shape {ret.shape}.")
         return ret
 
-    def count(self, which_tset):
+    def count(self, which_split):
         """
         Count of measurements collected
         """
-        return len(self.data[which_tset])
+        return len(self.data[which_split])
 
     def _recursive_counts_str(self, stuff):
         """

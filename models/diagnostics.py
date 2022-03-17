@@ -153,55 +153,55 @@ def correlation_heatmap(corr, corr_metric, mask, epoch_nr):
     return fig
 
 
-def log_heatmaps_artifact(name, npa, which_tset, spec=None, type_=None):
+def log_heatmaps_artifact(name, npa, which_split, spec=None, type_=None):
     """
     Plots a heatmap and logs it as a mlflow artifact
     :param name: name of the plot
     :param npa: numpy array of data
-    :param which_tset: is this the training set or the validation/test set?
+    :param which_split: is this the training set or the validation/test set?
     :param spec: specifications of the data
     :param type_: type of plotting # FIXME: expand
     :return:
     """
     print(f"log_heatmaps_artifact name:{name} npa.shape="+str(npa.shape))
     fig = heatmaps(npa, spec=spec, type_=type_)
-    filename = tempfile.mktemp(prefix=f"heatmaps_{name}_{type_}_{which_tset}", suffix=".png")
+    filename = tempfile.mktemp(prefix=f"heatmaps_{name}_{type_}_{which_split}", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
     return filename
 
 
-def log_barplots_artifact(name, npa, which_tset, spec=None, type_=None):
+def log_barplots_artifact(name, npa, which_split, spec=None, type_=None):
     """
     Makes a barplots plot and logs it as a mlflow artifact
     :param name: name of the barplots
     :param npa: numpy array of data
-    :param which_tset: is this the training set or the validation/test set?
+    :param which_split: is this the training set or the validation/test set?
     :param spec: specifications of the data
     :param type_: type of plotting # FIXME: expand
     :return: the plotted image filename
     """
     fig = barplots(npa, spec=spec, type_=type_)
-    filename = tempfile.mktemp(prefix=f"barplots_{name}_{type_}_{which_tset}", suffix=".png")
+    filename = tempfile.mktemp(prefix=f"barplots_{name}_{type_}_{which_split}", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
     return filename
 
 
-def log_correlation_heatmap_artifact(name, corr, corr_metric, mask, which_tset, epoch_nr):
+def log_correlation_heatmap_artifact(name, corr, corr_metric, mask, which_split, epoch_nr):
     """
     Makes a correlation matrix plot and logs it into a mlflow artifact
     :param name: name of the correlation heatmap plot
     :param corr: correlation matrix
     :param corr_metric: aggregated correlation value
     :param mask: triangular mask to the correlation matrix
-    :param which_tset: is this the training or the validation/test set?
+    :param which_split: is this the training or the validation/test set?
     :param epoch_nr: which epoch number is this plot about?
     :return: the plotted image filename
     """
-    print(f"creating and logging correlation heatmap for {name} {which_tset} epoch {epoch_nr}..")
+    print(f"creating and logging correlation heatmap for {name} {which_split} epoch {epoch_nr}..")
     fig = correlation_heatmap(corr, corr_metric, mask, epoch_nr)
-    filename = tempfile.mktemp(prefix=f"correlation_heatmap_{name}_{which_tset}_{epoch_nr:04}_", suffix=".png")
+    filename = tempfile.mktemp(prefix=f"correlation_heatmap_{name}_{which_split}_{epoch_nr:04}_", suffix=".png")
     fig.savefig(filename)
     mlflow.log_artifact(filename)
     print("done creating and logging correlation heatmap")

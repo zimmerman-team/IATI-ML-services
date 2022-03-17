@@ -136,7 +136,7 @@ class Model(deepset_generic.DeepSetGeneric):
             set_grad = None
         return output, set_grad
 
-    def _step(self, batch, batch_idx, which_tset):
+    def _step(self, batch, batch_idx, which_split):
         #print("dimensionalities","batch",batch.shape)
         target_set,target_mask = self._make_target(batch)
 

@@ -165,12 +165,12 @@ class Model(generic_model.GenericModel):
         self.guess_correct = guess_correct
         return loss
 
-    def _step(self, batch, batch_idx, which_tset):
+    def _step(self, batch, batch_idx, which_split):
         """
         Returns the quantity to be minimized, for every batch.
         :param batch: the data batch
         :param batch_idx: # FIXME: UNUSED? remove?
-        :param which_tset: # either 'train' or 'val
+        :param which_split: # either 'train' or 'val
         :return:
         """
 
@@ -181,9 +181,9 @@ class Model(generic_model.GenericModel):
         mse = torch.mean(diff ** 2)
         loss = self._loss(batch, x_hat_divided, z)
 
-        self.log(f"{which_tset}_loss", loss)
-        self.log(f"{which_tset}_mae", mae)
-        self.log(f"{which_tset}_mse", mse)
+        self.log(f"{which_split}_loss", loss)
+        self.log(f"{which_split}_mae", mae)
+        self.log(f"{which_split}_mse", mse)
 
         # the following instance variables are eventually going
         # to be extracted by the Measurement system

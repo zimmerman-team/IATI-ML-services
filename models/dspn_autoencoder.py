@@ -298,12 +298,12 @@ class Model(deepset_generic.DeepSetGeneric):
         self.reconstructed = intermediate_sets[-1]
         return ret
 
-    def _step(self, batch, batch_idx, which_tset):
+    def _step(self, batch, batch_idx, which_split):
         """
         Processes a batch instance and produces the loss measure.
         :param batch:
         :param batch_idx:
-        :param which_tset: 'train' or 'test'
+        :param which_split: 'train' or 'test'
         :return:
         """
 
@@ -349,7 +349,7 @@ class Model(deepset_generic.DeepSetGeneric):
         loss = set_loss.mean()
         # print("indices",indices)
         # for measurements:
-        # self.log(f"{which_tset}_loss", loss)
+        # self.log(f"{which_split}_loss", loss)
         self.batch_loss = loss # setting instance variable to be collected by Measurements
         self.batch_mask_error = (unsqueezed_masks[-1]-target_mask).abs().mean()
         self.batch_avg_gradn = gradn[-1].abs().mean() #FIXME: maybe gradn is not clear, better grad_norm?
