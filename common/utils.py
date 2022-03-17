@@ -81,11 +81,6 @@ class Collection(dict):
         self[item.name] = item
 
 
-class Tsets(enum.Enum):
-    TRAIN = 'train'  # training set
-    VAL = 'val'  # validation set
-
-
 class OneHotCrossEntropyLoss(object):
     def __init__(self, weight=None):
         # print("OneHostCrossEntropyLoss weight:",weight)

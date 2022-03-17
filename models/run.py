@@ -8,7 +8,7 @@ import os
 import sys
 import argparse
 import pickle
-from common import utils, specs_config, dataset_persistency, config, timer
+from common import utils, specs_config, dataset_persistency, config, timer, splits
 from models import diagnostics, measurements as ms, models_storage
 
 
@@ -46,7 +46,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
         """
         self.measurements.collect(
             lm,
-            utils.Tsets.TRAIN.value,
+            'train',
             (ms.DatapointMeasurement,
              ms.BatchMeasurement)
         )
@@ -64,15 +64,15 @@ class MeasurementsCallback(pl.callbacks.Callback):
         """
         self.measurements.collect(
             lm,
-            utils.Tsets.VAL.value,
+            'test',
             (ms.DatapointMeasurement,
              ms.BatchMeasurement)
         )
 
-    def _epoch_end(self, which_tset, trainer, lm):
+    def _epoch_end(self, which_split, trainer, lm):
         """
         Run at the end of an epoch, both for training and validation sets.
-        :param which_tset:
+        :param which_split:
         :param trainer:
         :param lm:
         :return:
@@ -86,15 +86,15 @@ class MeasurementsCallback(pl.callbacks.Callback):
             measurements_types.append(ms.LastEpochMeasurement)
         self.measurements.collect(
             lm,
-            which_tset,
+            which_split,
             measurements_types
         )
         if 'z' in self.measurements:  # FIXME: this is not abstracted
-            z = self.measurements['z'].vstack(which_tset)
+            z = self.measurements['z'].vstack(which_split)
             corr, corr_metric, mask = diagnostics.correlation(z)
-            mlflow.log_metric(f"{which_tset}_latent_corr_metric", corr_metric)
-            diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_tset, epoch_nr)
-        logging.debug(f"_epoch_end {which_tset}")
+            mlflow.log_metric(f"{which_split}_latent_corr_metric", corr_metric)
+            diagnostics.log_correlation_heatmap_artifact("latent", corr, corr_metric, mask, which_split, epoch_nr)
+        logging.debug(f"_epoch_end {which_split}")
 
 
     def on_train_epoch_start(self, trainer, lm):
@@ -140,28 +140,28 @@ class MeasurementsCallback(pl.callbacks.Callback):
         self.measurements.print_debug_info()
         for m in self.measurements.plottable:
             if m.plot_type in ['field', 'losses', 'latent']:  # FIXME: refactor this
-                for which_tset in utils.Tsets:
-                    stacked_npa = m.vstack(which_tset.value)
-                    print(m.name, which_tset.value)
+                for which_split in splits.Splits.splits_names:
+                    stacked_npa = m.vstack(which_split.value)
+                    print(m.name, which_split.value)
                     if len(stacked_npa) == 0:
-                        logging.warning(f"{m.name} {which_tset} was empty")
+                        logging.warning(f"{m.name} {which_split} was empty")
                         continue
                     utils.log_npa_artifact(
                         stacked_npa,
-                        prefix=f"{m.name}_{which_tset.value}",
+                        prefix=f"{m.name}_{which_split.value}",
                         suffix=".bin"
                     )
                     diagnostics.log_heatmaps_artifact(
                         m.name,
                         stacked_npa,
-                        which_tset.value,
+                        which_split.value,
                         spec=self.spec,
                         type_=m.plot_type
                     )
                     diagnostics.log_barplots_artifact(
                         m.name,
                         stacked_npa[[-1], :],  # consider only last epoch
-                        which_tset.value,
+                        which_split.value,
                         spec=self.spec,
                         type_=m.plot_type
                     )
@@ -201,14 +201,14 @@ def run(Model, config_name, dynamic_config={}):
         # it will require different kind of data.
         spec = Model.get_spec_from_model_config(model_config)
 
-        tsets = dataset_persistency.load_tsets(
+        _splits = dataset_persistency.load_splits(
             spec,
             with_set_index=Model.with_set_index,
             cap=model_config['cap_dataset']
         )
-        mlflow.log_param('tsets_creation_time', tsets.creation_time)
-        for curr in tsets.tsets_names:
-            mlflow.log_param(f"{curr}_datapoints", tsets[curr].shape[0])
+        mlflow.log_param('tsets_creation_time', _splits.creation_time)
+        for curr in _splits.splits_names:
+            mlflow.log_param(f"{curr}_datapoints", _splits[curr].shape[0])
 
         #  use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -216,16 +216,16 @@ def run(Model, config_name, dynamic_config={}):
         # create a model from the Model class
         # load it to the specified device, either gpu or cpu
         model = Model(
-            input_shape=tsets.item_dim,
+            input_shape=_splits.item_dim,
             spec=spec,
-            item_dim=tsets.item_dim,
+            item_dim=_splits.item_dim,
             **model_config
         ).to(device)
         mlflow.log_artifact(model.source_filename)
         mlflow.log_param("source_filename",model.source_filename)
         mlflow.log_param("modulename",model.modulename)
-        train_loader = model.make_train_loader(tsets)
-        test_loader = model.make_test_loader(tsets)
+        train_loader = model.make_train_loader(_splits)
+        test_loader = model.make_test_loader(_splits)
         model_write_callback = model.storage.create_write_callback(model)
         callbacks = [
             MeasurementsCallback(spec=spec, model=model),

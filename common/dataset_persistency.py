@@ -1,10 +1,9 @@
 import functools
 import pymongo
 import gridfs
+import logging
 
-from common import config
-from common import tsets
-from common import utils
+from common import config, splits, utils
 
 cached_db = None
 
@@ -76,17 +75,17 @@ def load_tsets_document(spec):
     return document
 
 
-def load_tsets(spec, with_set_index=False, cap=None):
+def load_splits(spec, with_set_index=False, cap=None):
     """
     :param spec: specification of the data to be loaded
     :param with_set_index: set as True to include the set index
     :param cap: limit to a certain amount of datapoints. Useful to quickly debug a new model
-    :return: the Tsets object containing the dataset splits
+    :return: the Splits object containing the dataset splits
     """
     document = load_tsets_document(spec)
-    print(f"tsets creation time: {document['creation_time']}")
+    logging.info(f"tsets creation time: {document['creation_time']}")
     del document['spec']
-    ret = tsets.Tsets(
+    ret = splits.Splits(
         spec,
         **document,
         with_set_index=with_set_index,

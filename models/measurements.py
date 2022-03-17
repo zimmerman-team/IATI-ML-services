@@ -1,10 +1,10 @@
-from common import utils
 import numpy as np
 import enum
 import logging
 import mlflow
 import torch
 
+from common import utils, splits
 
 def log(*args):
     """
@@ -165,8 +165,8 @@ class Measurement(object):
         self.plot_type = plot_type
         self.mlflow_log = mlflow_log
         self._dst = dst
-        for which_tset in utils.Tsets:
-            self.clear(which_tset.value)
+        for which_split in splits.splits_names:
+            self.clear(which_split.value)
 
     def clear(self, which_tset):
         """
@@ -278,10 +278,10 @@ class Measurement(object):
         prints the collected data's dimension sizes for training and testing sets
         :return:
         """
-        for which_tset in utils.Tsets:
-            d = self.data[which_tset.value]
+        for which_split in splits.splits_names:
+            d = self.data[which_split.value]
             tmp = self._recursive_counts_str(d)
-            print(which_tset.value + ":" + tmp+" ", end='')
+            print(which_split.value + ":" + tmp+" ", end='')
         print(".")
 
 
