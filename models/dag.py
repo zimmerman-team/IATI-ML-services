@@ -8,7 +8,7 @@ import sys
 
 from models import model_class_loader
 
-from common import relspecs, config
+from common import specs_config, config
 
 def in_days(n):
     """
@@ -50,7 +50,7 @@ def make_rels_dag(dag_name, config_name, modelname):
             max_active_tasks=config.models_dag_training_tasks_concurrency
     ) as dag:
 
-        for rel_i, rel in enumerate(relspecs.rels):
+        for rel_i, rel in enumerate(specs_config.rels):
 
             # this time the tasks are shell commands
             train_cmd = f"cd {project_root_dir}; python3 models/{modelname}.py"\

@@ -1,4 +1,4 @@
-from common import relspecs, utils
+from common import specs_config, utils
 from models import models_storage
 import numpy as np
 import logging
@@ -10,7 +10,7 @@ class ActivityData(utils.Collection):
     Representation of a IATI activity datapoint
     """
     def __init__(self, activity_data):
-        for rel in relspecs.specs:
+        for rel in specs_config.specs:
             self[rel.name] = rel.extract_from_activity_data(activity_data)
 
 
@@ -43,7 +43,7 @@ class ActivityVectorizer(object):
                 # no input  data for this model
                 vectorized_field = model.default_z_npa_for_missing_inputs
             else:
-                encoded_set_npa = utils.create_set_npa(relspecs.specs[spec_name],encoded_set)
+                encoded_set_npa = utils.create_set_npa(specs_config.specs[spec_name], encoded_set)
 
                 target_set, target_mask = model._make_target(torch.Tensor(encoded_set_npa))
                 vectorized_field_torch = model.encoder(target_set, mask=target_mask)

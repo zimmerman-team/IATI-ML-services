@@ -13,7 +13,7 @@ import logging
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
-from common import utils, relspecs, config
+from common import utils, specs_config, config
 import models
 
 from collections import namedtuple
@@ -27,7 +27,7 @@ class KwargsPickler(pickle.Pickler):
         if callable(obj):
             # functions such as Field.__init__.<locals>._loss_function cannot be pickled
             return ("unpickable function",None)
-        if issubclass(type(obj), relspecs.Spec):
+        if issubclass(type(obj), specs_config.Spec):
             # the Spec types may have machine-learning (torch) functions, that cannot be pickled.
             # so their name is being stored instead
             return ("Spec",obj.name)
@@ -40,7 +40,7 @@ class KwargsUnpickler(pickle.Unpickler):
             return None
         elif type_ == "Spec":
             # only the name of the spec was stored, so retrieve it from the collection
-            return relspecs.specs[key]
+            return specs_config.specs[key]
         pickle.UnpicklingError(f"unsupported persistent object {pid}")
 
 class ModelsStorage(utils.Collection):
@@ -67,7 +67,7 @@ class ModelsStorage(utils.Collection):
         :return:
         """
         os.chdir(project_root_dir)
-        for rel in relspecs.rels:
+        for rel in specs_config.rels:
             logging.debug(f"loading model for {rel}..")
             model = self.load(rel)
             self[rel.name] = model

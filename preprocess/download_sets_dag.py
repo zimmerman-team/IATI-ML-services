@@ -17,10 +17,10 @@ import time
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
 
-from common import utils, relspecs, dataset_persistency, config
+from common import utils, specs_config, dataset_persistency, config
 from preprocess import large_mp
-rels = relspecs.rels.downloadable
-specs = relspecs.specs.downloadable
+rels = specs_config.rels.downloadable
+specs = specs_config.specs.downloadable
 logging.basicConfig(level=getattr(logging,config.log_level,logging.INFO))
 
 DATASTORE_ACTIVITY_URL = "https://datastore.iati.cloud/api/v2/activity"
@@ -46,7 +46,7 @@ def download(start, ti):
     :param ti: task id (string)
     :return: None
     """
-    fl = ",".join(["iati_identifier"]+relspecs.specs.downloadable_prefixed_fields_names)
+    fl = ",".join(["iati_identifier"] + specs_config.specs.downloadable_prefixed_fields_names)
     params = {
         'q': "*:*",
         'fl': fl,
@@ -251,7 +251,7 @@ def encode(spec, ti):
         document = dict(document)  # copy
 
         data = document['data']
-        if type(spec) is relspecs.Activity:
+        if type(spec) is specs_config.Activity:
             data_amount = 1
         else:
             data_amount = get_set_size(data)
@@ -262,7 +262,7 @@ def encode(spec, ti):
         for field in spec.fields:
             encodable = data.get(field.name, [])
 
-            if type(spec) is relspecs.Activity:
+            if type(spec) is specs_config.Activity:
                 # if it's an activity, there is only one value
                 # per field
                 encodable = [encodable]

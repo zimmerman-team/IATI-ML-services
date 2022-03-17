@@ -7,7 +7,7 @@ import numpy as np
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 from models import measurements as ms, generic_model, run
-from common import relspecs
+from common import specs_config
 
 # FIXME: maybe make ActivityAutoencoder and ItemAE inherit from the same parent class?
 class Model(generic_model.GenericModel):
@@ -21,7 +21,7 @@ class Model(generic_model.GenericModel):
     def get_spec_from_model_config(cls, model_config):
         # FIXME: maybe should infer sets_latent_dim from the data stored in the mongodb?
         sets_latent_dim = model_config['sets_latent_dim']
-        return relspecs.activity_with_rels(sets_latent_dim)
+        return specs_config.activity_with_rels(sets_latent_dim)
 
     def make_train_loader(self, tsets):
         """

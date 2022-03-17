@@ -8,7 +8,7 @@ import sklearn
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
 
-from common import relspecs, dataset_persistency, utils, config
+from common import specs_config, dataset_persistency, utils, config
 from preprocess import vectorize_activity, download_sets_dag
 
 default_args = {
@@ -17,7 +17,7 @@ default_args = {
     'schedule_interval': None
 }
 
-rels = relspecs.rels.downloadable
+rels = specs_config.rels.downloadable
 
 activity_vectorizer = vectorize_activity.ActivityVectorizer(config.model_modulename_rels)
 
@@ -99,7 +99,7 @@ def vectorize(ti):
             continue
 
         activity_without_rels_fields_npa = utils.create_set_npa(
-            relspecs.activity_without_rels,
+            specs_config.activity_without_rels,
             activity_without_rels_fields['data'] # FIXME: rename in 'npa' as my convention?
         )
         activity_vector = activity_vectorizer.process(activity_sets, activity_without_rels_fields_npa)
@@ -154,7 +154,7 @@ def setup_dag():
             task_id="to_tsets",
             python_callable=download_sets_dag.to_tsets, # FIXME: move to_tsets to something more common?
             start_date=days_ago(2),
-            op_kwargs={'spec': relspecs.activity_with_rels(activity_vectorizer.rel_latent_dim) },
+            op_kwargs={'spec': specs_config.activity_with_rels(activity_vectorizer.rel_latent_dim)},
             pool="npas_intensive",
             pool_slots=1
         )

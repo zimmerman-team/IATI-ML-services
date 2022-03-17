@@ -8,7 +8,7 @@ import os
 import sys
 import argparse
 import pickle
-from common import utils, relspecs, dataset_persistency, config, timer
+from common import utils, specs_config, dataset_persistency, config, timer
 from models import diagnostics, measurements as ms, models_storage
 
 

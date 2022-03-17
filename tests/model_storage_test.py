@@ -7,7 +7,7 @@ sys.path.insert(0, project_root_dir)
 
 import models
 from models import run, models_storage
-from common import relspecs
+from common import specs_config
 
 rel_name = "budget"
 model_modulename = "dspn_autoencoder"
@@ -25,7 +25,7 @@ def train_and_store_model():
 def load_stored_model():
     global rel_name, model_modulename
     storage = models_storage.ModelsStorage(model_modulename=model_modulename)
-    model = storage.load(relspecs.rels[rel_name])
+    model = storage.load(specs_config.rels[rel_name])
     logging.warning(f"loaded_model: {model}")
 
 def main():

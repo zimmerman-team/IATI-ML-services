@@ -3,7 +3,7 @@ import logging
 import math
 
 from models import generic_model
-from common import chunking_dataset, config, relspecs
+from common import chunking_dataset, config, specs_config
 
 class DeepSetGeneric(generic_model.GenericModel):
     with_set_index = True
@@ -38,7 +38,7 @@ class DeepSetGeneric(generic_model.GenericModel):
 
     @classmethod
     def get_spec_from_model_config(cls, model_config):
-        spec = relspecs.specs[model_config['spec_name']]
+        spec = specs_config.specs[model_config['spec_name']]
         return spec
 
     def make_train_loader(self, tsets):

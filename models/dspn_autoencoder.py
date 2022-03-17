@@ -15,7 +15,7 @@ import dspn
 import dspn.model
 import dspn.dspn
 import dspn.utils
-from common import utils, config, chunking_dataset, relspecs
+from common import utils, config, chunking_dataset, specs_config
 
 def my_hungarian_loss(predictions, targets, thread_pool=None):
     # predictions and targets shape :: (n, c, s)
