@@ -8,15 +8,22 @@ from common import utils
 
 # FIXME: rename module in dataset_persistency ?
 
-#@functools.cache
-def mongo_db():
+cached_db = None
+
+def mongo_db(caching=True):
     """
     returns a connection to the mongodb.
     It's cached as only one is needed.
     :return:
     """
-    client = pymongo.MongoClient(config.mongo_uri())
-    db = client['learning_sets']
+    global cached_db
+    if (not caching) or (cached_db is None):
+        client = pymongo.MongoClient(config.mongo_uri())
+        db = client['learning_sets']
+        cached_db = db
+    else:
+        db = cached_db
+
     return db
 
 
