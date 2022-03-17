@@ -16,8 +16,7 @@ import time
 
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
-path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
-sys.path = [path]+sys.path
+
 from common import utils, relspecs, persistency, config
 from preprocess import large_mp
 rels = relspecs.rels.downloadable

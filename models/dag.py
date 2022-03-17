@@ -6,12 +6,7 @@ import datetime
 import os
 import sys
 
-project_root_path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
-sys.path = [project_root_path]+sys.path
-
-import models
 from models import model_class_loader
-import models.dspn_autoencoder
 
 from common import relspecs, config
 
