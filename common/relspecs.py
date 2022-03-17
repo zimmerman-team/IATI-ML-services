@@ -1,6 +1,8 @@
 import sys
 import os
 
+# FIXME: rename module in specs_config.py??
+
 """
 Contains the specification of the field mappings for IATI activity
 """

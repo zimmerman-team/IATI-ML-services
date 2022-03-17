@@ -36,7 +36,7 @@ default_args = {
     'schedule_interval': None
 }
 
-def make_dag_rels(dag_name, config_name, modelname):
+def make_rels_dag(dag_name, config_name, modelname):
     """
     models that train on rels
     :param dag_name: name of the dag
@@ -71,7 +71,7 @@ def make_dag_rels(dag_name, config_name, modelname):
 
     return dag
 
-def make_dag_activity(dag_name, config_name, modelname):
+def make_activity_dag(dag_name, config_name, modelname):
     """
     models that train on rels
     :param dag_name: name of the dag
@@ -108,11 +108,18 @@ def make_dag_activity(dag_name, config_name, modelname):
 def populate_module_with_dags():
     thismodule = sys.modules[__name__]
     for modelname in model_class_loader.all_modelnames():
-        args = [f"train_models_dag_{modelname}",config.models_dag_config_name, modelname]
+        args = [
+            f"train_models_dag_{modelname}", # dag_name
+            None, # config_name - None placeholder to be replaced #FIXME?
+            modelname
+        ]
+        # FIXME: this part needs to be reorganized. Smells code duplication
         if model_class_loader.does_model_train_on(modelname, 'rels'):
-            train_models_dag = make_dag_rels(*args)
+            args[1] = config.models_dag_config_name_rels
+            train_models_dag = make_rels_dag(*args)
         if model_class_loader.does_model_train_on(modelname, 'activity'):
-            train_models_dag = make_dag_activity(*args)
+            args[1] = config.models_dag_config_name_activity
+            train_models_dag = make_activity_dag(*args)
         setattr(thismodule, "train_models_dag_"+modelname, train_models_dag)
 
 populate_module_with_dags()

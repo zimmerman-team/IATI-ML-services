@@ -5,7 +5,7 @@ from common import persistency
 
 import logging
 
-class Tsets(utils.Collection):
+class Tsets(utils.Collection): # FIXME: rename in splits?
     tsets_names = ('train', 'test')
 
     def load_data(self):
@@ -24,7 +24,7 @@ class Tsets(utils.Collection):
 
             total_n_datapoints += self[which_tset].shape[0]
 
-        if self.cap is not None:
+        if self.cap not in (None, False, 0):
             # the dataset_cap option in the configuration file allows to use
             # a smaller amount of datapoints in order to quickly debug a new model.
             for which_tset in self.tsets_names:

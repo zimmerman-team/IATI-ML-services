@@ -1,0 +1,22 @@
+#FIXME: organize model_config files with subdirectories for each model?
+# please not that a configuration files may work for slightly different
+# implementations (for example DSPN and iDSPN) so that's something
+# to think about
+
+experiment_name: activity_autoencoder_first
+layers_width: 100
+latent_dim: 20
+sets_latent_dim: 4
+activation_function: "ELU"
+depth: 4
+weight_decay: 1.0e-6
+max_epochs: 1000
+batch_size: 16
+divide_output_layer: True
+latent_l1_norm: 10.0
+cap_dataset: null
+epoch_chunk_len: 3000
+optimizer: SGD
+learning_rate: 5e-2
+gradient_clip_val: 100
+spec_name: activity_with_rels

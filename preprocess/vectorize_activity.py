@@ -20,8 +20,8 @@ class ActivityVectorizer(object):
     This is required in order to train the final activity autoencoder,
     as well as other machine learning models on activities.
     """
-    def __init__(self, model_modulename):
-        self.model_storage = models_storage.ModelsStorage(model_modulename)
+    def __init__(self, model_modulename_rels):
+        self.model_storage = models_storage.ModelsStorage(model_modulename_rels)
         # all the models need to be loaded beforehand otherwise it would be
         # too costly to load them for every activity
         self.model_storage.load_all_models()

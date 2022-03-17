@@ -15,7 +15,8 @@ models_training_on = {
     'activity': [
         'activity_autoencoder'
     ]
-}
+} # FIXME: move this inside a property of a Model class? Or maybe to a new YAML config file
+  #        with a "default" model selected for every data type
 
 def is_model_module(modelname):
     if hasattr(getattr(models, modelname), 'Model'):
