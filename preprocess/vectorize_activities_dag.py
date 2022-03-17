@@ -91,16 +91,16 @@ def vectorize(ti):
     coll_out = db['activity_with_rels_arrayfied']
     for datapoint_index, activity_sets_document in enumerate(coll_in_sets.find({})):
         activity_sets = activity_sets_document['encoded_sets']
-        activity_without_rels_fields = coll_in_activity_without_rels.find_one({
+        activity_without_rels_doc = coll_in_activity_without_rels.find_one({
             'activity_id':activity_sets_document['activity_id']
         })
-        if activity_without_rels_fields is None:
+        if activity_without_rels_doc is None:
             # no fixed-length fields data for this activity. Skip it.
             continue
 
         activity_without_rels_fields_npa = utils.create_set_npa(
             specs_config.activity_without_rels,
-            activity_without_rels_fields['data'] # FIXME: rename in 'npa' as my convention?
+            activity_without_rels_doc['data']
         )
         activity_vector = activity_vectorizer.process(activity_sets, activity_without_rels_fields_npa)
         #logging.debug(f"activity_vector {activity_vector}")
