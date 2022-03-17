@@ -8,7 +8,7 @@ import os
 import sys
 import argparse
 import pickle
-from common import utils, relspecs, persistency, config, timer
+from common import utils, relspecs, dataset_persistency, config, timer
 from models import diagnostics, measurements as ms, models_storage
 
 
@@ -201,7 +201,7 @@ def run(Model, config_name, dynamic_config={}):
         # it will require different kind of data.
         spec = Model.get_spec_from_model_config(model_config)
 
-        tsets = persistency.load_tsets(
+        tsets = dataset_persistency.load_tsets(
             spec,
             with_set_index=Model.with_set_index,
             cap=model_config['cap_dataset']

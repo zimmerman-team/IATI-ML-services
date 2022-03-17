@@ -1,6 +1,6 @@
 from tabulate import tabulate
 
-from common import persistency, relspecs
+from common import dataset_persistency, relspecs
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
     table = []
     for spec in relspecs.specs:
         row = []
-        doc = persistency.load_tsets_document(spec)
+        doc = dataset_persistency.load_tsets_document(spec)
         if len(set(headers) - set(doc.keys())) != 0:
             # incomplete document
             continue

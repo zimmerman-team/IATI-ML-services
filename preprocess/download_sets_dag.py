@@ -17,7 +17,7 @@ import time
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
 
-from common import utils, relspecs, persistency, config
+from common import utils, relspecs, dataset_persistency, config
 from preprocess import large_mp
 rels = relspecs.rels.downloadable
 specs = relspecs.specs.downloadable
@@ -69,7 +69,7 @@ def persist_activity_ids(page, ti):
     :param ti:
     :return:
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll_out = db['activity_ids']
 
     # this large message is cleared in parse_*,
@@ -143,7 +143,7 @@ def clear_activity_ids(ti):
     :param ti:
     :return:
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll = db['activity_ids']
 
     # remove all data previously stored for this relation
@@ -159,7 +159,7 @@ def clear(spec, ti):
     :param ti:
     :return:
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll = db[spec.name]
 
     # remove all data previously stored for this relation
@@ -174,7 +174,7 @@ def persist(page, spec_name, ti):
     :param ti: task id (string)
     :return: None
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     data = large_mp.recv(ti, f'parse_{page}')
 
     if spec_name in data.keys():
@@ -201,7 +201,7 @@ def codelists(ti):
     :param ti: task id (string)
     :return: None
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll_out = db['codelists']
     coll_out.create_index([("name", -1)])
     for codelist_name in extract_codelists(specs):
@@ -239,7 +239,7 @@ def encode(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll_in = db[spec.name]
     coll_out = db[spec.name + "_encoded"]
 
@@ -299,7 +299,7 @@ def arrayfy(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll_in = db[spec.name+"_encoded"]
     coll_out = db[spec.name+"_arrayfied"]
     coll_out.delete_many({})  # empty the collection
@@ -322,7 +322,7 @@ def to_npa(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll_in = db[spec.name + "_arrayfied"]
     coll_out = db['npas']
     coll_out.create_index([("spec", -1)])
@@ -349,7 +349,7 @@ def to_npa(spec, ti):
     coll_out.insert_one({
         'spec': spec.name,
         'creation_date': utils.strnow_iso(),
-        'npa_file_id': persistency.save_npa(f"{spec.name}", spec_npa),
+        'npa_file_id': dataset_persistency.save_npa(f"{spec.name}", spec_npa),
         'npa_rows': spec_npa.shape[0],
         'npa_cols': spec_npa.shape[1]
     })
@@ -363,7 +363,7 @@ def to_tsets(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll_in = db[spec.name + '_arrayfied']
     set_indices_results = coll_in.find({}, {'set_index': 1})
     set_indices = list(set(map(lambda document: document['set_index'], set_indices_results)))
@@ -403,8 +403,8 @@ def to_tsets(spec, ti):
     coll_out.insert_one({
         'spec': spec.name,
         'creation_time': utils.strnow_iso(),
-        'train_npa_file_id': persistency.save_npa(f"{spec.name}_train", train_npa),
-        'test_npa_file_id': persistency.save_npa(f"{spec.name}_test", test_npa),
+        'train_npa_file_id': dataset_persistency.save_npa(f"{spec.name}_train", train_npa),
+        'test_npa_file_id': dataset_persistency.save_npa(f"{spec.name}_test", test_npa),
         'train_npa_rows': train_npa.shape[0],
         'train_npa_cols': train_npa.shape[1],
         'test_npa_rows': test_npa.shape[0],

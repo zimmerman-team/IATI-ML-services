@@ -1,7 +1,6 @@
 import numpy as np
 
-from common import utils
-from common import persistency
+from common import utils, dataset_persistency
 
 import logging
 
@@ -18,7 +17,7 @@ class Tsets(utils.Collection): # FIXME: rename in splits?
             # FIXME: maybe make a Tset object so I can get rid of these underscores
             gridfs_fileid = self[f"{which_tset}_npa_file_id"]
 
-            self[which_tset] = persistency.load_npa(file_id=gridfs_fileid)
+            self[which_tset] = dataset_persistency.load_npa(file_id=gridfs_fileid)
             if self[which_tset] is None:
                 raise Exception(f"Didn't find {gridfs_fileid}")
 

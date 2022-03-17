@@ -8,7 +8,7 @@ import sklearn
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
 
-from common import relspecs, persistency, utils, config
+from common import relspecs, dataset_persistency, utils, config
 from preprocess import vectorize_activity, download_sets_dag
 
 default_args = {
@@ -28,7 +28,7 @@ def clear(ti):
     :param ti:
     :return:
     """
-    db = persistency.mongo_db(caching=False)
+    db = dataset_persistency.mongo_db(caching=False)
     db['activity_encoded_sets'].delete_many({})
     db['activity_encoded_sets'].create_index([("activity_id", -1)])
     db['activity_vectors'].delete_many({})
@@ -42,7 +42,7 @@ def collect(ti):
     :param ti:
     :return:
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
 
     # open all necessary collections
     coll_sets = {}
@@ -85,7 +85,7 @@ def vectorize(ti):
     :return:
     """
     global activity_vectorizer
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     coll_in_sets = db['activity_encoded_sets']
     coll_in_activity_without_rels = db['activity_encoded']
     coll_out = db['activity_with_rels_arrayfied']

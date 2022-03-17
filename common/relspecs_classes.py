@@ -18,7 +18,7 @@ sys.path.append(
     )
 )
 
-from common import persistency, utils, config
+from common import dataset_persistency, utils, config
 from models import text_model
 
 
@@ -28,7 +28,7 @@ def get_codelists():
     returns a codelist from the mongo db
     :return:
     """
-    db = persistency.mongo_db()
+    db = dataset_persistency.mongo_db()
     ret = defaultdict(lambda: list())
     for curr in db['codelists'].find({}):
         ret[curr['name']] = curr['codelist']

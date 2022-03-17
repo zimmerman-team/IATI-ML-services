@@ -6,8 +6,6 @@ from common import config
 from common import tsets
 from common import utils
 
-# FIXME: rename module in dataset_persistency ?
-
 cached_db = None
 
 def mongo_db(caching=True):
