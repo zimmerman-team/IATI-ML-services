@@ -13,7 +13,7 @@ def main():
     table = []
     for spec in specs_config.specs:
         row = []
-        doc = dataset_persistency.load_tsets_document(spec)
+        doc = dataset_persistency.load_splits_document(spec)
         if len(set(headers) - set(doc.keys())) != 0:
             # incomplete document
             continue

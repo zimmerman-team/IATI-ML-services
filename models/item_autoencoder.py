@@ -19,15 +19,15 @@ class Model(generic_model.GenericModel):
 
     with_set_index = False
 
-    def make_train_loader(self, tsets):
+    def make_train_loader(self, splits):
         """
         Creates a DataLoader object (torch library) for the training set.
-        :param tsets: the object containing the training and
+        :param splits: the object containing the training and
             validation set data.
         :return: the data loader
         """
         train_loader = torch.utils.data.DataLoader(
-            tsets.train_scaled,  # training set needs to be scaled
+            splits.train_scaled,  # training set needs to be scaled
             batch_size=self.kwargs['batch_size'],  # working with batches
             shuffle=True,  # shuffles datapoints at every epoch
             num_workers=4,
@@ -35,15 +35,15 @@ class Model(generic_model.GenericModel):
         )
         return train_loader
 
-    def make_test_loader(self, tsets):
+    def make_test_loader(self, splits):
         """
         Creates a DataLoader object (torch library) for the validation set.
-        :param tsets: the object containing the training and
+        :param splits: the object containing the training and
             validation set data.
         :return: the data loader
         """
         test_loader = torch.utils.data.DataLoader(
-            tsets.test_scaled,  # scaled validation data
+            splits.test_scaled,  # scaled validation data
             batch_size=self.kwargs['batch_size'],  # uses same batch size as training
             shuffle=False,  # no need to shuffle data when querying the model for validation
             num_workers=4

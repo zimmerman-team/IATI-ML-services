@@ -206,7 +206,7 @@ def run(Model, config_name, dynamic_config={}):
             with_set_index=Model.with_set_index,
             cap=model_config['cap_dataset']
         )
-        mlflow.log_param('tsets_creation_time', _splits.creation_time)
+        mlflow.log_param('splits_creation_time', _splits.creation_time)
         for curr in _splits.splits_names:
             mlflow.log_param(f"{curr}_datapoints", _splits[curr].shape[0])
 
@@ -246,7 +246,7 @@ def run(Model, config_name, dynamic_config={}):
         model.storage.dump_kwargs(model)
 
         print("current mlflow run:", mlflow.active_run().info.run_id, " - all done.")
-        # log_net_visualization(model,torch.zeros(model_config['batch_size'], tsets.item_dim))
+        # log_net_visualization(model,torch.zeros(model_config['batch_size'], splits.item_dim))
 
         # return the model to the caller so that it can eventually be used for other purposes
         return model

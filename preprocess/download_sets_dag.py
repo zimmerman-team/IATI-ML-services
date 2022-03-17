@@ -355,7 +355,7 @@ def to_npa(spec, ti):
     })
 
 
-def to_tsets(spec, ti):
+def to_splits(spec, ti):
     """
     Concatenates all set-indexed arrays into split array datasets, one for training
     and the other for validation/test
@@ -370,7 +370,7 @@ def to_tsets(spec, ti):
     train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=config.train_fraction)
     train_indices = set(train_indices)
     test_indices = set(test_indices)
-    coll_out = db['npas_tsets']
+    coll_out = db['npas_splits']
     coll_out.create_index([("spec", -1)])
     coll_out.create_index([("creation_date", -1)])
     coll_out.create_index([("train_npa_file_id", -1)])
@@ -514,9 +514,9 @@ with DAG(
             pool_slots=1
         )
 
-        t_to_tsets = PythonOperator(
-            task_id=f"to_tsets_{_spec.name}",
-            python_callable=to_tsets,
+        t_to_splits = PythonOperator(
+            task_id=f"to_splits_{_spec.name}",
+            python_callable=to_splits,
             start_date=days_ago(2),
             op_kwargs={'spec': _spec},
             pool="npas_intensive",
@@ -535,5 +535,5 @@ with DAG(
             t_persist[_page][_spec.name] >> t_clear_page[_page]
         t_codelists >> t_encode >> t_arrayfy
         t_arrayfy >> t_to_npa
-        t_arrayfy >> t_to_tsets
+        t_arrayfy >> t_to_splits
 

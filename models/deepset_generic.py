@@ -41,7 +41,7 @@ class DeepSetGeneric(generic_model.GenericModel):
         spec = specs_config.specs[model_config['spec_name']]
         return spec
 
-    def make_train_loader(self, tsets):
+    def make_train_loader(self, splits):
         """
         For the deep sets it's important the the datapoints returned by the
         DataLoader are of items belonging to the same set.
@@ -53,14 +53,14 @@ class DeepSetGeneric(generic_model.GenericModel):
         This information is returned by `tset.set_intervals(..)`
         Expanding on this: each input datapoint contains a start-item-index
         and an end-item-index of items in the actual original dataset (which
-        is tsets.train_scaled, or tsets.test_scaled in make_test_loader(..)).
+        is splits.train_scaled, or splits.test_scaled in make_test_loader(..)).
         Subsequently, CollateFn is being used to use the start-item-index
         and end-item-index to extract the set of contiguous items belonging to
         the same set - and this will be returned by the DataLoader.
-        :param tsets: train/test dataset splits
+        :param splits: train/test dataset splits
         :return: the DataLoader
         """
-        all_intervals = tsets.sets_intervals('train')
+        all_intervals = splits.sets_intervals('train')
         # NOTE: shuffling is performed in the ChunkingDataset instead of the DataLoader
         #   because the ChunkingDataset is presented as iterable and cannot be indexed
         #   directly
@@ -75,17 +75,17 @@ class DeepSetGeneric(generic_model.GenericModel):
             shuffle=False,
             num_workers=config.data_loader_num_workers,
             pin_memory=False,
-            collate_fn=self.CollateFn(tsets.train_scaled_without_set_index)
+            collate_fn=self.CollateFn(splits.train_scaled_without_set_index)
         )
         return train_loader
 
-    def make_test_loader(self, tsets):
+    def make_test_loader(self, splits):
         """
         Please see description of DSPNAE.make_train_loader(..)
-        :param tsets: train/test dataset splits
+        :param splits: train/test dataset splits
         :return: the DataLoader
         """
-        all_intervals = tsets.sets_intervals('test')
+        all_intervals = splits.sets_intervals('test')
         train_chunk_len = self.kwargs.get('epoch_chunk_len', 1000)
         test_chunk_len = int(math.ceil(float(train_chunk_len) * config.test_fraction))
         chunking_intervals = chunking_dataset.ChunkingDataset(
@@ -98,7 +98,7 @@ class DeepSetGeneric(generic_model.GenericModel):
             chunking_intervals,
             shuffle=False,
             num_workers=config.data_loader_num_workers,
-            collate_fn=self.CollateFn(tsets.test_scaled_without_set_index)
+            collate_fn=self.CollateFn(splits.test_scaled_without_set_index)
         )
         return test_loader
 

@@ -150,15 +150,15 @@ def setup_dag():
             pool_slots=1
         )
 
-        t_to_tsets = PythonOperator(
-            task_id="to_tsets",
-            python_callable=download_sets_dag.to_tsets, # FIXME: move to_tsets to something more common?
+        t_to_splits = PythonOperator(
+            task_id="to_splits",
+            python_callable=download_sets_dag.to_splits, # FIXME: move to_splits to something more common?
             start_date=days_ago(2),
             op_kwargs={'spec': specs_config.activity_with_rels(activity_vectorizer.rel_latent_dim)},
             pool="npas_intensive",
             pool_slots=1
         )
-        t_clear >> t_collect >> t_vectorize >> t_to_tsets
+        t_clear >> t_collect >> t_vectorize >> t_to_splits
 
     thismodule = sys.modules[__name__]
     setattr(thismodule, "dag", dag)

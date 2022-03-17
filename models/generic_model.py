@@ -203,18 +203,18 @@ class GenericModel(pl.LightningModule):
             ret += f"_{self.kwargs['model_name_suffix']}"
         return ret
 
-    def make_train_loader(self, tsets):
+    def make_train_loader(self, splits):
         """
         System to provide batches of datapoints for training
-        :param tsets:
+        :param splits:
         :return:
         """
         raise Exception("implement in subclass")
 
-    def make_test_loader(self, tsets):
+    def make_test_loader(self, splits):
         """
         System to provide batches of datapoints for testing
-        :param tsets:
+        :param splits:
         :return:
         """
         raise Exception("implement in subclass")

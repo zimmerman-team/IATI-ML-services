@@ -62,15 +62,15 @@ def gridfs_instance():
     return gf
 
 
-def load_tsets_document(spec):
+def load_splits_document(spec):
     """
     Loads a document from the mongo db, containing the
     training and test sets.
     :param spec: the relspecs_classes.Spec instance
-    :return: mongodb document of the last tsets for this spec
+    :return: mongodb document of the last splits for this spec
     """
     db = mongo_db()
-    coll = db['npas_tsets']
+    coll = db['npas_splits']
     document = coll.find({'spec': spec.name}).sort('creation_time', pymongo.DESCENDING).limit(1)[0]
     return document
 
@@ -82,8 +82,8 @@ def load_splits(spec, with_set_index=False, cap=None):
     :param cap: limit to a certain amount of datapoints. Useful to quickly debug a new model
     :return: the Splits object containing the dataset splits
     """
-    document = load_tsets_document(spec)
-    logging.info(f"tsets creation time: {document['creation_time']}")
+    document = load_splits_document(spec)
+    logging.info(f"splits creation time: {document['creation_time']}")
     del document['spec']
     ret = splits.Splits(
         spec,
