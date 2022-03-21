@@ -28,11 +28,11 @@ def get_codelists():
     returns a codelist from the mongo db
     :return:
     """
-    db = dataset_persistency.mongo_db()
-    ret = defaultdict(lambda: list())
-    for curr in db['codelists'].find({}):
-        ret[curr['name']] = curr['codelist']
-    return ret
+    with dataset_persistency.MongoDB() as db:
+        ret = defaultdict(lambda: list())
+        for curr in db['codelists'].find({}):
+            ret[curr['name']] = curr['codelist']
+        return ret
 
 
 class SpecsCollection(utils.Collection):

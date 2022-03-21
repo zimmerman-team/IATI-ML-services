@@ -28,11 +28,11 @@ def clear(ti):
     :param ti:
     :return:
     """
-    db = dataset_persistency.mongo_db(caching=False)
-    db['activity_encoded_sets'].delete_many({})
-    db['activity_encoded_sets'].create_index([("activity_id", -1)])
-    db['activity_vectors'].delete_many({})
-    db['activity_vectors'].create_index([("activity_id", -1)])
+    with dataset_persistency.MongoDB(caching=False) as db:
+        db['activity_encoded_sets'].delete_many({})
+        db['activity_encoded_sets'].create_index([("activity_id", -1)])
+        db['activity_vectors'].delete_many({})
+        db['activity_vectors'].create_index([("activity_id", -1)])
 
 
 def collect(ti):
@@ -42,37 +42,37 @@ def collect(ti):
     :param ti:
     :return:
     """
-    db = dataset_persistency.mongo_db()
+    with dataset_persistency.MongoDB() as db:
 
-    # open all necessary collections
-    coll_sets = {}
+        # open all necessary collections
+        coll_sets = {}
 
-    # this data was previously downloaded by a different airflow DAG and task
-    # (download_sets_dag.py/persist)
-    coll_activity_ids = db['activity_ids']
-    coll_out = db['activity_encoded_sets']
+        # this data was previously downloaded by a different airflow DAG and task
+        # (download_sets_dag.py/persist)
+        coll_activity_ids = db['activity_ids']
+        coll_out = db['activity_encoded_sets']
 
-    # open all collections for every rel
-    for rel in rels:
-        coll_sets[rel.name] = db[rel.name + "_encoded"]
-
-    activity_ids_docs = coll_activity_ids.find({}, {'activity_id': 1})
-    for activity_ids_doc in activity_ids_docs:
-        encoded_sets = collections.OrderedDict()
-        activity_id = activity_ids_doc['activity_id']
+        # open all collections for every rel
         for rel in rels:
-            # get the data from a specific rel
-            doc = coll_sets[rel.name].find_one({'activity_id': activity_id})
-            if doc is not None:
-                encoded_sets[rel.name] = doc['data']
-            else:
-                # eventually this will have to cause the use of an empty set numpy array
-                encoded_sets[rel.name] = None
-        new_document = {
-            'activity_id': activity_id,
-            'encoded_sets': encoded_sets
-        }
-        coll_out.insert_one(new_document)
+            coll_sets[rel.name] = db[rel.name + "_encoded"]
+
+        activity_ids_docs = coll_activity_ids.find({}, {'activity_id': 1})
+        for activity_ids_doc in activity_ids_docs:
+            encoded_sets = collections.OrderedDict()
+            activity_id = activity_ids_doc['activity_id']
+            for rel in rels:
+                # get the data from a specific rel
+                doc = coll_sets[rel.name].find_one({'activity_id': activity_id})
+                if doc is not None:
+                    encoded_sets[rel.name] = doc['data']
+                else:
+                    # eventually this will have to cause the use of an empty set numpy array
+                    encoded_sets[rel.name] = None
+            new_document = {
+                'activity_id': activity_id,
+                'encoded_sets': encoded_sets
+            }
+            coll_out.insert_one(new_document)
 
 
 def vectorize(ti):
@@ -85,32 +85,32 @@ def vectorize(ti):
     :return:
     """
     global activity_vectorizer
-    db = dataset_persistency.mongo_db()
-    coll_in_sets = db['activity_encoded_sets']
-    coll_in_activity_without_rels = db['activity_encoded']
-    coll_out = db['activity_with_rels_arrayfied']
-    for datapoint_index, activity_sets_document in enumerate(coll_in_sets.find({})):
-        activity_sets = activity_sets_document['encoded_sets']
-        activity_without_rels_doc = coll_in_activity_without_rels.find_one({
-            'activity_id':activity_sets_document['activity_id']
-        })
-        if activity_without_rels_doc is None:
-            # no fixed-length fields data for this activity. Skip it.
-            continue
+    with dataset_persistency.MongoDB() as db:
+        coll_in_sets = db['activity_encoded_sets']
+        coll_in_activity_without_rels = db['activity_encoded']
+        coll_out = db['activity_with_rels_arrayfied']
+        for datapoint_index, activity_sets_document in enumerate(coll_in_sets.find({})):
+            activity_sets = activity_sets_document['encoded_sets']
+            activity_without_rels_doc = coll_in_activity_without_rels.find_one({
+                'activity_id':activity_sets_document['activity_id']
+            })
+            if activity_without_rels_doc is None:
+                # no fixed-length fields data for this activity. Skip it.
+                continue
 
-        activity_without_rels_fields_npa = utils.create_set_npa(
-            specs_config.activity_without_rels,
-            activity_without_rels_doc['data']
-        )
-        activity_vector = activity_vectorizer.process(activity_sets, activity_without_rels_fields_npa)
-        #logging.debug(f"activity_vector {activity_vector}")
-        activity_vector_serialized = utils.serialize(activity_vector)
-        new_document = {
-            'activity_id': activity_sets_document['activity_id'],
-            'npa': activity_vector_serialized,
-            'set_index': datapoint_index #FIXME: rename this backward-compatibility `set_index`
-        }
-        coll_out.insert_one(new_document)
+            activity_without_rels_fields_npa = utils.create_set_npa(
+                specs_config.activity_without_rels,
+                activity_without_rels_doc['data']
+            )
+            activity_vector = activity_vectorizer.process(activity_sets, activity_without_rels_fields_npa)
+            #logging.debug(f"activity_vector {activity_vector}")
+            activity_vector_serialized = utils.serialize(activity_vector)
+            new_document = {
+                'activity_id': activity_sets_document['activity_id'],
+                'npa': activity_vector_serialized,
+                'set_index': datapoint_index #FIXME: rename this backward-compatibility `set_index`
+            }
+            coll_out.insert_one(new_document)
 
 
 def setup_dag():
