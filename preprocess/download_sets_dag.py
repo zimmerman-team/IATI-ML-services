@@ -69,19 +69,19 @@ def persist_activity_ids(page, ti):
     :param ti:
     :return:
     """
-    db = dataset_persistency.mongo_db()
-    coll_out = db['activity_ids']
+    with dataset_persistency.MongoDB() as db:
+        coll_out = db['activity_ids']
 
-    # this large message is cleared in parse_*,
-    # which is subsequent to persist_activity_data_*
-    data = large_mp.recv(ti, f"download_{page}")
+        # this large message is cleared in parse_*,
+        # which is subsequent to persist_activity_data_*
+        data = large_mp.recv(ti, f"download_{page}")
 
-    for activity in data['response']['docs']:
-        activity_id = activity['iati_identifier']
+        for activity in data['response']['docs']:
+            activity_id = activity['iati_identifier']
 
-        coll_out.insert_one({
-            'activity_id': activity_id,
-        })
+            coll_out.insert_one({
+                'activity_id': activity_id,
+            })
 
 
 def parse(page, ti):
@@ -143,12 +143,12 @@ def clear_activity_ids(ti):
     :param ti:
     :return:
     """
-    db = dataset_persistency.mongo_db()
-    coll = db['activity_ids']
+    with dataset_persistency.MongoDB() as db: # FIXME: to decorator?
+        coll = db['activity_ids']
 
-    # remove all data previously stored for this relation
-    coll.delete_many({})
-    coll.create_index([("activity_id", -1)])
+        # remove all data previously stored for this relation
+        coll.delete_many({})
+        coll.create_index([("activity_id", -1)])
 
 
 def clear(spec, ti):
@@ -159,12 +159,12 @@ def clear(spec, ti):
     :param ti:
     :return:
     """
-    db = dataset_persistency.mongo_db()
-    coll = db[spec.name]
+    with dataset_persistency.MongoDB() as db:
+        coll = db[spec.name]
 
-    # remove all data previously stored for this relation
-    coll.delete_many({})
-    coll.create_index([("activity_id", -1)])
+        # remove all data previously stored for this relation
+        coll.delete_many({})
+        coll.create_index([("activity_id", -1)])
 
 
 def persist(page, spec_name, ti):
@@ -174,22 +174,22 @@ def persist(page, spec_name, ti):
     :param ti: task id (string)
     :return: None
     """
-    db = dataset_persistency.mongo_db()
-    data = large_mp.recv(ti, f'parse_{page}')
+    with dataset_persistency.MongoDB() as db:
+        data = large_mp.recv(ti, f'parse_{page}')
 
-    if spec_name in data.keys():
-        spec_data = data[spec_name]
-        for activity_id, activity_data in spec_data.items():
-            # if spec_name == "activity":
-            #    logging.info(f"activity data:{activity_id}:{activity_data}")
+        if spec_name in data.keys():
+            spec_data = data[spec_name]
+            for activity_id, activity_data in spec_data.items():
+                # if spec_name == "activity":
+                #    logging.info(f"activity data:{activity_id}:{activity_data}")
 
-            # remove pre-existing set for this activity
-            db[spec_name].delete_one({'activity_id': activity_id})
+                # remove pre-existing set for this activity
+                db[spec_name].delete_one({'activity_id': activity_id})
 
-            db[spec_name].insert_one({
-                'activity_id': activity_id,
-                'data': activity_data
-            })
+                db[spec_name].insert_one({
+                    'activity_id': activity_id,
+                    'data': activity_data
+                })
 
 def clear_page(page, ti):
     large_mp.clear_recv(ti, f'parse_{page}')
@@ -201,22 +201,22 @@ def codelists(ti):
     :param ti: task id (string)
     :return: None
     """
-    db = dataset_persistency.mongo_db()
-    coll_out = db['codelists']
-    coll_out.create_index([("name", -1)])
-    for codelist_name in extract_codelists(specs):
-        url = DATASTORE_CODELIST_URL.format(codelist_name)
-        params = {'format': 'json'}
-        response = requests.get(url, params=params)
-        data = response.json()
-        lst = []
-        for curr in data:
-            lst.append(curr['code'])
-        coll_out.delete_many({'name': codelist_name})
-        coll_out.insert_one({
-            'name': codelist_name,
-            'codelist': lst
-        })
+    with dataset_persistency.MongoDB() as db:
+        coll_out = db['codelists']
+        coll_out.create_index([("name", -1)])
+        for codelist_name in extract_codelists(specs):
+            url = DATASTORE_CODELIST_URL.format(codelist_name)
+            params = {'format': 'json'}
+            response = requests.get(url, params=params)
+            data = response.json()
+            lst = []
+            for curr in data:
+                lst.append(curr['code'])
+            coll_out.delete_many({'name': codelist_name})
+            coll_out.insert_one({
+                'name': codelist_name,
+                'codelist': lst
+            })
 
 
 def get_set_size(set_):
@@ -239,56 +239,56 @@ def encode(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = dataset_persistency.mongo_db()
-    coll_in = db[spec.name]
-    coll_out = db[spec.name + "_encoded"]
+    with dataset_persistency.MongoDB() as db:
+        coll_in = db[spec.name]
+        coll_out = db[spec.name + "_encoded"]
 
-    # remove existing data in the collection
-    coll_out.delete_many({})
-    coll_out.create_index([("activity_id", -1)])
+        # remove existing data in the collection
+        coll_out.delete_many({})
+        coll_out.create_index([("activity_id", -1)])
 
-    for document in coll_in.find(no_cursor_timeout=True):
-        document = dict(document)  # copy
+        for document in coll_in.find(no_cursor_timeout=True):
+            document = dict(document)  # copy
 
-        data = document['data']
-        if type(spec) is specs_config.Activity:
-            data_amount = 1
-        else:
-            data_amount = get_set_size(data)
-
-        # how much time does each item require to be encoded
-        _start = time.time()
-
-        for field in spec.fields:
-            encodable = data.get(field.name, [])
-
+            data = document['data']
             if type(spec) is specs_config.Activity:
-                # if it's an activity, there is only one value
-                # per field
-                encodable = [encodable]
+                data_amount = 1
+            else:
+                data_amount = get_set_size(data)
 
-            tmp = field.encode(encodable, data_amount)
-            data[field.name] = tmp
+            # how much time does each item require to be encoded
+            _start = time.time()
 
-        end = time.time()
-        encoding_time = end-_start
-        document['encoding_time'] = encoding_time
-        del document['_id']
-        lens = list(map(lambda fld: len(data[fld.name]), spec.fields))
-        if len(set(lens)) > 1:
-            msg = "lens " + str(lens) + " for fields " + str(spec.fields_names)
-            logging.info(msg)
-            logging.info(document)
-            raise Exception(msg)
-        coll_out.delete_one({'activity_id': document['activity_id']})  # remove pre-existing set for this activity
-
-        try:
-            coll_out.insert_one(document)
-        except pymongo.errors.DocumentTooLarge as e:
-            logging.info(f"document[activity_id]: {document['activity_id']}")
             for field in spec.fields:
-                logging.info(f"{field.name} len: {len(data[field.name])}")
-            raise Exception(f"cannot insert document into spec {spec.name} because {str(e)}")
+                encodable = data.get(field.name, [])
+
+                if type(spec) is specs_config.Activity:
+                    # if it's an activity, there is only one value
+                    # per field
+                    encodable = [encodable]
+
+                tmp = field.encode(encodable, data_amount)
+                data[field.name] = tmp
+
+            end = time.time()
+            encoding_time = end-_start
+            document['encoding_time'] = encoding_time
+            del document['_id']
+            lens = list(map(lambda fld: len(data[fld.name]), spec.fields))
+            if len(set(lens)) > 1:
+                msg = "lens " + str(lens) + " for fields " + str(spec.fields_names)
+                logging.info(msg)
+                logging.info(document)
+                raise Exception(msg)
+            coll_out.delete_one({'activity_id': document['activity_id']})  # remove pre-existing set for this activity
+
+            try:
+                coll_out.insert_one(document)
+            except pymongo.errors.DocumentTooLarge as e:
+                logging.info(f"document[activity_id]: {document['activity_id']}")
+                for field in spec.fields:
+                    logging.info(f"{field.name} len: {len(data[field.name])}")
+                raise Exception(f"cannot insert document into spec {spec.name} because {str(e)}")
 
 
 def arrayfy(spec, ti):
@@ -299,20 +299,20 @@ def arrayfy(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = dataset_persistency.mongo_db()
-    coll_in = db[spec.name+"_encoded"]
-    coll_out = db[spec.name+"_arrayfied"]
-    coll_out.delete_many({})  # empty the collection
-    coll_out.create_index([("activity_id", -1)])
-    for set_index, document in enumerate(coll_in.find()):
-        data = document['data']
-        set_npa = utils.create_set_npa(spec, data)
-        set_npa_serialized = utils.serialize(set_npa)
-        # FIXME: rename `set_index` with something more generic to account for simple datapoint indexes
-        coll_out.insert_one({
-            'set_index': set_index,
-            'npa': set_npa_serialized
-        })
+    with dataset_persistency.MongoDB() as db:
+        coll_in = db[spec.name+"_encoded"]
+        coll_out = db[spec.name+"_arrayfied"]
+        coll_out.delete_many({})  # empty the collection
+        coll_out.create_index([("activity_id", -1)])
+        for set_index, document in enumerate(coll_in.find()):
+            data = document['data']
+            set_npa = utils.create_set_npa(spec, data)
+            set_npa_serialized = utils.serialize(set_npa)
+            # FIXME: rename `set_index` with something more generic to account for simple datapoint indexes
+            coll_out.insert_one({
+                'set_index': set_index,
+                'npa': set_npa_serialized
+            })
 
 
 def to_npa(spec, ti):
@@ -322,37 +322,37 @@ def to_npa(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = dataset_persistency.mongo_db()
-    coll_in = db[spec.name + "_arrayfied"]
-    coll_out = db['npas']
-    coll_out.create_index([("spec", -1)])
-    coll_out.create_index([("creation_date", -1)])
-    coll_out.create_index([("npa_file_id", -1)])
-    spec_npas = []
+    with dataset_persistency.MongoDB() as db:
+        coll_in = db[spec.name + "_arrayfied"]
+        coll_out = db['npas']
+        coll_out.create_index([("spec", -1)])
+        coll_out.create_index([("creation_date", -1)])
+        coll_out.create_index([("npa_file_id", -1)])
+        spec_npas = []
 
-    cursor = coll_in.find()
-    if spec.limit:
-        cursor = cursor.limit(spec.limit)
+        cursor = coll_in.find()
+        if spec.limit:
+            cursor = cursor.limit(spec.limit)
 
-    for document in cursor:
-        set_npa = utils.deserialize(document['npa'])
+        for document in cursor:
+            set_npa = utils.deserialize(document['npa'])
 
-        # put the set index as first column in the numpy array
-        set_index = document['set_index']
-        set_index_col = np.ones((set_npa.shape[0], 1))*set_index
+            # put the set index as first column in the numpy array
+            set_index = document['set_index']
+            set_index_col = np.ones((set_npa.shape[0], 1))*set_index
 
-        spec_npas.append(np.hstack([set_index_col, set_npa]))
+            spec_npas.append(np.hstack([set_index_col, set_npa]))
 
-    spec_npa = np.vstack(spec_npas)
-    coll_out.delete_many({'spec': spec.name})
+        spec_npa = np.vstack(spec_npas)
+        coll_out.delete_many({'spec': spec.name})
 
-    coll_out.insert_one({
-        'spec': spec.name,
-        'creation_date': utils.strnow_iso(),
-        'npa_file_id': dataset_persistency.save_npa(f"{spec.name}", spec_npa),
-        'npa_rows': spec_npa.shape[0],
-        'npa_cols': spec_npa.shape[1]
-    })
+        coll_out.insert_one({
+            'spec': spec.name,
+            'creation_date': utils.strnow_iso(),
+            'npa_file_id': dataset_persistency.save_npa(f"{spec.name}", spec_npa),
+            'npa_rows': spec_npa.shape[0],
+            'npa_cols': spec_npa.shape[1]
+        })
 
 
 def to_splits(spec, ti):
@@ -363,53 +363,53 @@ def to_splits(spec, ti):
     :param ti: task id
     :return: None
     """
-    db = dataset_persistency.mongo_db()
-    coll_in = db[spec.name + '_arrayfied']
-    set_indices_results = coll_in.find({}, {'set_index': 1})
-    set_indices = list(set(map(lambda document: document['set_index'], set_indices_results)))
-    train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=config.train_fraction)
-    train_indices = set(train_indices)
-    test_indices = set(test_indices)
-    coll_out = db['npas_splits']
-    coll_out.create_index([("spec", -1)])
-    coll_out.create_index([("creation_date", -1)])
-    coll_out.create_index([("train_npa_file_id", -1)])
-    coll_out.create_index([("test_npa_file_id", -1)])
-    train_npas = []
-    test_npas = []
-    cursor = coll_in.find()
-    if spec.limit:
-        cursor = cursor.limit(spec.limit)
-    for document in cursor:
-        set_npa = utils.deserialize(document['npa'])
-        set_index = document['set_index']
-        set_index_col = np.ones((set_npa.shape[0], 1))*set_index
+    with dataset_persistency.MongoDB() as db:
+        coll_in = db[spec.name + '_arrayfied']
+        set_indices_results = coll_in.find({}, {'set_index': 1})
+        set_indices = list(set(map(lambda document: document['set_index'], set_indices_results)))
+        train_indices, test_indices = sklearn.model_selection.train_test_split(set_indices, train_size=config.train_fraction)
+        train_indices = set(train_indices)
+        test_indices = set(test_indices)
+        coll_out = db['npas_splits']
+        coll_out.create_index([("spec", -1)])
+        coll_out.create_index([("creation_date", -1)])
+        coll_out.create_index([("train_npa_file_id", -1)])
+        coll_out.create_index([("test_npa_file_id", -1)])
+        train_npas = []
+        test_npas = []
+        cursor = coll_in.find()
+        if spec.limit:
+            cursor = cursor.limit(spec.limit)
+        for document in cursor:
+            set_npa = utils.deserialize(document['npa'])
+            set_index = document['set_index']
+            set_index_col = np.ones((set_npa.shape[0], 1))*set_index
 
-        # NOTE: there will be a set_index even for relspecs.Activity
-        #       data, even if they are not sets!
-        #       This set_index is actually just a progressive datapoint index within
-        #       its mongodb collection
-        npa = np.hstack([set_index_col, set_npa])
+            # NOTE: there will be a set_index even for relspecs.Activity
+            #       data, even if they are not sets!
+            #       This set_index is actually just a progressive datapoint index within
+            #       its mongodb collection
+            npa = np.hstack([set_index_col, set_npa])
 
-        if set_index in train_indices:
-            train_npas.append(npa)
-        elif set_index in test_indices:
-            test_npas.append(npa)
+            if set_index in train_indices:
+                train_npas.append(npa)
+            elif set_index in test_indices:
+                test_npas.append(npa)
 
-    train_npa = np.vstack(train_npas)
-    test_npa = np.vstack(test_npas)
+        train_npa = np.vstack(train_npas)
+        test_npa = np.vstack(test_npas)
 
-    coll_out.delete_many({'spec': spec.name})
-    coll_out.insert_one({
-        'spec': spec.name,
-        'creation_time': utils.strnow_iso(),
-        'train_npa_file_id': dataset_persistency.save_npa(f"{spec.name}_train", train_npa),
-        'test_npa_file_id': dataset_persistency.save_npa(f"{spec.name}_test", test_npa),
-        'train_npa_rows': train_npa.shape[0],
-        'train_npa_cols': train_npa.shape[1],
-        'test_npa_rows': test_npa.shape[0],
-        'test_npa_cols': test_npa.shape[1]
-    })
+        coll_out.delete_many({'spec': spec.name})
+        coll_out.insert_one({
+            'spec': spec.name,
+            'creation_time': utils.strnow_iso(),
+            'train_npa_file_id': dataset_persistency.save_npa(f"{spec.name}_train", train_npa),
+            'test_npa_file_id': dataset_persistency.save_npa(f"{spec.name}_test", test_npa),
+            'train_npa_rows': train_npa.shape[0],
+            'train_npa_cols': train_npa.shape[1],
+            'test_npa_rows': test_npa.shape[0],
+            'test_npa_cols': test_npa.shape[1]
+        })
 
 
 default_args = {
