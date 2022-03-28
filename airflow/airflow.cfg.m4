@@ -1,7 +1,7 @@
 [core]
 # The folder where your airflow pipelines live, most likely a
 # subfolder in a code repository. This path must be absolute.
-dags_folder = HOME/airflow/dags
+dags_folder = m4_HOME/airflow/dags
 
 # Hostname by providing a path to a callable, which will resolve the hostname.
 # The format is "package.function".
@@ -81,13 +81,13 @@ sql_alchemy_schema =
 # This defines the maximum number of task instances that can run concurrently in Airflow
 # regardless of scheduler count and worker count. Generally, this value is reflective of
 # the number of task instances with the running state in the metadata database.
-parallelism = AIRFLOW_CONCURRENCY
+parallelism = m4_AIRFLOW_CONCURRENCY
 
 # The maximum number of task instances allowed to run concurrently in each DAG. To calculate
 # the number of tasks that is running concurrently for a DAG, add up the number of running
 # tasks for all DAG runs of the DAG. This is configurable at the DAG level with ``concurrency``,
 # which is defaulted as ``max_active_tasks_per_dag``.
-max_active_tasks_per_dag = AIRFLOW_CONCURRENCY
+max_active_tasks_per_dag = m4_AIRFLOW_CONCURRENCY
 
 # Are DAGs paused by default at creation
 dags_are_paused_at_creation = True
@@ -96,8 +96,8 @@ dags_are_paused_at_creation = True
 # if it reaches the limit. This is configurable at the DAG level with ``max_active_runs``,
 # which is defaulted as ``max_active_runs_per_dag``.
 max_active_runs_per_dag = 4
-max_active_runs = AIRFLOW_CONCURRENCY
-max_threads = AIRFLOW_CONCURRENCY
+max_active_runs = m4_AIRFLOW_CONCURRENCY
+max_threads = m4_AIRFLOW_CONCURRENCY
 
 # Whether to load the DAG examples that ship with Airflow. It's good to
 # get started, but you probably want to set this to ``False`` in a production
@@ -110,7 +110,7 @@ load_examples = True
 load_default_connections = True
 
 # Path to the folder containing Airflow plugins
-plugins_folder = HOME/airflow/plugins
+plugins_folder = m4_HOME/airflow/plugins
 
 # Should tasks be executed via forking of the parent process ("False",
 # the speedier option) or by spawning a new python process ("True" slow,
@@ -225,7 +225,7 @@ sensitive_var_conn_names =
 [logging]
 # The folder where airflow should store its log files
 # This path must be absolute
-base_log_folder = HOME/airflow/logs
+base_log_folder = m4_HOME/airflow/logs
 
 # Airflow can store logs remotely in AWS S3, Google Cloud Storage or Elastic Search.
 # Set this to True if you want to enable remote logging.
@@ -291,7 +291,7 @@ log_filename_template = {{ ti.dag_id }}/{{ ti.task_id }}/{{ ts }}/{{ try_number 
 log_processor_filename_template = {{ filename }}.log
 
 # full path of dag_processor_manager logfile
-dag_processor_manager_log_location = HOME/airflow/logs/dag_processor_manager/dag_processor_manager.log
+dag_processor_manager_log_location = m4_HOME/airflow/logs/dag_processor_manager/dag_processor_manager.log
 
 # Name of handler to read task instance logs.
 # Defaults to use ``task`` handler.
@@ -854,7 +854,7 @@ scheduler_health_check_threshold = 30
 
 # How often (in seconds) should the scheduler check for orphaned tasks and SchedulerJobs
 orphaned_tasks_check_interval = 300.0
-child_process_log_directory = HOME/airflow/logs/scheduler
+child_process_log_directory = m4_HOME/airflow/logs/scheduler
 
 # Local task jobs periodically heartbeat to the DB. If the job has
 # not heartbeat in this many seconds, the scheduler will mark the
