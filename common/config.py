@@ -60,6 +60,19 @@ def populate():
         val = _conf_dict[curr]
         set_entry(curr, val)
 
+def d_options():
+    global _conf_dict
+    ret = ""
+    for name,val in _conf_dict.items():
+        ret += f"-D{name.upper()}={val} "
+    return ret
+
+def spaced_options():
+    global _conf_dict
+    ret = ""
+    for name,val in _conf_dict.items():
+        ret += f"{name.upper()} {val}---"
+    return ret
 
 def load():
     """
