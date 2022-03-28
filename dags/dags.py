@@ -15,5 +15,6 @@ sys.path.append(
 
 import preprocess
 from preprocess.download_sets_dag import dag as download_sets_dag_obj
+from preprocess.vectorize_activities_dag import dag as vectorize_activities_dag_obj
 import models
 from models.dag import *

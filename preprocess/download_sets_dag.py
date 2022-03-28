@@ -425,6 +425,8 @@ with DAG(
     default_args=default_args,
     schedule_interval=None,
     max_active_runs=1,
+    concurrency=1, # limiting concurrency and parallelism to prevent airflow to crash with PostgreSQL deadlocks
+    max_active_tasks=1
 ) as dag:
 
     pages = list(range(config.download_max_pages))
