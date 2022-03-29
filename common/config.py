@@ -30,6 +30,10 @@ def mongo_uri():
     # set dynamically via populate()/set_entry(..)
     return f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_db}"
 
+def get_airflow_sqlalchemy_conn():
+    global _conf_dict
+    password = _conf_dict['airflow_pg_password']
+    return f"postgresql+psycopg2://airflow_user:{password}@localhost:5432/airflow_db"
 
 def vm_uri():
     """
@@ -61,6 +65,7 @@ def populate():
         set_entry(curr, val)
     home = os.path.expanduser('~')
     set_entry('home',home)
+    set_entry('airflow_sqlalchemy_conn',get_airflow_sqlalchemy_conn())
 
 def d_options():
     global _conf_dict
