@@ -58,18 +58,17 @@ m4 -P $D_OPTIONS psql_commands.m4 |
 mkdir -pv $HOME/airflow
 mkdir -pv $HOME/airflow/dags
 
-# will macroexpand HOME with the user's home directory
-m4 -P $D_OPTIONS \
-   airflow.cfg.m4 > $HOME/airflow/airflow.cfg
+$LEARNING_SETS_DIR/airflow/install_local_airflow_cfg.sh
 
 # will set the learning_sets dir (extracted from this script's path) to the module that will add learning_sets' dag
-m4 -P $D_OPTIONS \
-   add_dag_bags.py.m4 > $HOME/airflow/dags/add_dag_bags.py
+m4 -P $D_OPTIONS add_dag_bags.py.m4 > $HOME/airflow/dags/add_dag_bags.py
 
 airflow db init
 
 airflow users create -u $AIRFLOW_USER -e "$AIRFLOW_EMAIL" -r Admin -f $AIRFLOW_USER -l X -p "$AIRFLOW_PASSWORD"
 
 airflow pools set npas_intensive 1 "creation of large npas may require a lot of resources"
+
+airflow db upgrade # needs to be run if there was a pre-existing airflow db
 
 pip3 install 'apache-airflow[statsd]'

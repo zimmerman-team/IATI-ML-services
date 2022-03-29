@@ -59,12 +59,14 @@ def populate():
     for curr in _conf_dict:
         val = _conf_dict[curr]
         set_entry(curr, val)
+    home = os.path.expanduser('~')
+    set_entry('home',home)
 
 def d_options():
     global _conf_dict
     ret = ""
     for name,val in _conf_dict.items():
-        ret += f"-D{name.upper()}={val} "
+        ret += f"-Dm4_{name.upper()}={val} "
     return ret
 
 def spaced_options():

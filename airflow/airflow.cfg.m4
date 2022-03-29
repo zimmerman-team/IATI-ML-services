@@ -27,7 +27,7 @@ executor = LocalExecutor
 # SqlAlchemy supports many different database engines.
 # More information here:
 # http://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html#database-uri
-sql_alchemy_conn = postgresql+psycopg2://airflow_user:AIRFLOW_PG_PASSWORD@localhost:5432/airflow_db
+sql_alchemy_conn = postgresql+psycopg2://airflow_user:m4_AIRFLOW_PG_PASSWORD@localhost:5432/airflow_db
 
 # The encoding for the databases
 sql_engine_encoding = utf-8
@@ -685,7 +685,7 @@ celery_app_name = airflow.executors.celery_executor
 # ``airflow celery worker`` command. This defines the number of task instances that
 # a worker will take, so size up your workers based on the resources on
 # your worker box and the nature of your tasks
-worker_concurrency = AIRFLOW_CONCURRENCY
+worker_concurrency = m4_AIRFLOW_CONCURRENCY
 
 # The maximum and minimum concurrency that will be used when starting workers with the
 # ``airflow celery worker`` command (always keep minimum processes, but grow
