@@ -158,7 +158,7 @@ enable_xcom_pickling = False
 
 # When a task is killed forcefully, this is the amount of time in seconds that
 # it has to cleanup after it is sent a SIGTERM, before it is SIGKILLED
-killed_task_cleanup_time = 60
+killed_task_cleanup_time = 3600
 
 # Whether to override params with dag_run.conf. If you pass some key-value pairs
 # through ``airflow dags backfill -c`` or
