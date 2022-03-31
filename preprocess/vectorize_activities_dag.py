@@ -19,7 +19,7 @@ default_args = {
 
 rels = specs_config.rels.downloadable
 
-activity_vectorizer = vectorize_activity.ActivityVectorizer(config.model_modulename_rels)
+activity_vectorizer = vectorize_activity.ActivityVectorizer(config.models.rels.modulename)
 
 
 def clear(ti):

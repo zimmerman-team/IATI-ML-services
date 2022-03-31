@@ -3,6 +3,7 @@ import sys
 import yaml
 import socket
 
+from common import utils
 # some configuration options may have default values, which are going to be eventually
 # replaced by respective entries in the config file.
 defaults = dict(
@@ -42,14 +43,48 @@ def vm_uri():
     """
     return f"{vm_user}@{vm_host}"
 
-def set_entry(name, val):
+class NoSuchConfItemException(Exception):
+    pass
+
+class NestedConfig(object):
+
+    def __init__(self, _conf_dict=dict()):
+        self.__dict__['_conf_dict'] = _conf_dict
+
+    def __setattr__(self, key, value):
+        self._conf_dict[key] = value
+
+    def __getattr__(self, key):
+        if key in self._conf_dict.keys():
+            return self._conf_dict[key]
+        else:
+            raise NoSuchConfItemException(key)
+
+def _is_list_of_dicts(val):
+    return type(val) is list \
+           and len(val) > 0 \
+           and type(val[0]) is dict
+
+def set_entry(name, val, where=None):
     """
     :param name: string name of the entry
     :param val: value of the entry
     :return: None
     """
-    global _conf_dict
-    setattr(sys.modules[__name__], name, val)
+    if where is None:
+        # defaults to root (the config module)
+        where = sys.modules[__name__]
+    _conf_dict = getattr(where, '_conf_dict')
+
+    if _is_list_of_dicts(val):
+        new_obj = NestedConfig()
+        for curr_dict in val:
+            for k,v in curr_dict.items():
+                # recursion
+                set_entry(k,v,where=new_obj)
+        val = new_obj # replace the yaml dict with the NestedConfig object
+
+    setattr(where, name, val)
     _conf_dict[name] = val
     if name == "train_fraction":
         test_fraction = 1.0 - val
