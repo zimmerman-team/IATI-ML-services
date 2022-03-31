@@ -110,10 +110,10 @@ def populate_module_with_dags():
         ]
         # FIXME: this part needs to be reorganized. Smells code duplication
         if model_class_loader.does_model_train_on(modelname, 'rels'):
-            args[1] = config.models_dag_config_name_rels
+            args[1] = config.models.rels.config_name
             train_models_dag = make_rels_dag(*args)
         if model_class_loader.does_model_train_on(modelname, 'activity'):
-            args[1] = config.models_dag_config_name_activity
+            args[1] = config.models.activity.config_name
             train_models_dag = make_activity_dag(*args)
         setattr(thismodule, "train_models_dag_"+modelname, train_models_dag)
 
