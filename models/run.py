@@ -140,7 +140,7 @@ class MeasurementsCallback(pl.callbacks.Callback):
         self.measurements.print_debug_info()
         for m in self.measurements.plottable:
             if m.plot_type in ['field', 'losses', 'latent']:  # FIXME: refactor this
-                for which_split in splits.Splits.splits_names:
+                for which_split in splits.names:
                     stacked_npa = m.vstack(which_split.value)
                     print(m.name, which_split.value)
                     if len(stacked_npa) == 0:
@@ -207,7 +207,7 @@ def run(Model, config_name, dynamic_config={}):
             cap=model_config['cap_dataset']
         )
         mlflow.log_param('splits_creation_time', _splits.creation_time)
-        for curr in _splits.splits_names:
+        for curr in splits.names:
             mlflow.log_param(f"{curr}_datapoints", _splits[curr].shape[0])
 
         #  use gpu if available

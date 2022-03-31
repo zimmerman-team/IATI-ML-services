@@ -4,7 +4,7 @@ from common import utils, dataset_persistency
 
 import logging
 
-splits_names = ('train', 'test') # FIXME: maybe refactor just to 'names'
+names = ('train', 'test')
 
 class Splits(utils.Collection):
 
@@ -13,8 +13,9 @@ class Splits(utils.Collection):
         loads the data for this split from mongodb(+gridfs)
         :return:
         """
+        global names
         total_n_datapoints = 0
-        for which_split in splits_names:
+        for which_split in names:
             # FIXME: maybe make a Splits object so I can get rid of these underscores
             gridfs_fileid = self[f"{which_split}_npa_file_id"]
 
@@ -27,7 +28,7 @@ class Splits(utils.Collection):
         if self.cap not in (None, False, 0):
             # the dataset_cap option in the configuration file allows to use
             # a smaller amount of datapoints in order to quickly debug a new model.
-            for which_split in splits_names:
+            for which_split in names:
                 orig = self[which_split].shape[0]
                 split_fraction = float(orig)/float(total_n_datapoints)
                 split_cap = int(split_fraction*self.cap)
@@ -39,13 +40,13 @@ class Splits(utils.Collection):
             **kwargs
     ):
         self.spec = spec
-        kwargs.update(dict.fromkeys(splits_names, None))
+        kwargs.update(dict.fromkeys(names, None))
         self.creation_time = kwargs['creation_time']
         super().__init__(**kwargs)
 
         self.load_data()
 
-        for which_split in splits_names:
+        for which_split in names:
 
             # IMPORTANT: The input data is always considered as having the first column
             # having the set index. What `.with_set_index` does is to remove it from further
@@ -84,7 +85,7 @@ class Splits(utils.Collection):
             ) = self._scale(sections, self.with_set_index)
 
     def print_shapes(self):
-        for which_split in splits_names:
+        for which_split in names:
             logging.debug(which_split+".shape"+str(self[which_split].shape))
             logging.debug(which_split+"_scaled.shape"+str(self[which_split+"_scaled"].shape))
 

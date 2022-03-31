@@ -165,7 +165,7 @@ class Measurement(object):
         self.plot_type = plot_type
         self.mlflow_log = mlflow_log
         self._dst = dst
-        for which_split in splits.splits_names:
+        for which_split in splits.names:
             self.clear(which_split.value)
 
     def clear(self, which_split):
@@ -278,7 +278,7 @@ class Measurement(object):
         prints the collected data's dimension sizes for training and testing sets
         :return:
         """
-        for which_split in splits.splits_names:
+        for which_split in splits.names:
             d = self.data[which_split.value]
             tmp = self._recursive_counts_str(d)
             print(which_split.value + ":" + tmp+" ", end='')
