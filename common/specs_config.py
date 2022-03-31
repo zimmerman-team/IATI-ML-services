@@ -1,20 +1,9 @@
 import sys
 import os
 
-# FIXME: rename module in specs_config.py??
-
 """
 Contains the specification of the field mappings for IATI activity
 """
-
-# FIXME: find a way around this sys path fix, maybe with __init__.py
-sys.path.append(
-    os.path.abspath(
-        os.path.dirname(
-            os.path.abspath(__file__)
-        )+"/.."
-    )
-)
 
 from common.relspecs_classes import *
 
