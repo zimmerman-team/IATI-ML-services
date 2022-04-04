@@ -4,17 +4,28 @@ import sqlalchemy as sa
 from tabulate import tabulate
 
 from common import config
+from . import sa_common
+from . import sa_tables
+
+table = sa_tables.task_instance
+
+def query_by_run_id(run_id):
+    query = sa.select([
+        sa.func.count(table.columns.state).label('count'),
+        table.columns.state,
+        table.columns.run_id
+    ]).group_by(
+        table.columns.state,
+        table.columns.run_id
+    ).order_by(
+        table.columns.run_id.desc()
+    ).where(
+        table.columns.run_id == run_id
+    )
+    return query
 
 def main():
-    connstring = config.get_airflow_sqlalchemy_conn()
-    engine = sa.create_engine(connstring)
-    metadata = sa.MetaData()
-    table = sa.Table("task_instance", metadata,
-        sa.Column("task_id", sa.String,primary_key=True),
-        sa.Column("state", sa.String),
-        sa.Column("run_id", sa.String,primary_key=True),
-        autoload_with=engine
-    )
+
     query = sa.select([
         sa.func.count(table.columns.state).label('count'),
         table.columns.state,
@@ -25,7 +36,7 @@ def main():
     ).order_by(
         table.columns.run_id.desc()
     )
-    conn = engine.connect()
+    conn = sa_common.engine.connect()
     cursor = conn.execute(query)
     keys = cursor.keys()
     fetched = cursor.fetchall()
