@@ -9,7 +9,21 @@ from . import sa_tables
 
 table = sa_tables.task_instance
 
-def query_by_run_id(run_id):
+def task_instances_by_state(run_id, state):
+    query = sa.select([
+        table.columns.task_id,
+        table.columns.start_date,
+        table.columns.end_date
+    ]).order_by(
+        table.columns.end_date.desc()
+    ).where(
+        table.columns.run_id == run_id
+    ).where(
+        table.columns.state == state
+    )
+    return query
+
+def task_state_counts_by_run_id(run_id):
     query = sa.select([
         sa.func.count(table.columns.state).label('count'),
         table.columns.state,
@@ -23,6 +37,21 @@ def query_by_run_id(run_id):
         table.columns.run_id == run_id
     )
     return query
+
+def dag_runs():
+    table = sa_tables.dag_run
+    query = sa.select([
+        table.columns.dag_id,
+        table.columns.run_id,
+        table.columns.start_date
+    ]).order_by(
+        table.columns.start_date.desc()
+    )
+    return query
+
+#def main():
+#    keys,data = sa_common.fetch_data(query)
+#    sa_common.print_data(keys,data)
 
 def main():
 

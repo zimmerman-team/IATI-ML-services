@@ -831,7 +831,7 @@ scheduler_heartbeat_sec = 5
 num_runs = -1
 
 # The number of seconds to wait between consecutive DAG file processing
-processor_poll_interval = 1
+scheduler_idle_sleep_time = 1
 
 # Number of seconds after which a DAG file is parsed. The DAG file is parsed every
 # ``min_file_process_interval`` number of seconds. Updates to DAGs are reflected after

@@ -8,6 +8,8 @@ task_instance = sa.Table(
     sa.Column("task_id", sa.String, primary_key=True),
     sa.Column("state", sa.String),
     sa.Column("run_id", sa.String, primary_key=True),
+    sa.Column('start_date',sa.DateTime),
+    sa.Column('end_date', sa.DateTime),
     extend_existing=True,
     autoload_with=sa_common.engine
  )
@@ -19,6 +21,7 @@ dag_run = sa.Table(
     sa.Column("dag_id", sa.String),
     sa.Column("run_id", sa.String, primary_key=True),
     sa.Column("start_date", sa.DateTime),
+    sa.Column("execution_date", sa.DateTime),
     extend_existing=True,
     autoload_with=sa_common.engine
 )
