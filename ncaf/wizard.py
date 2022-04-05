@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 from . import sa_common, queries
 
-selections = {}
+selections = OrderedDict()
 
 log_file = open('/tmp/wizard.log','w+')
 
@@ -48,6 +48,24 @@ class WizardForm(npyscreen.Form):
         self.parentApp.setNextForm(prev)
         self.parentApp.switchFormNow()
 
+    def set_header(self):
+        header_strs = []
+        for formname, selection in selections.items():
+            if formname == self.formname:
+                break
+
+            descriptive_field_idx = getattr(get_form_class_by_name(formname),'descriptive_field_idx',0)
+
+            header_strs.append(str(selection[descriptive_field_idx]))
+
+        header_str = f"{self.formname} | " + " / ".join(header_strs)
+        self.add(
+            npyscreen.FixedText,
+            value=header_str,
+            w_id="header",
+            editable=False
+        )
+
 
 class WizardMultiLine(npyscreen.MultiLine):
     def __init__(self,*args,**kwargs):
@@ -60,14 +78,13 @@ class DagRunsForm(WizardForm):
     nextForm = 'TASKINSTANCECOUNTS'
     def create(self):
         query = queries.dag_runs()
-        log("this is foobar")
-        log("dagruns query",str(query))
         keys,self.data = sa_common.fetch_data(query)
         values = [
             " ".join(map(str,curr))
             for curr
             in self.data
         ]
+        self.set_header()
         self.add(
             WizardMultiLine,
             values=values,
@@ -78,6 +95,7 @@ class DagRunsForm(WizardForm):
 class TaskInstanceCountsForm(WizardForm):
     formname = "TASKINSTANCECOUNTS"
     nextForm = "TASKINSTANCES"
+    descriptive_field_idx = 1
     def create(self):
         global selections
         run_id = selections['MAIN'][1]
@@ -88,6 +106,7 @@ class TaskInstanceCountsForm(WizardForm):
             for curr
             in self.data
         ]
+        self.set_header()
         self.add(
             WizardMultiLine,
             values=values,
@@ -115,6 +134,7 @@ class TaskInstancesForm(WizardForm):
             for curr
             in self.data
         ]
+        self.set_header()
         self.add(
             WizardMultiLine,
             values=values,
@@ -154,6 +174,7 @@ class TaskInstanceLogs(WizardForm):
             in self.data
         ]
         print('values',values)
+        self.set_header()
         self.add(
             WizardMultiLine,
             values=values,
@@ -171,6 +192,7 @@ class TaskInstanceLogContent(WizardForm):
         filename = selections['TASKINSTANCELOGS']
         file = open(filename, mode='r')
         log_contents = file.read()
+        self.set_header()
         self.add(
             npyscreen.MultiLine,
             values=log_contents.split('\n'),
