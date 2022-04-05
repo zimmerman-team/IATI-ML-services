@@ -5,6 +5,7 @@ import npyscreen, curses
 import logging
 import os
 import glob
+from collections import OrderedDict
 
 from . import sa_common, queries
 
@@ -21,21 +22,32 @@ class WizardForm(npyscreen.Form):
     def create(self):
         for how in [
             npyscreen.wgwidget.EXITED_DOWN,
-            npyscreen.wgwidget.EXITED_ESCAPE,
             npyscreen.wgwidget.EXITED_RIGHT
         ]:
             self.how_exited_handers[how] = self.exit_application
 
+        for how in [
+            npyscreen.wgwidget.EXITED_ESCAPE
+        ]:
+            self.how_exited_handers[how] = self.get_back
+
     def exit_application(self):
+        log(self.formname,'exit_application')
         w = self.get_widget("w")
-        log("!!!!w value",w.value)
         selections[self.formname] = self.data[w.value]
-        log("selections",selections)
-        log("self.formname",self.formname)
         FormClass = get_form_class_by_name(self.nextForm)
         self.parentApp.registerForm(self.nextForm, FormClass())
         self.parentApp.setNextForm(self.nextForm)
         self.parentApp.switchFormNow()
+
+    def get_back(self):
+        prev = forms_flow[self.formname]['prev']
+        log(self.formname,"get_back to",prev)
+        FormClass = get_form_class_by_name(prev)
+        #self.parentApp.registerForm(self.nextForm, FormClass())
+        self.parentApp.setNextForm(prev)
+        self.parentApp.switchFormNow()
+
 
 class WizardMultiLine(npyscreen.MultiLine):
     def __init__(self,*args,**kwargs):
@@ -44,7 +56,6 @@ class WizardMultiLine(npyscreen.MultiLine):
         super().__init__(*args,**kwargs)
 
 class DagRunsForm(WizardForm):
-
     formname = "MAIN"
     nextForm = 'TASKINSTANCECOUNTS'
     def create(self):
@@ -100,7 +111,7 @@ class TaskInstancesForm(WizardForm):
             in self.data
         ])
         values = [
-            f"{curr[0]}{' '*(max_taskname_len-len(curr[0]))}{curr[1]} {curr[2]}"
+            f"{curr[0]}{' '*(1+max_taskname_len-len(curr[0]))}{curr[1]} {curr[2]}"
             for curr
             in self.data
         ]
@@ -175,6 +186,20 @@ FormClasses = [
     TaskInstanceLogs,
     TaskInstanceLogContent
 ]
+
+forms_flow = OrderedDict()
+prev = None
+for FormClass in FormClasses:
+    next = FormClass.nextForm
+    curr = FormClass.formname
+    forms_flow[curr] = dict(
+        prev=prev,
+        curr=curr,
+        next=next
+    )
+    prev = curr
+
+log("forms_flow",forms_flow)
 
 def get_form_class_by_name(name):
     for curr in FormClasses:
