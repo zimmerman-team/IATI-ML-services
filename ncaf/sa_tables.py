@@ -22,6 +22,7 @@ dag_run = sa.Table(
     sa.Column("run_id", sa.String, primary_key=True),
     sa.Column("start_date", sa.DateTime),
     sa.Column("execution_date", sa.DateTime),
+    sa.Column("state", sa.String),
     extend_existing=True,
     autoload_with=sa_common.engine
 )

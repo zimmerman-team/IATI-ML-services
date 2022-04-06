@@ -63,7 +63,8 @@ class WizardForm(npyscreen.Form):
             npyscreen.FixedText,
             value=header_str,
             w_id="header",
-            editable=False
+            editable=False,
+            color='IMPORTANT'
         )
 
 

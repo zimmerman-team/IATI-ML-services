@@ -42,6 +42,7 @@ def dag_runs():
     table = sa_tables.dag_run
     query = sa.select([
         table.columns.dag_id,
+        table.columns.state,
         table.columns.run_id,
         table.columns.start_date
     ]).order_by(
