@@ -453,7 +453,7 @@ rbac = True
 # The base url of your website as airflow cannot guess what domain or
 # cname you are using. This is used in automated emails that
 # airflow sends to point links to the right web server
-base_url = http://localhost:8080
+base_url = http://127.0.0.1:8080
 
 # Default timezone to display all dates in the UI, can be UTC, system, or
 # any IANA timezone string (e.g. Europe/Amsterdam). If left empty the
@@ -476,10 +476,10 @@ web_server_ssl_cert =
 web_server_ssl_key =
 
 # Number of seconds the webserver waits before killing gunicorn master that doesn't respond
-web_server_master_timeout = 120
+web_server_master_timeout = 30
 
 # Number of seconds the gunicorn webserver waits before timing out on a worker
-web_server_worker_timeout = 120
+web_server_worker_timeout = 30
 
 # Number of workers to refresh at a time. When set to 0, worker refresh is
 # disabled. When nonzero, airflow periodically refreshes webserver workers by
