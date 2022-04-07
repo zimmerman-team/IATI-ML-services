@@ -106,6 +106,8 @@ def d_options():
     global _conf_dict
     ret = ""
     for name,val in _conf_dict.items():
+        val = str(val)
+        val = val.replace(' ','_')
         ret += f"-Dm4_{name.upper()}={val} "
     return ret
 
