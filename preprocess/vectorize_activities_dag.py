@@ -10,7 +10,7 @@ import sklearn
 
 from common import specs_config, dataset_persistency, utils, config
 from preprocess import vectorize_activity, download_sets_dag
-
+from models import models_storage
 default_args = {
     'retries': 2,
     'retry_delay': datetime.timedelta(minutes=1),
@@ -150,15 +150,21 @@ def setup_dag():
             pool_slots=1
         )
 
-        t_to_splits = PythonOperator(
-            task_id="to_splits",
-            python_callable=download_sets_dag.to_splits, # FIXME: move to_splits to something more common?
-            start_date=days_ago(2),
-            op_kwargs={'spec': specs_config.activity_with_rels(activity_vectorizer.rel_latent_dim)},
-            pool="npas_intensive",
-            pool_slots=1
-        )
-        t_clear >> t_collect >> t_vectorize >> t_to_splits
+        try:
+            latent_dim = activity_vectorizer.rel_latent_dim
+        except models_storage.ModelStorageMissingModelsException as e:
+            # there weren't any models, so cannot infer the latent dimensionality
+            t_clear >> t_collect >> t_vectorize
+        else:
+            t_to_splits = PythonOperator(
+                task_id="to_splits",
+                python_callable=download_sets_dag.to_splits, # FIXME: move to_splits to something more common?
+                start_date=days_ago(2),
+                op_kwargs={'spec': specs_config.activity_with_rels(latent_dim)},
+                pool="npas_intensive",
+                pool_slots=1
+            )
+            t_clear >> t_collect >> t_vectorize >> t_to_splits
 
     thismodule = sys.modules[__name__]
     setattr(thismodule, "dag", dag)

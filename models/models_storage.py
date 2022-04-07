@@ -43,6 +43,9 @@ class KwargsUnpickler(pickle.Unpickler):
             return specs_config.specs[key]
         pickle.UnpicklingError(f"unsupported persistent object {pid}")
 
+class ModelStorageMissingModelsException(Exception):
+    pass
+
 class ModelsStorage(utils.Collection):
     """
     We need to store the DSPNAE models somewhere and to recall them
@@ -58,6 +61,8 @@ class ModelsStorage(utils.Collection):
         # FIXME: hacky?
         # Also: @property does not work in utils.Collection. FIXME?
         first_rel_name, first_model = next(iter(self.items()))
+        if first_model is None:
+            raise ModelStorageMissingModelsException()
         ret = first_model.kwargs['latent_dim']
         return ret
 
