@@ -15,5 +15,5 @@ TS=$(date +%Y%m%d_%H%M%S)
 
 screen -X -S airflow_scheduler_restarter quit
 
-screen -L -Logfile learning_sets/logs/airflow_scheduler_restarter.log -S airflow_scheduler_restarter -d -m bash -c "while true; do airflow scheduler ; done"
+screen -L -Logfile $LEARNING_SETS_DIR/logs/airflow_scheduler_restarter_${TS}.log -S airflow_scheduler_restarter -d -m bash -c "while true; do airflow scheduler ; done"
 
