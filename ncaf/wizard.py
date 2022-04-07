@@ -35,6 +35,7 @@ class WizardForm(npyscreen.Form):
         log(self.formname,'exit_application')
         w = self.get_widget("w")
         selections[self.formname] = self.data[w.value]
+        log(f"selections[{self.formname}] set to {selections[self.formname]}")
         FormClass = get_form_class_by_name(self.nextForm)
         self.parentApp.registerForm(self.nextForm, FormClass())
         self.parentApp.setNextForm(self.nextForm)
@@ -99,7 +100,7 @@ class TaskInstanceCountsForm(WizardForm):
     descriptive_field_idx = 1
     def create(self):
         global selections
-        run_id = selections['MAIN'][1]
+        run_id = selections['MAIN'][2]
         query = queries.task_state_counts_by_run_id(run_id)
         key, self.data = sa_common.fetch_data(query)
         values = [
@@ -121,10 +122,14 @@ class TaskInstancesForm(WizardForm):
     nextForm = "TASKINSTANCELOGS"
     def create(self):
         global selections
-        run_id = selections['MAIN'][1]
+        # FIXME: the following is prone to bugs.
+        #   consider run queries returning dictionaries
+        #   of field->value pairs instead of positional
+        run_id = selections['MAIN'][2]
         state = selections['TASKINSTANCECOUNTS'][1]
         query = queries.task_instances_by_state(run_id, state)
         key, self.data = sa_common.fetch_data(query)
+        log('TaskInstancesForm run_id=',run_id,'state=',state)
         max_taskname_len = max([
             len(curr[0])
             for curr
@@ -150,7 +155,7 @@ class TaskInstanceLogs(WizardForm):
     def create(self):
         global selections
         dag_name = selections['MAIN'][0]
-        run_id = selections['MAIN'][1]
+        run_id = selections['MAIN'][2]
         run_id_date_part = run_id.split('__')[1]
         task_name = selections['TASKINSTANCES'][0]
         logs_glob = os.path.join(
