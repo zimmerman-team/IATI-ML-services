@@ -39,6 +39,11 @@ class ActivityVectorizer(object):
 
         for spec_name, encoded_set in activity_sets.items():
             model = self.model_storage[spec_name]
+            if model is None:
+                available = self.model_storage.names
+                msg = f"model storage does not have a model for spec {spec_name}. Available models are for:{available}. Key-value pairs: {self.model_storage.items()}"
+                logging.error(msg)
+                raise Exception(msg)
             if encoded_set is None:
                 # no input  data for this model
                 vectorized_field = model.default_z_npa_for_missing_inputs
