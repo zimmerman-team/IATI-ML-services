@@ -1,14 +1,9 @@
 FROM grafana/grafana-oss
-
+ADD dashboards_provisioning.yaml /etc/grafana/provisioning/dashboards
+ADD grafana_mlflow_dashboard.json /etc/grafana/provisioning/dashboards
 USER root
 RUN apk add git
-RUN apk add make
-RUN apk add go
-RUN git clone https://github.com/esnet/gdg
-WORKDIR gdg
-RUN make
 RUN git clone https://github.com/databand-ai/airflow-dashboards
-RUN chown grafana . -Rvf
-#RUN ./bin/gdg dashboards import airflow-dashboards/grafana/dag-dashboard.json
+RUN cp -vf airflow-dashboards/grafana/*.json /etc/grafana/provisioning/dashboards
+#RUN chown grafana . -Rvf
 USER grafana
-#ENTRYPOINT sh
