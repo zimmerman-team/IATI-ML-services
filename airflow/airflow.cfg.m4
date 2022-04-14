@@ -172,11 +172,11 @@ dag_discovery_safe_mode = True
 default_task_retries = 2
 
 # Updating serialized DAG can not be faster than a minimum interval to reduce database write rate.
-min_serialized_dag_update_interval = 30
+min_serialized_dag_update_interval = 3000
 
 # Fetching serialized DAG can not be faster than a minimum interval to reduce database
 # read rate. This config controls when your DAGs are updated in the Webserver
-min_serialized_dag_fetch_interval = 10
+min_serialized_dag_fetch_interval = 1000
 
 # Whether to persist DAG files code in DB.
 # If set to True, Webserver reads file contents from DB instead of
@@ -211,7 +211,7 @@ lazy_discover_providers = True
 # Number of times the code should be retried in case of DB Operational Errors.
 # Not all transactions will be retried as it can cause undesired state.
 # Currently it is only used in ``DagFileProcessor.process_file`` to retry ``dagbag.sync_to_db``.
-max_db_retries = 3
+max_db_retries = 10
 
 # Hide sensitive Variables or Connection extra json keys from UI and task logs when set to True
 #
