@@ -2,6 +2,7 @@ import os
 import sys
 import yaml
 import socket
+import logging
 
 from common import utils
 # some configuration options may have default values, which are going to be eventually
@@ -48,17 +49,25 @@ class NoSuchConfItemException(Exception):
 
 class NestedConfig(object):
 
-    def __init__(self, _conf_dict=dict()):
+    def __init__(self, _conf_dict=None):
+        if _conf_dict is None:
+            _conf_dict = dict()
         self.__dict__['_conf_dict'] = _conf_dict
 
     def __setattr__(self, key, value):
-        self._conf_dict[key] = value
+        self.__dict__['_conf_dict'][key] = value
 
     def __getattr__(self, key):
-        if key in self._conf_dict.keys():
-            return self._conf_dict[key]
+        if key in self.__dict__['_conf_dict'].keys():
+            return self.__dict__['_conf_dict'][key]
         else:
             raise NoSuchConfItemException(key)
+
+    def __str__(self):
+        ret = "<NestedConfig "
+        for k,v in self.__dict__['_conf_dict'].items():
+            ret += f"{k}:{v},"
+        ret += ">"
 
 def _is_list_of_dicts(val):
     return type(val) is list \
@@ -74,7 +83,7 @@ def set_entry(name, val, where=None):
     if where is None:
         # defaults to root (the config module)
         where = sys.modules[__name__]
-    _conf_dict = getattr(where, '_conf_dict')
+    _conf_dict = where.__dict__['_conf_dict']
 
     if _is_list_of_dicts(val):
         new_obj = NestedConfig()
@@ -111,6 +120,19 @@ def d_options():
         ret += f"-Dm4_{name.upper()}={val} "
     return ret
 
+def env():
+    global _conf_dict
+    ret = []
+    for name, val in _conf_dict.items():
+        val = str(val)
+        entry = f"{name.upper()}=\"{val}\""
+        ret.append(entry)
+    return ret
+
+def print_env():
+    for entry in env():
+        print(entry)
+
 def spaced_options():
     global _conf_dict
     ret = ""
@@ -130,12 +152,12 @@ def load():
     filename = os.path.join(dirpath, f'{hostname}.yaml')
     if not os.path.isfile(filename):
         raise FileNotFoundError(f"cannot find {filename}")
-    print(f"loading {filename}.. ", end="")
+    logging.debug(f"loading {filename}.. ", end="")
     f = open(filename, 'r')
     yaml_conf = yaml.load(f, Loader=yaml.Loader)
     for k,v in yaml_conf.items():
         set_entry(k,v)
-    print("done.")
+    logging.debug("done.")
 
 
 # automatically load the configuration on module import
