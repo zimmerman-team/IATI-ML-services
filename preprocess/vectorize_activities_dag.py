@@ -19,9 +19,6 @@ default_args = {
 
 rels = specs_config.rels.downloadable
 
-activity_vectorizer = vectorize_activity.ActivityVectorizer(config.models.rels.modulename)
-
-
 def clear(ti):
     """
     removes the previous yields of this DAG
@@ -84,7 +81,8 @@ def vectorize(ti):
     :param ti:
     :return:
     """
-    global activity_vectorizer
+
+    activity_vectorizer = vectorize_activity.ActivityVectorizer(config.models.rels.modulename)
     with dataset_persistency.MongoDB() as db:
         coll_in_sets = db['activity_encoded_sets']
         coll_in_activity_without_rels = db['activity_encoded']
@@ -120,7 +118,7 @@ def setup_dag():
     from airflow.operators.python import PythonOperator
     from airflow.utils.dates import days_ago
 
-    global activity_vectorizer
+    activity_vectorizer = vectorize_activity.ActivityVectorizer(config.models.rels.modulename)
 
     with DAG(
             'vectorize_activities',
