@@ -4,4 +4,4 @@ RUN apk add --no-cache python3 py3-pip python3-dev
 RUN apk add --no-cache openblas-dev
 RUN pip3 install pandas
 RUN pip3 install mlflow
-ENTRYPOINT mlflow ui
+ENTRYPOINT mlflow ui -h 0.0.0.0 -p 5000
