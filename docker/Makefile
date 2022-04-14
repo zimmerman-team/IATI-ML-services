@@ -1,4 +1,7 @@
-all: .env
+all:
+	echo "targets: up, build, down"
+
+up: .env
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose up
 
 .env:
