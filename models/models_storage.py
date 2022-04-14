@@ -255,7 +255,11 @@ class ModelsStorage(utils.Collection):
         :return:
         """
         if not self.rel_has_stored_model(rel):
-            logging.warning(f"no model for rel {rel.name}")
+            logging.warning(f"no model for rel {rel.name}. "\
+                +f"kwargs_filename={self.most_recent_kwargs_filename(rel)};"\
+                +f" model_filename={self.most_recent_model_filename(rel)};"\
+                +f" last_version={self.last_version(rel)};"\
+                +f" model_modulename={self.model_modulename}")
             return
 
         kwargs_filename = self.most_recent_kwargs_filename(rel)
