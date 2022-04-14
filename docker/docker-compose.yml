@@ -1,0 +1,30 @@
+services:
+  statsd_exporter:
+    build: statsd_exporter
+    ports:
+      - "127.0.3.1:9102:9102"
+      - "127.0.3.1:9125:9125"
+  prometheus:
+    build: prometheus
+    ports:
+      - "127.0.3.1:9090:9090"
+  grafana:
+    build: grafana
+    ports:
+      - "127.0.3.1:3000:3000"
+  mongo:
+    build: mongo
+    ports:
+      - "127.0.3.1:27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASSWORD}"
+    volumes:
+      - "./mongo/db:/data/db:rw"
+    user: 1000:1000
+  mlflow_ui:
+    build: mlflow_ui
+    ports:
+      - "127.0.3.1:5000:5000"
+    volumes:
+      - "../mlruns:mlruns"
