@@ -28,3 +28,9 @@ services:
       - "127.0.3.1:5000:5000"
     volumes:
       - "../mlruns:/mlruns"
+  mlflow_exporter:
+    build: mlflow_exporter
+    ports:
+      - "127.0.3.1:5500:5500"
+    volumes:
+      - "../mlruns:/mlruns"
