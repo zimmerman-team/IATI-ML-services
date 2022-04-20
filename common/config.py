@@ -35,7 +35,7 @@ def mongo_uri():
 def get_airflow_sqlalchemy_conn():
     global _conf_dict
     password = _conf_dict['airflow_pg_password']
-    return f"postgresql+psycopg2://airflow_user:{password}@localhost:5432/airflow_db"
+    return f"postgresql+psycopg2://airflow_user:{password}@{airflow_pg_host}:5432/airflow_db"
 
 def vm_uri():
     """
@@ -65,9 +65,12 @@ class NestedConfig(object):
 
     def __str__(self):
         ret = "<NestedConfig "
-        for k,v in self.__dict__['_conf_dict'].items():
+        for k,v in self.items():
             ret += f"{k}:{v},"
         ret += ">"
+
+    def items(self):
+        return iter(self.__dict__['_conf_dict'].items())
 
 def _is_list_of_dicts(val):
     return type(val) is list \
@@ -111,10 +114,25 @@ def populate():
     set_entry('home',home)
     set_entry('airflow_sqlalchemy_conn',get_airflow_sqlalchemy_conn())
 
+def iterate_over_conf(_conf=None):
+    global _conf_dict
+
+    if _conf is None:
+        _conf = _conf_dict
+
+
+    for k,v in _conf.items():
+        if type(v) is NestedConfig:
+            nested_conf = iterate_over_conf(v)
+            for nested_k, nested_v in nested_conf:
+                yield f"{k}_{nested_k}", nested_v
+        else:
+            yield k,v
+
 def d_options():
     global _conf_dict
     ret = ""
-    for name,val in _conf_dict.items():
+    for name,val in iterate_over_conf():
         val = str(val)
         val = val.replace(' ','_')
         ret += f"-Dm4_{name.upper()}={val} "
