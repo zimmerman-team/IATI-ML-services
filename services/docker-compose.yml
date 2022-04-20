@@ -34,3 +34,36 @@ services:
       - "127.0.3.1:5500:5500"
     volumes:
       - "../mlruns:/mlruns"
+  airflow_webserver:
+    build: airflow_webserver
+    depends_on:
+      postgresql_for_airflow:
+        condition: service_healthy
+    ports:
+      - "127.0.3.1:8080:8080"
+    environment:
+      AIRFLOW_DATABASE_NAME: "airflow_db"
+      AIRFLOW_DATABASE_USERNAME: "airflow_user"
+      AIRFLOW_DATABASE_PASSWORD: "{AIRFLOW_PG_PASSWORD}"
+  airflow_scheduler:
+    build: airflow_scheduler
+    depends_on:
+      postgresql_for_airflow:
+        condition: service_healthy
+    environment:
+      AIRFLOW_DATABASE_NAME: "airflow_db"
+      AIRFLOW_DATABASE_USERNAME: "airflow_user"
+      AIRFLOW_DATABASE_PASSWORD: "{AIRFLOW_PG_PASSWORD}"
+  postgresql_for_airflow:
+    build: postgresql_for_airflow
+    ports:
+      - "127.0.3.1:5432:5432"
+    environment:
+      POSTGRESQL_USERNAME: "airflow_user"
+      POSTGRESQL_PASSWORD: "{AIRFLOW_PG_PASSWORD}"
+      POSTGRESQL_DATABASE: "airflow_db"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
