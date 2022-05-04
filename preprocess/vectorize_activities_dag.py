@@ -54,9 +54,10 @@ def collect(ti):
             coll_sets[rel.name] = db[rel.name + "_encoded"]
 
         activity_ids_docs = coll_activity_ids.find({}, {'activity_id': 1})
-        for activity_ids_doc in activity_ids_docs:
+        for activity_i, activity_ids_doc in enumerate(activity_ids_docs):
             encoded_sets = collections.OrderedDict()
             activity_id = activity_ids_doc['activity_id']
+            logging.info(f"processing activity {activity_i} {activity_id}")
             for rel in rels:
                 # get the data from a specific rel
                 doc = coll_sets[rel.name].find_one({'activity_id': activity_id})
