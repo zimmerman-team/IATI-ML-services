@@ -42,28 +42,35 @@ services:
     ports:
       - "127.0.3.1:8080:8080"
     environment:
-      AIRFLOW_DATABASE_NAME: "airflow_db"
-      AIRFLOW_DATABASE_USERNAME: "airflow_user"
-      AIRFLOW_DATABASE_PASSWORD: "{AIRFLOW_PG_PASSWORD}"
+      - AIRFLOW_DATABASE_NAME=airflow_db
+      - AIRFLOW_DATABASE_USERNAME=airflow_user
+      - AIRFLOW_DATABASE_PASSWORD=${AIRFLOW_PG_PASSWORD}
+      - AIRFLOW_DATABASE_HOST=${AIRFLOW_PG_HOST}
   airflow_scheduler:
     build: airflow_scheduler
     depends_on:
       postgresql_for_airflow:
         condition: service_healthy
     environment:
-      AIRFLOW_DATABASE_NAME: "airflow_db"
-      AIRFLOW_DATABASE_USERNAME: "airflow_user"
-      AIRFLOW_DATABASE_PASSWORD: "{AIRFLOW_PG_PASSWORD}"
+      - AIRFLOW_DATABASE_NAME=airflow_db
+      - AIRFLOW_DATABASE_USERNAME=airflow_user
+      - AIRFLOW_DATABASE_PASSWORD=${AIRFLOW_PG_PASSWORD}
+      - AIRFLOW_DATABASE_HOST=postgresql_for_airflow
   postgresql_for_airflow:
     build: postgresql_for_airflow
+    user: 0:0
     ports:
       - "127.0.3.1:5432:5432"
     environment:
-      POSTGRESQL_USERNAME: "airflow_user"
-      POSTGRESQL_PASSWORD: "{AIRFLOW_PG_PASSWORD}"
-      POSTGRESQL_DATABASE: "airflow_db"
+      - POSTGRESQL_USERNAME=airflow_user
+      - POSTGRESQL_PASSWORD=${AIRFLOW_PG_PASSWORD}
+      - POSTGRESQL_POSTGRES_PASSWORD=${AIRFLOW_PG_PASSWORD}
+      - POSTGRESQL_DATABASE=airflow_db
+      - AIRFLOW_PG_HOST=postgresql_for_airflow
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airflow_user"]
       interval: 5s
       timeout: 5s
       retries: 12
+    volumes:
+      - "./postgresql_for_airflow/volume:/bitnami/postgresql:rw"
