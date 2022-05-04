@@ -255,7 +255,7 @@ encrypt_s3_logs = False
 # Logging level.
 #
 # Supported values: ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``.
-logging_level = INFO
+logging_level = DEBUG
 
 # Logging level for Flask-appbuilder UI.
 #
@@ -728,7 +728,7 @@ broker_url = redis://redis:6379/0
 # This status is used by the scheduler to update the state of the task
 # The use of a database is highly recommended
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#task-result-backend-settings
-result_backend = db+postgresql://postgres:airflow@postgres/airflow
+result_backend = m4_AIRFLOW_SQLALCHEMY_CONN
 
 # Celery Flower is a sweet UI for Celery. Airflow has a shortcut to start
 # it ``airflow celery flower``. This defines the IP that Celery Flower runs on
