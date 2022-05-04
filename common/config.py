@@ -68,6 +68,7 @@ class NestedConfig(object):
         for k,v in self.items():
             ret += f"{k}:{v},"
         ret += ">"
+        return ret
 
     def items(self):
         return iter(self.__dict__['_conf_dict'].items())
@@ -110,8 +111,9 @@ def populate():
     for curr in _conf_dict:
         val = _conf_dict[curr]
         set_entry(curr, val)
-    home = os.path.expanduser('~')
-    set_entry('home',home)
+    if 'home' not in _conf_dict:
+        home = os.path.expanduser('~')
+        set_entry('home',home)
     set_entry('airflow_sqlalchemy_conn',get_airflow_sqlalchemy_conn())
 
 def iterate_over_conf(_conf=None):
