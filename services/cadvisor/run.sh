@@ -6,7 +6,7 @@ sudo docker run \
   --volume=/sys:/sys:ro \
   --volume=/var/lib/docker/:/var/lib/docker:ro \
   --volume=/dev/disk/:/dev/disk:ro \
-  --publish=127.0.4.1:8080:8080 \
+  --publish=127.0.4.1:18080:8080 \
   --detach=true \
   --name=cadvisor \
   --privileged \
