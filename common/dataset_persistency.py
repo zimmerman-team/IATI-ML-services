@@ -4,7 +4,7 @@ import gridfs
 import logging
 import threading
 
-from common import config, splits, utils
+from common import splits, utils, config
 
 # key-indexed by thread it
 cached_clients = dict()

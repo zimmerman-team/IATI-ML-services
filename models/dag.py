@@ -10,6 +10,7 @@ from models import model_class_loader
 
 from common import specs_config, config
 
+
 def in_days(n):
     """
     Get a datetime object representing `n` days ago. By default the time is

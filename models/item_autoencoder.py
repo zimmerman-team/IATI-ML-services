@@ -6,9 +6,10 @@ import os
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
-from models import run,  generic_model
 from common import utils
-from models import measurements as ms
+from models import measurements as ms, generic_model
+from models import run
+
 utils.set_np_printoptions()
 
 

@@ -9,9 +9,9 @@ import numpy as np
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
-from common import config, timer
+from common import timer, config
 from models import models_storage
-from functools import cached_property
+
 
 class AEModule(torch.nn.Module):
     """

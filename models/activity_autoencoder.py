@@ -6,7 +6,8 @@ import numpy as np
 
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
-from models import measurements as ms, generic_model, run
+from models import measurements as ms, generic_model
+from models import run
 from common import specs_config
 
 # FIXME: maybe make ActivityAutoencoder and ItemAE inherit from the same parent class?

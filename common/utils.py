@@ -11,7 +11,6 @@ import shutil
 import tempfile
 import glob
 import torch
-import enum
 import yaml
 import collections
 import datetime
@@ -292,7 +291,7 @@ def soft_remove(filename):
 
 
 def setup_logging():
-    log_level_nr = getattr(logging,config.log_level,logging.INFO)
+    log_level_nr = getattr(logging, config.log_level, logging.INFO)
     # setting log lever for stdout
     logging.basicConfig( level=log_level_nr)
 
@@ -342,7 +341,7 @@ def setup_main(dynamic_config={}):
         dynamic_config[arg] = val
         if arg in config.entries_names():
             # config file entries will be overriden by command-line entries
-            config.set_entry(arg,val)
+            config.set_entry(arg, val)
 
     try:
         os.mkdir("logs")

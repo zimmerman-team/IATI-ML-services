@@ -4,13 +4,10 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 import requests
 import logging
-import re
 import datetime
 import numpy as np
 from collections import defaultdict
 import sklearn.model_selection
-import os
-import sys
 import pymongo
 import time
 
@@ -19,9 +16,10 @@ import time
 
 from common import utils, specs_config, dataset_persistency, config
 from preprocess import large_mp
+
 rels = specs_config.rels.downloadable
 specs = specs_config.specs.downloadable
-logging.basicConfig(level=getattr(logging,config.log_level,logging.INFO))
+logging.basicConfig(level=getattr(logging, config.log_level, logging.INFO))
 
 DATASTORE_ACTIVITY_URL = "https://datastore.iati.cloud/api/v2/activity"
 DATASTORE_CODELIST_URL = "https://datastore.iati.cloud/api/codelists/{}/"
@@ -456,7 +454,7 @@ with DAG(
     t_persist = {}
     t_clear_page = {}
     for _page in pages:
-        start = _page*config.download_page_size
+        start = _page * config.download_page_size
         t_download = PythonOperator(
             task_id=f"download_{_page}",
             python_callable=download,

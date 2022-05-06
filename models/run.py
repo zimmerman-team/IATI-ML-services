@@ -2,15 +2,10 @@ import mlflow
 import mlflow.pytorch
 import torch
 import pytorch_lightning as pl
-import numpy as np
 import logging
-import os
-import sys
-import argparse
-import pickle
-from common import utils, specs_config, dataset_persistency, config, timer, splits
-from models import diagnostics, measurements as ms, models_storage
-
+from common import utils, dataset_persistency, timer, splits, config
+from models import measurements as ms
+from models import diagnostics
 
 
 class MeasurementsCallback(pl.callbacks.Callback):

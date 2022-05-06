@@ -1,13 +1,9 @@
-import logging
 import os
-import shutil
-import tempfile
 import sys
 import pickle
 import pytorch_lightning as pl
 import glob
 import re
-import copy
 import logging
 
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
@@ -89,7 +85,7 @@ class ModelsStorage(utils.Collection):
         """
         model_filename = model.name
         print("model_filename",model_filename)
-        print("config.trained_models_dirpath",config.trained_models_dirpath)
+        print("config.trained_models_dirpath", config.trained_models_dirpath)
         if not os.path.exists(config.trained_models_dirpath):
             os.mkdir(config.trained_models_dirpath)
         checkpoint_callback = pl.callbacks.ModelCheckpoint(

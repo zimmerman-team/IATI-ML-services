@@ -2,7 +2,7 @@
 import os
 from airflow.models import DagBag
 dags_dirs = [
-    'LEARNING_SETS_DIR/dags/',
+    '/learning_sets/dags/',
     ]
 
 for d in dags_dirs:

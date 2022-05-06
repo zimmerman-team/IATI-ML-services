@@ -1,15 +1,14 @@
 import datetime
 import sys
-import os
 import collections
 import logging
-import sklearn
 
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
 
 from common import specs_config, dataset_persistency, utils, config
-from preprocess import vectorize_activity, download_sets_dag
+from preprocess import download_sets_dag
+from preprocess import vectorize_activity
 from models import models_storage
 default_args = {
     'retries': 2,

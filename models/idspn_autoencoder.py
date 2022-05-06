@@ -1,5 +1,4 @@
 import sys
-import functools
 import os
 import torch
 import torch.nn as nn
@@ -8,7 +7,9 @@ import numpy as np
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 
-from models import run,deepset_generic, generic_model, measurements as ms
+from models import measurements as ms, generic_model
+from models import run, deepset_generic
+
 multisetequivariance = __import__("multiset-equivariance")
 #import multisetequivariance
 #import ipdb; ipdb.set_trace()

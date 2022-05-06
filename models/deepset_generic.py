@@ -3,7 +3,8 @@ import logging
 import math
 
 from models import generic_model
-from common import chunking_dataset, config, specs_config
+from common import chunking_dataset, specs_config, config
+
 
 class DeepSetGeneric(generic_model.GenericModel):
     with_set_index = True
