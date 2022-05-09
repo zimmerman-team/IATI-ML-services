@@ -19,6 +19,7 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER}"
       MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASSWORD}"
+      MONGO_INITDB_DATABASE: "${MONGO_DB}"
     volumes:
       - "./mongo/db:/data/db:rw"
     user: 1000:1000
@@ -45,9 +46,15 @@ services:
       - AIRFLOW_DATABASE_NAME=airflow_db
       - AIRFLOW_DATABASE_USERNAME=airflow_user
       - AIRFLOW_DATABASE_PASSWORD=${AIRFLOW_PG_PASSWORD}
-      - AIRFLOW_DATABASE_HOST=${AIRFLOW_PG_HOST}
+      - AIRFLOW_DATABASE_HOST=postgresql_for_airflow
+      - AIRFLOW_WEBSERVER_HOST=airflow_webserver
+      - AIRFLOW_USERNAME=${AIRFLOW_USER}
+      - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD}
+      - AIRFLOW_EMAIL=${AIRFLOW_EMAIL}
+      - AIRFLOW_LOAD_EXAMPLES=no
   airflow_scheduler:
     build: airflow_scheduler
+    hostname: airflow_scheduler
     depends_on:
       postgresql_for_airflow:
         condition: service_healthy
@@ -56,6 +63,11 @@ services:
       - AIRFLOW_DATABASE_USERNAME=airflow_user
       - AIRFLOW_DATABASE_PASSWORD=${AIRFLOW_PG_PASSWORD}
       - AIRFLOW_DATABASE_HOST=postgresql_for_airflow
+      - AIRFLOW_WEBSERVER_HOST=airflow_webserver
+      - AIRFLOW_USERNAME=${AIRFLOW_USER}
+      - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD}
+      - AIRFLOW_EMAIL=${AIRFLOW_EMAIL}
+      - AIRFLOW_LOAD_EXAMPLES=no
   postgresql_for_airflow:
     build: postgresql_for_airflow
     user: 0:0
