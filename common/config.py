@@ -172,7 +172,7 @@ def load():
     filename = os.path.join(dirpath, f'{hostname}.yaml')
     if not os.path.isfile(filename):
         raise FileNotFoundError(f"cannot find {filename}")
-    logging.debug(f"loading {filename}.. ", end="")
+    logging.debug(f"loading {filename}.. ")
     f = open(filename, 'r')
     yaml_conf = yaml.load(f, Loader=yaml.Loader)
     for k,v in yaml_conf.items():
