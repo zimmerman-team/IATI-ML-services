@@ -21,8 +21,7 @@ sys.path.append(
 from common import dataset_persistency, utils, config
 from models import text_model
 
-
-@functools.cache
+functools.lru_cache(maxsize=None)
 def get_codelists():
     """
     returns a codelist from the mongo db
