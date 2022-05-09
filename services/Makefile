@@ -10,6 +10,11 @@ up: .env
 build:
 	bash generate_airflow_cfg.sh airflow_scheduler/airflow.cfg
 	bash generate_airflow_cfg.sh airflow_webserver/airflow.cfg
+	# the directory code will be added in the container as it has the dags
+	rm -rvf /tmp/airflow_scheduler_code_old/
+	mv -vf ./airflow_scheduler/code /tmp/airflow_scheduler_code_old
+	mkdir -pv ./airflow_scheduler/code
+	cp -r ../dspn_annotated ../multiset-equivariance ../common ../dags ../preprocess ../models ./airflow_scheduler/code
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose build
 
 down:
@@ -23,3 +28,9 @@ airflow_up:
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose up -d airflow_webserver
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose up -d airflow_scheduler
 
+debug_airflow_scheduler:
+	make down
+	make build
+	COMPOSE_PROJECT_NAME=learning_sets docker-compose up -d postgresql_for_airflow
+	COMPOSE_PROJECT_NAME=learning_sets docker-compose up -d airflow_webserver
+	COMPOSE_PROJECT_NAME=learning_sets docker-compose up airflow_scheduler
