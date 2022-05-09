@@ -14,14 +14,22 @@ sys.path.append(
     )
 )
 
+debugme = True
 
-log_filename = tempfile.mktemp(prefix="dags_py_",suffix=".log")
-log_file = open(log_filename, 'w+')
+if debugme:
+    log_filename = tempfile.mktemp(prefix="dags_py_",suffix=".log")
+    log_file = open(log_filename, 'w+')
+    sys.stdout = open(log_filename+".stdout", 'w')
+    sys.stderr = open(log_filename+".stderr", 'w')
 
-def log(msg):
-    logging.info(msg)
-    log_file.write(f"{msg}\n")
-    log_file.flush()
+    def log(msg):
+        logging.info(msg)
+        log_file.write(f"{msg}\n")
+        log_file.flush()
+    log("dags.py")
+    log(f"sys_path {sys.path}")
 
 from preprocess.download_sets_dag import dag as download_sets_dag_obj
-log(f"download_sets_dag_obj {download_sets_dag_obj}")
+
+if debugme:
+    log(f"download_sets_dag_obj {download_sets_dag_obj}")
