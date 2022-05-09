@@ -45,7 +45,7 @@ class MongoDB(object):
             client.close()
             del client
 
-@functools.cache
+@functools.lru_cache(maxsize=None)
 def gridfs_instance():
     """
     returns an instance of the interface to GridFS.
