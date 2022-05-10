@@ -30,7 +30,9 @@ def mongo_uri():
     """
     # NOTE: these apparently missing module-wide variables are actually
     # set dynamically via populate()/set_entry(..)
-    return f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_db}"
+    # the database has been removed from the connection URI because if it doesn't exist
+    #     then it would make the connection fail
+    return f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}"
 
 def get_airflow_sqlalchemy_conn():
     global _conf_dict
