@@ -30,6 +30,10 @@ if debugme:
     log(f"sys_path {sys.path}")
 
 from preprocess.download_sets_dag import dag as download_sets_dag_obj
+from preprocess.vectorize_activities_dag import dag as vectorize_activities_dag_obj
+from models.dag import *
 
 if debugme:
-    log(f"download_sets_dag_obj {download_sets_dag_obj}")
+    thismodule = sys.modules[__name__]
+    for curr in dir(thismodule):
+        log(f"dags/dags attribute {curr}={getattr(thismodule,curr)}")
