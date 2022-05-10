@@ -31,6 +31,9 @@ default_args = {
     'retry_delay': datetime.timedelta(minutes=5),
     'schedule_interval': None
 }
+venv_path = getattr(config,'venv_path') \
+    if 'venv_path' in dir(config) \
+    else None
 
 def make_rels_dag(dag_name, config_name, modelname):
     """
@@ -54,8 +57,10 @@ def make_rels_dag(dag_name, config_name, modelname):
         for rel_i, rel in enumerate(specs_config.rels):
 
             # this time the tasks are shell commands
-            train_cmd = f"cd {project_root_dir}; python3 models/{modelname}.py"\
-                        + f" {config_name} --rel_name={rel.name}"
+            train_cmd = f"cd {project_root_dir}; "\
+                        +(f" . {venv_path}/bin/activate ;" if venv_path else "")\
+                        +f"python3 models/{modelname}.py"\
+                        + f" {config_name} --spec_name={rel.name}"
 
             t_train_model = BashOperator(
                 task_id=f"train_{modelname}_model_{rel.name}",
@@ -88,8 +93,10 @@ def make_activity_dag(dag_name, config_name, modelname):
 
 
         # this time the tasks are shell commands
-        train_cmd = f"cd {project_root_dir}; python3 models/{modelname}.py" \
-                    + f" {config_name}"
+        train_cmd = f"cd {project_root_dir}; "\
+            +(f" . {venv_path}/bin/activate ;" if venv_path else "") \
+            +f"python3 models/{modelname}.py" \
+            + f" {config_name}"
 
         t_train_model = BashOperator(
             task_id=f"train_{modelname}_model_activity",
