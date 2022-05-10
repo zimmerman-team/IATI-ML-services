@@ -15,6 +15,7 @@ build:
 	mv -vf ./airflow_scheduler/code /tmp/airflow_scheduler_code_old
 	mkdir -pv ./airflow_scheduler/code
 	cp -r ../model_config ../dspn_annotated ../multiset-equivariance ../common ../dags ../preprocess ../models ./airflow_scheduler/code
+	chown 999:999 -Rf mongo/db
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose build
 
 down:
