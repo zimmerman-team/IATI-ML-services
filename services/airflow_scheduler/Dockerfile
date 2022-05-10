@@ -6,7 +6,10 @@ RUN apt install -y iputils-ping postgresql-common libpq-dev gcc
 
 RUN . /opt/bitnami/airflow/venv/bin/activate && pip install cython torchvision ipython hiddenlayer matplotlib seaborn apache-airflow apache-airflow[postgres] psycopg2 numpy sklearn pymongo torch mlflow gensim nltk pytorch_lightning ray wandb higher billiard statsd npyscreen
 RUN . /opt/bitnami/airflow/venv/bin/activate && pip install scikit-learn mlflow
-RUN . /opt/bitnami/airflow/venv/bin/activate && pip install pyyaml
+RUN . /opt/bitnami/airflow/venv/bin/activate && pip install pyyaml git+https://github.com/BenjaminDoran/unidip
+RUN . /opt/bitnami/airflow/venv/bin/activate && python3 -c "import nltk; nltk.download('punkt')"
+RUN . /opt/bitnami/airflow/venv/bin/activate && pip install torch
+
 ADD airflow.cfg /opt/bitnami/airflow
 ADD add_dag_bags.py /opt/bitnami/airflow/dags/
 
