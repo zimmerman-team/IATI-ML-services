@@ -14,6 +14,7 @@ services:
       - "127.0.3.1:3000:3000"
   mongo:
     build: mongo
+    user: "999:999"
     ports:
       - "127.0.3.1:27017:27017"
     environment:
@@ -22,7 +23,7 @@ services:
       - MONGO_INITDB_DATABASE=${MONGO_DB}
     volumes:
       - "./mongo/db:/data/db:rw"
-    user: 1000:1000
+
   mlflow_ui:
     build: mlflow_ui
     ports:
