@@ -92,7 +92,10 @@ def load_splits_document(spec):
     """
     with MongoDB() as db:
         coll = db['npas_splits']
-        document = coll.find({'spec': spec.name}).sort('creation_time', pymongo.DESCENDING).limit(1)[0]
+        documents = coll.find({'spec': spec.name}).sort('creation_time', pymongo.DESCENDING).limit(1)
+        if not documents:
+            raise Exception(f"couldn't find any data for spec {spec.name}")
+        document = documents[0]
         return document
 
 
