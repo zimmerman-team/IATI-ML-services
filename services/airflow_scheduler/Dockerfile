@@ -16,18 +16,15 @@ ADD add_dag_bags.py /opt/bitnami/airflow/dags/
 # changing some permission to the 'airflow' user (UID 1000)
 RUN chown 1000:1000 /opt/bitnami/airflow -R
 
+USER root
 # the directory code is created by make build
-USER 1000
 ADD code /learning_sets/
 RUN touch /learning_sets/dspn_annotated/dspn/__init__.py
 
-USER root
 RUN mkdir -p /learning_sets/config/
 
-USER 1000
 ADD airflow_scheduler.yaml /learning_sets/config/
 
-USER root
 RUN chown 1000:1000 /learning_sets/ -R
 
 USER 1000
