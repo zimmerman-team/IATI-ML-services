@@ -1,6 +1,6 @@
 import logging
 import sys
-from bson.binary import Binary
+import bson
 import pickle
 import zlib
 import numpy as np
@@ -109,7 +109,7 @@ class IdentityTransformer(BaseEstimator, TransformerMixin):
 
 
 def serialize(npa):
-    return Binary(zlib.compress(pickle.dumps(npa, protocol=2)))
+    return bson.encode_binary(zlib.compress(pickle.dumps(npa, protocol=2)))
 
 
 def deserialize(buf):
