@@ -38,6 +38,7 @@ services:
       - "../mlruns:/mlruns"
   airflow_webserver:
     build: airflow_webserver
+    hostname: airflow_webserver
     depends_on:
       postgresql_for_airflow:
         condition: service_healthy
