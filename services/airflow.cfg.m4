@@ -476,10 +476,10 @@ web_server_ssl_cert =
 web_server_ssl_key =
 
 # Number of seconds the webserver waits before killing gunicorn master that doesn't respond
-web_server_master_timeout = 30
+web_server_master_timeout = 120
 
 # Number of seconds the gunicorn webserver waits before timing out on a worker
-web_server_worker_timeout = 30
+web_server_worker_timeout = 120
 
 # Number of workers to refresh at a time. When set to 0, worker refresh is
 # disabled. When nonzero, airflow periodically refreshes webserver workers by
@@ -491,7 +491,7 @@ worker_refresh_interval = 6000
 
 # If set to True, Airflow will track files in plugins_folder directory. When it detects changes,
 # then reload the gunicorn.
-reload_on_plugin_change = False
+reload_on_plugin_change = True
 
 # Secret key used to run your flask app. It should be as random as possible. However, when running
 # more than 1 instances of webserver, make sure all of them use the same ``secret_key`` otherwise
