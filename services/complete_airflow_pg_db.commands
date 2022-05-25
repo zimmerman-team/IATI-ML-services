@@ -1,0 +1,4 @@
+airflow db upgrade
+airflow db clean
+airflow users create --username $AIRFLOW_USER --firstname $AIRFLOW_USER --lastname $AIRFLOW_USER --role Admin --email $AIRFLOW_EMAIL --password $AIRFLOW_PASSWORD
+airflow pools set npas_intensive 1 "creation of large npas may require a lot of resources"
