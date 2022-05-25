@@ -3,7 +3,7 @@ RUN apk add go
 RUN apk add git
 RUN apk add make
 RUN apk add curl
-RUN git clone https://github.com/prometheus/statsd_exporter
+RUN git clone https://github.com/prometheus/statsd_exporter --branch v0.22.5
 WORKDIR statsd_exporter
 RUN make
 RUN go test
