@@ -1,4 +1,4 @@
-FROM bitnami/airflow-scheduler:latest
+FROM bitnami/airflow-scheduler:2.3.0
 
 USER root
 RUN apt update
@@ -9,6 +9,7 @@ RUN . /opt/bitnami/airflow/venv/bin/activate && pip install scikit-learn mlflow
 RUN . /opt/bitnami/airflow/venv/bin/activate && pip install pyyaml git+https://github.com/BenjaminDoran/unidip
 RUN . /opt/bitnami/airflow/venv/bin/activate && python3 -c "import nltk; nltk.download('punkt')"
 RUN . /opt/bitnami/airflow/venv/bin/activate && pip install torch
+RUN . /opt/bitnami/airflow/venv/bin/activate && pip install npyscreen
 
 ADD airflow.cfg /opt/bitnami/airflow
 ADD add_dag_bags.py /opt/bitnami/airflow/dags/
@@ -23,10 +24,17 @@ RUN touch /learning_sets/dspn_annotated/dspn/__init__.py
 
 RUN mkdir -p /learning_sets/config/
 
+# for matplotlib temporary stuff
+RUN mkdir -p /.config/
+RUN mkdir -p /.cache/
+
 ADD airflow_scheduler.yaml /learning_sets/config/
 
 RUN chown 1000:1000 /learning_sets/ -R
+RUN chown 1000:1000 /.config -R
+RUN chown 1000:1000 /.cache -R
 
 USER 1000
+
 # required to correctly load the dags
 #ENTRYPOINT 'bash /opt/bitnami/scripts/airflow-scheduler/run.sh'
