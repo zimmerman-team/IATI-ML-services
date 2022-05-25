@@ -1,4 +1,4 @@
-FROM bitnami/airflow:latest
+FROM bitnami/airflow:2.3.0
 ADD airflow.cfg /opt/bitnami/airflow
 #USER root
 #RUN apt update
