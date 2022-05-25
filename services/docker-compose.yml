@@ -39,6 +39,7 @@ services:
   airflow_webserver:
     build: airflow_webserver
     hostname: airflow_webserver
+    restart: unless-stopped
     depends_on:
       postgresql_for_airflow:
         condition: service_healthy
@@ -57,6 +58,7 @@ services:
   airflow_scheduler:
     build: airflow_scheduler
     hostname: airflow_scheduler
+    restart: unless-stopped
     depends_on:
       postgresql_for_airflow:
         condition: service_healthy
@@ -70,6 +72,9 @@ services:
       - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD}
       - AIRFLOW_EMAIL=${AIRFLOW_EMAIL}
       - AIRFLOW_LOAD_EXAMPLES=no
+    volumes:
+      - "./airflow_scheduler/trained_models:/learning_sets/trained_models:rw"
+      - "./airflow_scheduler/tmp:/tmp:rw"
   postgresql_for_airflow:
     build: postgresql_for_airflow
     hostname: postgresql_for_airflow
@@ -89,3 +94,24 @@ services:
       retries: 12
     volumes:
       - "./postgresql_for_airflow/volume:/bitnami/postgresql:rw"
+  loki:
+    build: loki
+    hostname: loki
+    restart: unless-stopped
+    ports:
+      - "127.0.3.1:3100:3100"
+    volumes:
+      - "./loki/loki-config.yaml:/etc/loki/loki-config.yaml"
+      - "./loki/data:/data/loki:rw"
+      - "./loki/wal:/wal:rw"
+    command: -config.file=/etc/loki/loki-config.yaml
+
+  promtail:
+    #container_name: promtail
+    build: promtail
+    hostname: promtail
+    restart: unless-stopped
+    volumes:
+      - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
+      - "./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml"
+    command: -config.file=/etc/promtail/promtail-config.yaml
