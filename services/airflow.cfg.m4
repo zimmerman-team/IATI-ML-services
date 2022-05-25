@@ -23,54 +23,11 @@ default_timezone = utc
 # full import path to the class when using a custom executor.
 executor = LocalExecutor
 
-# The SqlAlchemy connection string to the metadata database.
-# SqlAlchemy supports many different database engines.
-# More information here:
-# http://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html#database-uri
-sql_alchemy_conn = m4_AIRFLOW_SQLALCHEMY_CONN
-
-# The encoding for the databases
-sql_engine_encoding = utf-8
-
 # Collation for ``dag_id``, ``task_id``, ``key`` columns in case they have different encoding.
 # This is particularly useful in case of mysql with utf8mb4 encoding because
 # primary keys for XCom table has too big size and ``sql_engine_collation_for_ids`` should
 # be set to ``utf8mb3_general_ci``.
 # sql_engine_collation_for_ids =
-
-# If SqlAlchemy should pool database connections.
-sql_alchemy_pool_enabled = True
-
-# The SqlAlchemy pool size is the maximum number of database connections
-# in the pool. 0 indicates no limit.
-sql_alchemy_pool_size = 0
-
-# The maximum overflow size of the pool.
-# When the number of checked-out connections reaches the size set in pool_size,
-# additional connections will be returned up to this limit.
-# When those additional connections are returned to the pool, they are disconnected and discarded.
-# It follows then that the total number of simultaneous connections the pool will allow
-# is pool_size + max_overflow,
-# and the total number of "sleeping" connections the pool will allow is pool_size.
-# max_overflow can be set to ``-1`` to indicate no overflow limit;
-# no limit will be placed on the total number of concurrent connections. Defaults to ``10``.
-sql_alchemy_max_overflow = 40
-
-# The SqlAlchemy pool recycle is the number of seconds a connection
-# can be idle in the pool before it is invalidated. This config does
-# not apply to sqlite. If the number of DB connections is ever exceeded,
-# a lower config value will allow the system to recover faster.
-sql_alchemy_pool_recycle = 1800
-
-# Check connection at the start of each connection pool checkout.
-# Typically, this is a simple statement like "SELECT 1".
-# More information here:
-# https://docs.sqlalchemy.org/en/13/core/pooling.html#disconnect-handling-pessimistic
-sql_alchemy_pool_pre_ping = True
-
-# The schema to use for the metadata database.
-# SqlAlchemy supports databases with the concept of multiple schemas.
-sql_alchemy_schema =
 
 # Import path for connect args in SqlAlchemy. Defaults to an empty dict.
 # This is useful when you want to configure db engine args that SqlAlchemy won't parse
@@ -208,11 +165,6 @@ lazy_load_plugins = True
 # loaded from module.
 lazy_discover_providers = True
 
-# Number of times the code should be retried in case of DB Operational Errors.
-# Not all transactions will be retried as it can cause undesired state.
-# Currently it is only used in ``DagFileProcessor.process_file`` to retry ``dagbag.sync_to_db``.
-max_db_retries = 10
-
 # Hide sensitive Variables or Connection extra json keys from UI and task logs when set to True
 #
 # (Connection passwords are always hidden in logs)
@@ -222,7 +174,66 @@ hide_sensitive_var_conn_fields = True
 # extra JSON.
 sensitive_var_conn_names =
 
+[database]
+
+# The SqlAlchemy connection string to the metadata database.
+# SqlAlchemy supports many different database engines.
+# More information here:
+# http://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html#database-uri
+sql_alchemy_conn = m4_AIRFLOW_SQLALCHEMY_CONN
+
+# If SqlAlchemy should pool database connections.
+sql_alchemy_pool_enabled = True
+
+# The SqlAlchemy pool size is the maximum number of database connections
+# in the pool. 0 indicates no limit.
+sql_alchemy_pool_size = 0
+
+# The maximum overflow size of the pool.
+# When the number of checked-out connections reaches the size set in pool_size,
+# additional connections will be returned up to this limit.
+# When those additional connections are returned to the pool, they are disconnected and discarded.
+# It follows then that the total number of simultaneous connections the pool will allow
+# is pool_size + max_overflow,
+# and the total number of "sleeping" connections the pool will allow is pool_size.
+# max_overflow can be set to ``-1`` to indicate no overflow limit;
+# no limit will be placed on the total number of concurrent connections. Defaults to ``10``.
+sql_alchemy_max_overflow = 40
+
+# The SqlAlchemy pool recycle is the number of seconds a connection
+# can be idle in the pool before it is invalidated. This config does
+# not apply to sqlite. If the number of DB connections is ever exceeded,
+# a lower config value will allow the system to recover faster.
+sql_alchemy_pool_recycle = 1800
+
+# Check connection at the start of each connection pool checkout.
+# Typically, this is a simple statement like "SELECT 1".
+# More information here:
+# https://docs.sqlalchemy.org/en/13/core/pooling.html#disconnect-handling-pessimistic
+sql_alchemy_pool_pre_ping = True
+
+# The encoding for the databases
+sql_engine_encoding = utf-8
+
+# The schema to use for the metadata database.
+# SqlAlchemy supports databases with the concept of multiple schemas.
+sql_alchemy_schema =
+
+# Number of times the code should be retried in case of DB Operational Errors.
+# Not all transactions will be retried as it can cause undesired state.
+# Currently it is only used in ``DagFileProcessor.process_file`` to retry ``dagbag.sync_to_db``.
+max_db_retries = 10
+
+
 [logging]
+
+# When you start an airflow worker, airflow starts a tiny web server
+# subprocess to serve the workers local log files to the airflow main
+# web server, who then builds pages and sends them to users. This defines
+# the port on which the logs are served. It needs to be unused, and open
+# visible from the main web server to connect into the workers.
+worker_log_server_port = 8793
+
 # The folder where airflow should store its log files
 # This path must be absolute
 base_log_folder = m4_HOME/airflow/logs
@@ -255,7 +266,7 @@ encrypt_s3_logs = False
 # Logging level.
 #
 # Supported values: ``CRITICAL``, ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``.
-logging_level = DEBUG
+logging_level = m4_AIRFLOW_LOGGING_LEVEL
 
 # Logging level for Flask-appbuilder UI.
 #
@@ -377,7 +388,7 @@ enable_experimental_api = False
 # How to authenticate users of the API. See
 # https://airflow.apache.org/docs/apache-airflow/stable/security.html for possible values.
 # ("airflow.api.auth.backend.default" allows all requests for historic reasons)
-auth_backend = airflow.api.auth.backend.deny_all
+auth_backends = airflow.api.auth.backend.deny_all
 
 # Used to set the maximum page limit for API requests
 maximum_page_limit = 100
@@ -705,13 +716,6 @@ worker_concurrency = m4_AIRFLOW_CONCURRENCY
 # https://docs.celeryproject.org/en/stable/userguide/optimizing.html#prefetch-limits
 # Example: worker_prefetch_multiplier = 1
 # worker_prefetch_multiplier =
-
-# When you start an airflow worker, airflow starts a tiny web server
-# subprocess to serve the workers local log files to the airflow main
-# web server, who then builds pages and sends them to users. This defines
-# the port on which the logs are served. It needs to be unused, and open
-# visible from the main web server to connect into the workers.
-worker_log_server_port = 8793
 
 # Umask that will be used when starting workers with the ``airflow celery worker``
 # in daemon mode. This control the file-creation mode mask which determines the initial
