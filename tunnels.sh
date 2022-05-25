@@ -6,8 +6,11 @@ TUNNEL_IP=127.0.2.1
 # also we add an alternative hostname instead of "localhost" and we call this "tunnel"
 TUNNEL_HOSTNAME=tunnel
 
+# remote ip address where the services are actually listening
+REMOTE_HOST=127.0.3.1
+
 # lists of ports on the remote machine that are going to be mapped locally
-PORTS="8080 9090 9125 9102 3000 5000 5500 8888"
+PORTS="8080 9090 9125 9102 3000 5000 5500 8888 18080 3100"
 
 VM_URI=$(bash config/vm_uri.sh)
 
@@ -18,5 +21,5 @@ sudo grep -q "$TUNNEL_HOSTNAME" /etc/hosts || printf "$TUNNEL_IP $TUNNEL_HOSTNAM
 
 for CURR in $PORTS ; do
   echo "current port: $CURR . Can be accessed via ${TUNNEL_HOSTNAME}:${CURR}"
-  ssh -L ${TUNNEL_HOSTNAME}:${CURR}:localhost:${CURR} $VM_URI -N -f
+  ssh -L ${TUNNEL_HOSTNAME}:${CURR}:${REMOTE_HOST}:${CURR} $VM_URI -N -f
 done
