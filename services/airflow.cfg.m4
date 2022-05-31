@@ -1,7 +1,7 @@
 [core]
 # The folder where your airflow pipelines live, most likely a
 # subfolder in a code repository. This path must be absolute.
-dags_folder = m4_HOME/airflow/dags
+dags_folder = /learning_sets/dags
 
 # Hostname by providing a path to a callable, which will resolve the hostname.
 # The format is "package.function".
@@ -81,7 +81,7 @@ fernet_key =
 donot_pickle = True
 
 # How long before timing out a python file import
-dagbag_import_timeout = 90.0
+dagbag_import_timeout = 600.0
 
 # Should a traceback be shown in the UI for dagbag import errors,
 # instead of just the exception message
@@ -91,7 +91,7 @@ dagbag_import_error_tracebacks = True
 dagbag_import_error_traceback_depth = 2
 
 # How long before timing out a DagFileProcessor, which processes a dag file
-dag_file_processor_timeout = 50
+dag_file_processor_timeout = 600
 
 # The class to use for running task instances in a subprocess.
 # Choices include StandardTaskRunner, CgroupTaskRunner or the full import path to the class
@@ -828,7 +828,7 @@ clean_tis_without_dagrun_interval = 15.0
 # The scheduler constantly tries to trigger new tasks (look at the
 # scheduler section in the docs for more information). This defines
 # how often the scheduler should run (in seconds).
-scheduler_heartbeat_sec = 5
+scheduler_heartbeat_sec = 10
 
 # The number of times to try to schedule each DAG file
 # -1 indicates unlimited number
@@ -840,10 +840,10 @@ scheduler_idle_sleep_time = 1
 # Number of seconds after which a DAG file is parsed. The DAG file is parsed every
 # ``min_file_process_interval`` number of seconds. Updates to DAGs are reflected after
 # this interval. Keeping this number low will increase CPU usage.
-min_file_process_interval = 30
+min_file_process_interval = 1200
 
 # How often (in seconds) to scan the DAGs directory for new files. Default to 5 minutes.
-dag_dir_list_interval = 300
+dag_dir_list_interval = 1200
 
 # How often should stats be printed to the logs. Setting to 0 will disable printing stats
 print_stats_interval = 30
@@ -857,13 +857,13 @@ pool_metrics_interval = 5.0
 scheduler_health_check_threshold = 30
 
 # How often (in seconds) should the scheduler check for orphaned tasks and SchedulerJobs
-orphaned_tasks_check_interval = 300.0
+orphaned_tasks_check_interval = 600.0
 child_process_log_directory = m4_HOME/airflow/logs/scheduler
 
 # Local task jobs periodically heartbeat to the DB. If the job has
 # not heartbeat in this many seconds, the scheduler will mark the
 # associated task instance as failed and will re-schedule the task.
-scheduler_zombie_task_threshold = 300
+scheduler_zombie_task_threshold = 600
 
 # Turn off scheduler catchup by setting this to ``False``.
 # Default behavior is unchanged and
