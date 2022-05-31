@@ -6,10 +6,10 @@ up: .env
 	sudo usermod -a -G 999 ${USER}
 	sudo chown 999:999 -Rf mongo/db
 	sudo chown 1000:1000 -Rf airflow_scheduler/trained_models
-	sudo chown 1000:1000 -Rf airflow_scheduler/tmp
+	sudo chown 1000:1000 -Rf airflow_scheduler/tmp_large_mp
 	sudo chown 10001:10001 -Rf loki/wal
 	sudo chmod g+rw -Rf mongo/db
-	find airflow_scheduler/tmp/ -type s,p | while read X;  do rm -v "$X" ; done
+	find airflow_scheduler/tmp_large_mp -type s,p | while read X;  do rm -v "$X" ; done
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose up -d
 	bash cadvisor/run.sh
 
@@ -24,10 +24,11 @@ build:
 	rm -rvf /tmp/airflow_scheduler_code_old/
 	mv -vf ./airflow_scheduler/code /tmp/airflow_scheduler_code_old
 	mkdir -pv ./airflow_scheduler/code
-	find airflow_scheduler/tmp/ -type s,p | while read X;  do rm -v "$X" ; done
+	find airflow_scheduler/tmp_large_mp/ -type s,p | while read X;  do rm -v "$X" ; done
 	cp -r ../ncaf ../model_config ../dspn_annotated ../multiset-equivariance ../common ../dags ../preprocess ../models ./airflow_scheduler/code
 	bash complete_airflow_pg_db.sh
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose build
+	sudo docker image prune -f
 
 down:
 	COMPOSE_PROJECT_NAME=learning_sets docker-compose down
