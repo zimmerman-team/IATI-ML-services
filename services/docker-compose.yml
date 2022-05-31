@@ -74,7 +74,7 @@ services:
       - AIRFLOW_LOAD_EXAMPLES=no
     volumes:
       - "./airflow_scheduler/trained_models:/learning_sets/trained_models:rw"
-      - "./airflow_scheduler/tmp:/tmp:rw"
+      - "./airflow_scheduler/tmp_large_mp:/tmp/large_mp:rw"
   postgresql_for_airflow:
     build: postgresql_for_airflow
     hostname: postgresql_for_airflow
