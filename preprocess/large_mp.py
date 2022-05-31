@@ -9,7 +9,12 @@ def write_tmp(data):
     :param data:
     :return: the temporary filename
     """
-    filename = tempfile.mktemp()
+    dirname = 'large_mp/'
+    try:
+        os.mkdir(os.path.join('/tmp',dirname))
+    except FileExistsError:
+        pass
+    filename = tempfile.mktemp(prefix=dirname)
     with open(filename, 'w+') as f:
         json.dump(data, f)
         f.flush()
