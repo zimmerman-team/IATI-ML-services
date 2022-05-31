@@ -12,7 +12,7 @@ RUN . /opt/bitnami/airflow/venv/bin/activate && pip install torch
 RUN . /opt/bitnami/airflow/venv/bin/activate && pip install npyscreen
 
 ADD airflow.cfg /opt/bitnami/airflow
-ADD add_dag_bags.py /opt/bitnami/airflow/dags/
+#ADD add_dag_bags.py /opt/bitnami/airflow/dags/
 
 # changing some permission to the 'airflow' user (UID 1000)
 RUN chown 1000:1000 /opt/bitnami/airflow -R
