@@ -6,6 +6,8 @@ import sys
 import os
 import logging
 import tempfile
+import airflow
+
 sys.path.append(
     os.path.abspath(
         os.path.dirname(
@@ -14,18 +16,23 @@ sys.path.append(
     )
 )
 
-debugme = True
+debugme = False
+
+log_file = None
+
+def log(msg):
+    print(msg)
+    logging.info(msg)
+    log_file.write(f"{msg}\n")
+    log_file.flush()
 
 if debugme:
     log_filename = tempfile.mktemp(prefix="dags_py_",suffix=".log")
+    print("log_filename",log_filename)
     log_file = open(log_filename, 'w+')
-    sys.stdout = open(log_filename+".stdout", 'w')
-    sys.stderr = open(log_filename+".stderr", 'w')
+    #sys.stdout = open(log_filename+".stdout", 'w')
+    #sys.stderr = open(log_filename+".stderr", 'w')
 
-    def log(msg):
-        logging.info(msg)
-        log_file.write(f"{msg}\n")
-        log_file.flush()
     log("dags.py")
     log(f"sys_path {sys.path}")
 
@@ -34,6 +41,7 @@ from preprocess.vectorize_activities_dag import dag as vectorize_activities_dag_
 from models.dag import *
 
 if debugme:
+    log("hello.")
     thismodule = sys.modules[__name__]
     for curr in dir(thismodule):
         log(f"dags/dags attribute {curr}={getattr(thismodule,curr)}")
