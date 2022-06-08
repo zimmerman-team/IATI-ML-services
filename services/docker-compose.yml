@@ -14,6 +14,7 @@ services:
       - "127.0.3.1:3000:3000"
   mongo:
     build: mongo
+    restart: unless-stopped
     user: "999:999"
     ports:
       - "127.0.3.1:27017:27017"
@@ -78,6 +79,7 @@ services:
   postgresql_for_airflow:
     build: postgresql_for_airflow
     hostname: postgresql_for_airflow
+    restart: unless-stopped
     user: 0:0
     ports:
       - "127.0.3.1:5432:5432"
@@ -115,3 +117,5 @@ services:
       - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
       - "./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml"
     command: -config.file=/etc/promtail/promtail-config.yaml
+    logging:
+      driver: none
