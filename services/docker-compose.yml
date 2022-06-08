@@ -4,14 +4,26 @@ services:
     ports:
       - "127.0.3.1:9102:9102"
       - "127.0.3.1:9125:9125"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   prometheus:
     build: prometheus
     ports:
       - "127.0.3.1:9090:9090"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   grafana:
     build: grafana
     ports:
       - "127.0.3.1:3000:3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   mongo:
     build: mongo
     restart: unless-stopped
@@ -24,6 +36,10 @@ services:
       - MONGO_INITDB_DATABASE=${MONGO_DB}
     volumes:
       - "./mongo/db:/data/db:rw"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
 
   mlflow_ui:
     build: mlflow_ui
@@ -31,12 +47,20 @@ services:
       - "127.0.3.1:5000:5000"
     volumes:
       - "../mlruns:/mlruns"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   mlflow_exporter:
     build: mlflow_exporter
     ports:
       - "127.0.3.1:5500:5500"
     volumes:
       - "../mlruns:/mlruns"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   airflow_webserver:
     build: airflow_webserver
     hostname: airflow_webserver
@@ -56,6 +80,10 @@ services:
       - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD}
       - AIRFLOW_EMAIL=${AIRFLOW_EMAIL}
       - AIRFLOW_LOAD_EXAMPLES=no
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   airflow_scheduler:
     build: airflow_scheduler
     hostname: airflow_scheduler
@@ -76,6 +104,10 @@ services:
     volumes:
       - "./airflow_scheduler/trained_models:/learning_sets/trained_models:rw"
       - "./airflow_scheduler/tmp_large_mp:/tmp/large_mp:rw"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   postgresql_for_airflow:
     build: postgresql_for_airflow
     hostname: postgresql_for_airflow
@@ -96,6 +128,10 @@ services:
       retries: 12
     volumes:
       - "./postgresql_for_airflow/volume:/bitnami/postgresql:rw"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
   loki:
     build: loki
     hostname: loki
@@ -107,6 +143,10 @@ services:
       - "./loki/data:/data/loki:rw"
       - "./loki/wal:/wal:rw"
     command: -config.file=/etc/loki/loki-config.yaml
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
 
   promtail:
     #container_name: promtail
@@ -118,4 +158,6 @@ services:
       - "./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml"
     command: -config.file=/etc/promtail/promtail-config.yaml
     logging:
-      driver: none
+      driver: "json-file"
+      options:
+        max-size: "10m"
