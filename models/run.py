@@ -3,7 +3,8 @@ import mlflow.pytorch
 import torch
 import pytorch_lightning as pl
 import logging
-from common import utils, dataset_persistency, timer, splits, config
+from common import utils, dataset_persistency, timer, splits
+from configurator import config
 from models import measurements as ms
 from models import diagnostics
 

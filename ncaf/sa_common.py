@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 from tabulate import tabulate
 
-from common import config
+from configurator import config
 
 connstring = config.get_airflow_sqlalchemy_conn()
 engine = sa.create_engine(connstring)

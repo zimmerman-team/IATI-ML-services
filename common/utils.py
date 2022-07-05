@@ -17,7 +17,8 @@ import datetime
 import copy
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from . import config
+from configurator import config
+
 
 class Collection(dict):
     """

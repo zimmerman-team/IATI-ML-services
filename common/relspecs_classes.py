@@ -18,7 +18,8 @@ sys.path.append(
     )
 )
 
-from common import dataset_persistency, utils, config
+from common import dataset_persistency, utils
+from configurator import config
 from models import text_model
 
 functools.lru_cache(maxsize=None)

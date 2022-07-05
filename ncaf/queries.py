@@ -3,7 +3,6 @@
 import sqlalchemy as sa
 from tabulate import tabulate
 
-from common import config
 from . import sa_common
 from . import sa_tables
 

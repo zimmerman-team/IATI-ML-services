@@ -8,7 +8,8 @@ import sys
 
 from models import model_class_loader
 
-from common import specs_config, config
+from common import specs_config
+from configurator import config
 
 
 def in_days(n):
@@ -31,7 +32,7 @@ default_args = {
     'retry_delay': datetime.timedelta(minutes=5),
     'schedule_interval': None
 }
-venv_path = getattr(config,'venv_path') \
+venv_path = getattr(config, 'venv_path') \
     if 'venv_path' in dir(config) \
     else None
 

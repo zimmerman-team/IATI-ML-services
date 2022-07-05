@@ -9,7 +9,8 @@ import logging
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
-from common import utils, specs_config, config
+from common import utils, specs_config
+from configurator import config
 import models
 
 from collections import namedtuple
