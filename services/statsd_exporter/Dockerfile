@@ -5,6 +5,7 @@ RUN apk add make
 RUN apk add curl
 RUN git clone https://github.com/prometheus/statsd_exporter --branch v0.22.5
 WORKDIR statsd_exporter
+RUN git checkout v0.22.5
 RUN make
 RUN go test
 ADD statsd_exporter_mapping.conf .
