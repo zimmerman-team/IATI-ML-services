@@ -5,7 +5,7 @@ echo SCRIPT_DIR: $SCRIPT_DIR
 LEARNING_SETS_DIR="$(readlink -f $SCRIPT_DIR/..)"
 echo LEARNING_SETS_DIR: $LEARNING_SETS_DIR
 
-D_OPTIONS="$(bash $LEARNING_SETS_DIR/config/get_conf_d_options.sh)"
+D_OPTIONS="$(bash $LEARNING_SETS_DIR/configurator/get_conf_d_options.sh)"
 
 if [ -z "$1" ]
 then
