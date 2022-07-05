@@ -14,7 +14,8 @@ import time
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
 
-from common import utils, specs_config, dataset_persistency, config
+from common import utils, specs_config, dataset_persistency
+from configurator import config
 from preprocess import large_mp
 
 rels = specs_config.rels.downloadable
@@ -99,7 +100,7 @@ def parse(page, ti):
 
     for spec_name, spec_data in specs_vals.items():
 
-        if spec_name == "activity":
+        if spec_name == "activity_without_rels":
             # no need to check for field cardinality
             # in single-cardinality fields of activity
             # logging.info(f"activity data:{spec_data}")
@@ -178,8 +179,7 @@ def persist(page, spec_name, ti):
         if spec_name in data.keys():
             spec_data = data[spec_name]
             for activity_id, activity_data in spec_data.items():
-                # if spec_name == "activity":
-                #    logging.info(f"activity data:{activity_id}:{activity_data}")
+                logging.info(f"data for {spec_name}:{activity_id}:{activity_data}")
 
                 # remove pre-existing set for this activity
                 db[spec_name].delete_one({'activity_id': activity_id})

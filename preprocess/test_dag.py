@@ -11,7 +11,7 @@ import sys
 path = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path = [path]+sys.path
 
-from common import config
+from configurator import config
 
 default_args = {
     'retries': 2,

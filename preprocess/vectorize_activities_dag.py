@@ -6,7 +6,8 @@ import logging
 # since airflow's DAG modules are imported elsewhere (likely ~/airflow)
 # we have to explicitly add the path of the parent directory to this module to python's path
 
-from common import specs_config, dataset_persistency, utils, config
+from common import specs_config, dataset_persistency, utils
+from configurator import config
 from preprocess import download_sets_dag
 from preprocess import vectorize_activity
 from models import models_storage
@@ -85,9 +86,10 @@ def vectorize(ti):
     activity_vectorizer = vectorize_activity.ActivityVectorizer(config.models.rels.modulename)
     with dataset_persistency.MongoDB() as db:
         coll_in_sets = db['activity_encoded_sets']
-        coll_in_activity_without_rels = db['activity_encoded']
+        coll_in_activity_without_rels = db['activity_without_rels_encoded']
         coll_out = db['activity_with_rels_arrayfied']
         for datapoint_index, activity_sets_document in enumerate(coll_in_sets.find({})):
+            logging.debug(f"vectorized activity_id={activity_sets_document['activity_id']} datapoint_index={datapoint_index}")
             activity_sets = activity_sets_document['encoded_sets']
             activity_without_rels_doc = coll_in_activity_without_rels.find_one({
                 'activity_id':activity_sets_document['activity_id']
