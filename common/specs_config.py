@@ -1,5 +1,5 @@
-import sys
-import os
+from dataspecs.dataspecs import SpecsCollection, Rel, PositionField, DatetimeField, CategoryField, NumericalField, \
+    LatentField, TextField, BooleanField
 
 """
 Contains the specification of the field mappings for IATI activity

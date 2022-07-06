@@ -4,6 +4,7 @@ import logging
 import mlflow
 import torch
 
+import niftycollection.collection
 from common import utils, splits
 
 def log(*args):
@@ -25,7 +26,7 @@ class PlotType(enum.Enum):
     LATENT = 'latent'
 
 
-class MeasurementsCollection(utils.Collection):
+class MeasurementsCollection(niftycollection.collection.Collection):
     """
     Collection of Measurement type objects.
     It allows to perform data collection from values and vectors temporarily

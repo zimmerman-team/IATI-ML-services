@@ -6,6 +6,9 @@ import glob
 import re
 import logging
 
+import dataspecs.dataspecs
+import niftycollection.collection
+
 project_root_dir = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
 sys.path.insert(0, project_root_dir)
 
@@ -24,7 +27,7 @@ class KwargsPickler(pickle.Pickler):
         if callable(obj):
             # functions such as Field.__init__.<locals>._loss_function cannot be pickled
             return ("unpickable function",None)
-        if issubclass(type(obj), specs_config.Spec):
+        if issubclass(type(obj), dataspecs.dataspecs.Spec):
             # the Spec types may have machine-learning (torch) functions, that cannot be pickled.
             # so their name is being stored instead
             return ("Spec",obj.name)
@@ -43,7 +46,7 @@ class KwargsUnpickler(pickle.Unpickler):
 class ModelStorageMissingModelsException(Exception):
     pass
 
-class ModelsStorage(utils.Collection):
+class ModelsStorage(niftycollection.collection.Collection):
     """
     We need to store the DSPNAE models somewhere and to recall them
     easily. This class offers a straightforward interface to load

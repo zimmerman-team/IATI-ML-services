@@ -1,12 +1,13 @@
 import numpy as np
 
+import niftycollection.collection
 from common import utils, dataset_persistency
 
 import logging
 
 names = ('train', 'test')
 
-class Splits(utils.Collection):
+class Splits(niftycollection.collection.Collection):
 
     def load_data(self):
         """

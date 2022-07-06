@@ -1,3 +1,4 @@
+import niftycollection.collection
 from common import specs_config, utils
 from models import models_storage
 import numpy as np
@@ -5,7 +6,7 @@ import logging
 import torch
 
 
-class ActivityData(utils.Collection):
+class ActivityData(niftycollection.collection.Collection):
     """
     Representation of a IATI activity datapoint
     """

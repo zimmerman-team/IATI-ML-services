@@ -169,7 +169,7 @@ def load():
     hostnames the code is deployed to.
     """
     global _conf_dict
-    dirpath = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/../config")
+    dirpath = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/../configs")
     hostname = socket.gethostname()
     filename = os.path.join(dirpath, f'{hostname}.yaml')
     if not os.path.isfile(filename):
