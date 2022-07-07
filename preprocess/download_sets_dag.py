@@ -16,7 +16,7 @@ import time
 
 from common import utils, specs_config, dataset_persistency
 from configurator import config
-from preprocess import large_mp
+from large_mp import large_mp
 
 rels = specs_config.rels.downloadable
 specs = specs_config.specs.downloadable

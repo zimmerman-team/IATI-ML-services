@@ -3,7 +3,8 @@ import logging
 import math
 
 from models import generic_model
-from common import chunking_dataset, specs_config
+from common import specs_config
+from chunking_dataset import chunking_dataset
 from configurator import config
 
 

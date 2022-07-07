@@ -1,36 +1,69 @@
+# logging level: DEBUG for more verbosity
 log_level: INFO
 
 # suggestion on how to generate a password:
 # tr -dc A-Za-z0-9 </dev/urandom | head -c 13 ; echo ''
 # https://unix.stackexchange.com/questions/230673/how-to-generate-a-random-string
 
+# credentials for mongodb, used for storing preprocessed data
 mongo_user: someuser
 mongo_password: somepassword
 mongo_host: somehost
 mongo_port: 27017
 mongo_db: learning_sets
 
+# credentials of the remote machine where the system should be deployed
 vm_user: someuser
 vm_host: somehost
 
+# credentials for Airflow's postgresql
 airflow_pg_password: somepassword
+
+# credentials for Airflow, especially web-ui access
 airflow_user: someuser
 airflow_password: somepassword
 airflow_email: someuser@zimmerman.team
+
+# number of tasks/processes that Airflow is allowed to run simultaneously
 airflow_concurrency: 0012
 
+# logging level specific for airflow
+airflow_logging_level: INFO
+
+# for preprocessing: number of items in a result page from iati.cloud
 download_page_size: 1000
+
+# amount of result pages to be downloaded
 download_max_pages: 3
+
+# maximum number of items in relational field
 download_max_set_size: 50
 
 # data_loader_num_workers must be set to 0 to allow epoch chunking
 data_loader_num_workers: 0
 
-models_dag_config_name: dspn_deepnarrow
+# all model types
+models:
+  # scope of the model
+  - rels:
+      # name of the model module
+      - modulename: dspn_autoencoder
+      # name of the hyperparameter configuration to train models
+      - config_name: dspn_deepnarrow_short
+      # for testing the model's code
+      - config_name_test: dspn_deepnarrow_cap
+  # scope of the model
+  - activity:
+      - modulename: activity_autoencoder
+      - config_name: activity_autoencoder_deep_long
+      - config_name_test: activity_autoencoder_deep_long
+
 models_dag_days_interval: 2
 
+# path where the trained models' parameters are going to be stored
 trained_models_dirpath: trained_models/
 
+# print a logging message every x seconds during training
 log_step_elapsed_time: 60
 
 # seems that one model being trained is using 4 CPU cores,

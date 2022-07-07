@@ -25,7 +25,7 @@ build:
 	mv -vf ./airflow_scheduler/code /tmp/airflow_scheduler_code_old
 	mkdir -pv ./airflow_scheduler/code
 	find airflow_scheduler/tmp_large_mp/ -type s,p | while read X;  do rm -v "$X" ; done
-	cp -r ../ncaf ../model_config ../dspn_annotated ../multiset-equivariance ../common ../dags ../preprocess ../models ./airflow_scheduler/code
+	cp -r ../configurator ../dataspecs ../niftycollection ../chunking_dataset ../large_mp ../ncaf ../model_config ../dspn_annotated ../multiset-equivariance ../common ../dags ../preprocess ../models ./airflow_scheduler/code
 	bash complete_airflow_pg_db.sh
 	sudo COMPOSE_PROJECT_NAME=learning_sets docker-compose build
 	sudo docker image prune -f
