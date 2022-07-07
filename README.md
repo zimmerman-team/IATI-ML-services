@@ -23,6 +23,14 @@ Within the Airflow interface, then accessible via http://127.0.3.1:8080 , one ca
 (`Downloads sets data from IATI.cloud`) and the various model training DAGs
 (`train_models_dag_*`).
 
+## Runs
+
+Everything is run via Airflow. Its interface is accessible via http://127.0.3.1:8080
+
+ * to trigger the preprocessing and data preparation launch the `download_and_preprocess_sets` DAG
+ * to train the deep set model on relational fields launch the `train_models_dag_(i)dspn_autoencoder` DAG
+ * to create the fixed-length-datapoints activity dataset launch the `vectorize_activities` DAG
+ * to train the main activity autoencoder launch the `train_models_dag_activity_autoencoder` DAG
 
 ## Independent subcomponents
 
