@@ -1,0 +1,4 @@
+loki/wal/*
+!loki/wal/.keep
+loki/data/*
+!loki/data/.keep

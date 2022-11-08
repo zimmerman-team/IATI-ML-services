@@ -14,3 +14,14 @@ ipython
 seaborn
 gensim
 nltk
+airflow
+torchvision
+psycopg2
+h5py
+scipy
+tqdm
+tensorboardX
+Pillow
+tabulate
+Flask
+ipdb

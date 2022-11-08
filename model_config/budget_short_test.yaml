@@ -1,0 +1,11 @@
+experiment_name: autoencoder_baseline
+layers_width: 4
+latent_dim: 2
+activation_function: "ELU"
+depth: 2
+weight_decay: 1.0e-4
+max_epochs: 2
+rel_name: 'budget'
+batch_size: 1024
+divide_output_layer: True
+latent_l1_norm: 10.0

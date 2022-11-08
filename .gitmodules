@@ -1,0 +1,3 @@
+[submodule "multiset-equivariance"]
+	path = multiset-equivariance
+	url = https://github.com/davzha/multiset-equivariance

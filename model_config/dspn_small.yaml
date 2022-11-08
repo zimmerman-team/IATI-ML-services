@@ -1,0 +1,13 @@
+experiment_name: dspn_first
+layers_width: 3
+latent_dim: 2
+activation_function: "ELU"
+depth: 2
+weight_decay: 1.0e-4
+max_epochs: 100
+batch_size: 2048
+divide_output_layer: True
+latent_l1_norm: 10.0
+max_set_size: 2
+dspn_iter: 1
+dspn_lr: 800
